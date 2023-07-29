@@ -11,7 +11,8 @@
         "slim/php-view": "^3.2",
         "slim/slim": "4.*",
         "symfony/uid": "^5.4",
-        "tuupola/slim-basic-auth": "^3.3"
+        "tuupola/slim-basic-auth": "^3.3",
+        "symfony/validator": "^5.4"
     },
     "require-dev": {
         "symfony/console": "^5.4",
