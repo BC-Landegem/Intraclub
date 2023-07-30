@@ -13,7 +13,9 @@ return function (array $settings): array {
     $settings['logger']['level'] = Logger::DEBUG;
 
     // Database
-    $settings['db']['database'] = 'slim_skeleton_dev';
+    $settings['db']['database'] = 'intraclub';
+    $settings['db']['username'] = 'root';
+    $settings['db']['password'] = 'root';
 
     return $settings;
 };
