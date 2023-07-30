@@ -3,6 +3,8 @@
 namespace App\Domain\Player\Repository;
 
 use App\Factory\QueryFactory;
+use DomainException;
+
 ;
 
 final class PlayerRepository
@@ -14,12 +16,40 @@ final class PlayerRepository
         $this->queryFactory = $queryFactory;
     }
 
-    public function insertCustomer(array $player): int
+    public function insertPlayer(array $player): int
     {
-        return (int) $this->queryFactory->newInsert('players', $this->toRow($player))
+        return (int) $this->queryFactory->newInsert('Player', $this->toRow($player))
             ->execute()
             ->lastInsertId();
     }
+
+    public function getPlayerById(int $playerId): array
+    {
+        $query = $this->queryFactory->newSelect('Player');
+        $query->select(
+            [
+                'Id',
+                'Firstname',
+                'Name',
+                'Member',
+                'Gender',
+                'BirthDate',
+                'DoubleRanking'
+            ]
+        );
+
+        $query->where(['id' => $playerId]);
+
+        $row = $query->execute()->fetch('assoc');
+
+        if (!$row) {
+            throw new DomainException(sprintf('Player not found: %s', $playerId));
+        }
+
+        return $row;
+    }
+
+
     private function toRow(array $player): array
     {
         return [

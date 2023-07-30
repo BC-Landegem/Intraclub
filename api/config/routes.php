@@ -15,6 +15,7 @@ return function (App $app) {
         '/api',
         function (RouteCollectorProxy $app) {
             $app->post('/players', PlayerCreatorAction::class);
+            $app->get('/players/{player_id}', \App\Action\Player\PlayerReaderAction::class);
         }
     );
 };
