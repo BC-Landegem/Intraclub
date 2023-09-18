@@ -1,13 +1,82 @@
-CREATE TABLE `Player`  (
-	Id INT auto_increment NOT NULL,
-	Firstname varchar(100) NOT NULL,
-	Name varchar(100) NOT NULL,
+CREATE TABLE `Player` (
+	`Id` INT(11) NOT NULL AUTO_INCREMENT,
+	`Firstname` VARCHAR(100) NOT NULL COLLATE 'utf8mb4_unicode_ci',
+	`Name` VARCHAR(100) NOT NULL COLLATE 'utf8mb4_unicode_ci',
 	`Member` TINYINT(1) NOT NULL,
-	Gender ENUM('Man', 'Women') NOT NULL,
-	BirthDate DATE NOT NULL,
-	DoubleRanking INT NOT NULL,
-	CONSTRAINT Player_pk PRIMARY KEY (Id)
+	`Gender` ENUM('Man','Women') NOT NULL COLLATE 'utf8mb4_unicode_ci',
+	`BirthDate` DATE NOT NULL,
+	`DoubleRanking` INT(11) NOT NULL,
+	`PlaysCompetition` TINYINT(1) NOT NULL DEFAULT '0',
+	PRIMARY KEY (`Id`) USING BTREE
 )
+COLLATE='utf8mb4_unicode_ci'
 ENGINE=InnoDB
-DEFAULT CHARSET=utf8mb4
-COLLATE=utf8mb4_unicode_ci;
+;
+
+
+
+CREATE TABLE `Season` (
+	`Id` INT(11) NOT NULL AUTO_INCREMENT,
+	`Name` VARCHAR(50) NOT NULL COLLATE 'utf8mb4_unicode_ci',
+	PRIMARY KEY (`Id`) USING BTREE
+)
+COLLATE='utf8mb4_unicode_ci'
+ENGINE=InnoDB
+;
+
+CREATE TABLE `Round` (
+	`Id` INT(11) NOT NULL AUTO_INCREMENT,
+	`Number` INT(11) NOT NULL,
+	`Date` DATE NOT NULL,
+	`AverageAbsent` DOUBLE NULL DEFAULT NULL,
+	`SeasonId` INT(11) NOT NULL,
+	`Calculated` TINYINT(1) NOT NULL,
+	PRIMARY KEY (`Id`) USING BTREE,
+	INDEX `FK_Round_Season` (`SeasonId`) USING BTREE,
+	CONSTRAINT `FK_Round_Season` FOREIGN KEY (`SeasonId`) REFERENCES `Season` (`Id`) ON UPDATE NO ACTION ON DELETE NO ACTION
+)
+COLLATE='utf8mb4_unicode_ci'
+ENGINE=InnoDB
+;
+
+
+CREATE TABLE `Match` (
+	`Id` INT(11) NOT NULL AUTO_INCREMENT,
+	`Player1Id` INT(11) NOT NULL DEFAULT '0',
+	`Player2Id` INT(11) NOT NULL DEFAULT '0',
+	`Player3Id` INT(11) NOT NULL DEFAULT '0',
+	`Player4Id` INT(11) NOT NULL DEFAULT '0',
+	`Set1Home` INT(11) NULL DEFAULT NULL,
+	`Set1Away` INT(11) NULL DEFAULT NULL,
+	`Set2Home` INT(11) NULL DEFAULT NULL,
+	`Set2Away` INT(11) NULL DEFAULT NULL,
+	`Set3Home` INT(11) NULL DEFAULT NULL,
+	`Set3Away` INT(11) NULL DEFAULT NULL,
+	PRIMARY KEY (`Id`) USING BTREE,
+	INDEX `FK_Round_Player_1` (`Player1Id`) USING BTREE,
+	INDEX `FK_Round_Player_2` (`Player2Id`) USING BTREE,
+	INDEX `FK_Round_Player_3` (`Player3Id`) USING BTREE,
+	INDEX `FK_Round_Player_4` (`Player4Id`) USING BTREE,
+	CONSTRAINT `FK_Round_Player_1` FOREIGN KEY (`Player1Id`) REFERENCES `Player` (`Id`) ON UPDATE NO ACTION ON DELETE NO ACTION,
+	CONSTRAINT `FK_Round_Player_2` FOREIGN KEY (`Player2Id`) REFERENCES `Player` (`Id`) ON UPDATE NO ACTION ON DELETE NO ACTION,
+	CONSTRAINT `FK_Round_Player_3` FOREIGN KEY (`Player3Id`) REFERENCES `Player` (`Id`) ON UPDATE NO ACTION ON DELETE NO ACTION,
+	CONSTRAINT `FK_Round_Player_4` FOREIGN KEY (`Player4Id`) REFERENCES `Player` (`Id`) ON UPDATE NO ACTION ON DELETE NO ACTION
+)
+COLLATE='utf8mb4_unicode_ci'
+ENGINE=InnoDB
+;
+
+
+CREATE TABLE `RoundUndraftedPlayer` (
+	`Id` INT(11) NOT NULL,
+	`RoundId` INT(11) NOT NULL,
+	`PlayerId` INT(11) NOT NULL,
+	PRIMARY KEY (`Id`) USING BTREE,
+	INDEX `FK_RoundUndraftedPlayer_Player` (`PlayerId`) USING BTREE,
+	INDEX `FK_RoundUndraftedPlayer_Round` (`RoundId`) USING BTREE,
+	CONSTRAINT `FK_RoundUndraftedPlayer_Player` FOREIGN KEY (`PlayerId`) REFERENCES `Player` (`Id`) ON UPDATE NO ACTION ON DELETE NO ACTION,
+	CONSTRAINT `FK_RoundUndraftedPlayer_Round` FOREIGN KEY (`RoundId`) REFERENCES `Round` (`Id`) ON UPDATE NO ACTION ON DELETE NO ACTION
+)
+COLLATE='utf8mb4_unicode_ci'
+ENGINE=InnoDB
+;
