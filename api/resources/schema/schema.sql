@@ -1,9 +1,9 @@
-CREATE TABLE `Player` (
+CREATE TABLE `player` (
 	`Id` INT(11) NOT NULL AUTO_INCREMENT,
 	`Firstname` VARCHAR(100) NOT NULL COLLATE 'utf8mb4_unicode_ci',
 	`Name` VARCHAR(100) NOT NULL COLLATE 'utf8mb4_unicode_ci',
 	`Member` TINYINT(1) NOT NULL,
-	`Gender` ENUM('Man','Women') NOT NULL COLLATE 'utf8mb4_unicode_ci',
+	`Gender` ENUM('Man','Woman') NOT NULL COLLATE 'utf8mb4_unicode_ci',
 	`BirthDate` DATE NOT NULL,
 	`DoubleRanking` INT(11) NOT NULL,
 	`PlaysCompetition` TINYINT(1) NOT NULL DEFAULT '0',
@@ -11,7 +11,9 @@ CREATE TABLE `Player` (
 )
 COLLATE='utf8mb4_unicode_ci'
 ENGINE=InnoDB
+AUTO_INCREMENT=2
 ;
+
 
 
 
