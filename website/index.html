@@ -5,22 +5,75 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no" />
   <meta http-equiv="x-ua-compatible" content="ie=edge" />
-  <title>Material Design for Bootstrap</title>
+  <title>Intra app</title>
   <!-- MDB icon -->
   <!-- Font Awesome -->
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css" />
   <!-- Google Fonts Roboto -->
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700;900&display=swap" />
   <!-- MDB -->
   <link rel="stylesheet" href="css/mdb.min.css" />
+  <style>
+    .grid-container {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      grid-gap: 10px;
+    }
+
+    .grid-item {
+      background-color: #f2f2f2;
+      padding: 20px;
+      font-size: 30px;
+      text-align: center;
+    }
+  </style>
 </head>
 
 <body>
+  <!-- Navbar -->
+  <nav class="navbar navbar-expand-lg navbar-light bg-light">
+    <!-- Container wrapper -->
+    <div class="container-fluid">
+      Intra-app
+      <span id="playersPresent">Aantal spelers: 0</span>
+      <div class="d-flex align-items-center">
+        <button type="button" class="btn btn-primary me-3" data-mdb-toggle="modal" data-mdb-target="#exampleModal">
+          <i class="fa fa-plus me-1"></i>Nieuwe speler
+        </button>
+        <button type="button" class="btn btn-primary me-3" onclick="generateMatches()">
+          Genereer wedstrijden
+        </button>
+      </div>
+    </div>
+    </div>
+    <!-- Container wrapper -->
+  </nav>
 
+  <div class="grid-container" id="playerList">
+  </div>
+  <!-- Modal -->
+  <div class="modal fade" id="exampleModal" tabindex="-1" aria-labelledby="exampleModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title" id="exampleModalLabel">Nieuwe speler</h5>
+          <button type="button" class="btn-close" data-mdb-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body">...</div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-mdb-dismiss="modal">Annuleer</button>
+          <button type="button" class="btn btn-primary">Voeg toe</button>
+        </div>
+      </div>
+    </div>
+  </div>
   <!-- MDB -->
   <script type="text/javascript" src="js/mdb.min.js"></script>
+  <script type="text/javascript" src="js/intra.js"></script>
   <!-- Custom scripts -->
-  <script type="text/javascript"></script>
+  <script type="text/javascript">
+    loadRanking();
+  </script>
 </body>
 
 </html>
