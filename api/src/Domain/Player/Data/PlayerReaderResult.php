@@ -10,7 +10,8 @@ final class PlayerReaderResult
     public ?string $name = null;
     public ?string $gender = null;
     public ?bool $member = null;
-    public ?DateTime $birthDate = null;
     public ?int $doubleRanking = null;
+    public ?bool $playsCompetition = null;
+
 
 }

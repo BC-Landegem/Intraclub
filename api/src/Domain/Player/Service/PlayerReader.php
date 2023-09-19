@@ -32,9 +32,9 @@ final class PlayerReader
         $player->name = (string) $playerRow['Name'];
         $player->member = (bool) $playerRow['Member'];
         $player->gender = (string) $playerRow['Gender'];
-        $player->birthDate = new DateTime($playerRow['BirthDate']);
+        //$player->birthDate = new DateTime($playerRow['BirthDate']);
         $player->doubleRanking = (int) $playerRow['DoubleRanking'];
-
+        $player->playsCompetition = (bool) $playerRow['PlaysCompetition'];
         return $player;
     }
 }

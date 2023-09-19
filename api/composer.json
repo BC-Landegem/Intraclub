@@ -12,7 +12,8 @@
         "slim/slim": "4.*",
         "symfony/uid": "^5.4",
         "tuupola/slim-basic-auth": "^3.3",
-        "symfony/validator": "^5.4"
+        "symfony/validator": "^5.4",
+        "cakephp/validation": "^4.4"
     },
     "require-dev": {
         "symfony/console": "^5.4",

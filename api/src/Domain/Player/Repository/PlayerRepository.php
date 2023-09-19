@@ -33,8 +33,8 @@ final class PlayerRepository
                 'Name',
                 'Member',
                 'Gender',
-                'BirthDate',
-                'DoubleRanking'
+                'DoubleRanking',
+                'PlaysCompetition'
             ]
         );
 
@@ -53,6 +53,14 @@ final class PlayerRepository
     private function toRow(array $player): array
     {
         return [
+            'Id' => $player['id'],
+            'Firstname' => $player['firstname'],
+            'Name' => $player['name'],
+            'Member' => $player['member'],
+            'Gender' => $player['gender'],
+            'BirthDate' => $player['birthDate'],
+            'DoubleRanking' => $player['doubleRanking'],
+            'PlaysCompetition' => $player['playsCompetition']
         ];
     }
 }
