@@ -85,3 +85,26 @@ CREATE TABLE `RoundPlayer` (
 COLLATE='utf8mb4_unicode_ci'
 ENGINE=InnoDB
 ;
+
+
+CREATE TABLE `SeasonPlayer` (
+	`Id` INT(11) NOT NULL AUTO_INCREMENT,
+	`SeasonId` INT(11) NOT NULL DEFAULT '0',
+	`PlayerId` INT(11) NOT NULL DEFAULT '0',
+	`BasePoints` DOUBLE NOT NULL DEFAULT '0',
+	`SetsPlayed` INT(11) NOT NULL DEFAULT '0',
+	`SetsWon` INT(11) NOT NULL DEFAULT '0',
+	`PointsPlayed` INT(11) NOT NULL DEFAULT '0',
+	`PointsWon` INT(11) NOT NULL DEFAULT '0',
+	`MatchesPlayed` INT(11) NOT NULL DEFAULT '0',
+	`MatchesWon` INT(11) NOT NULL DEFAULT '0',
+	`RoundsPresent` INT(11) NOT NULL DEFAULT '0',
+	PRIMARY KEY (`Id`) USING BTREE,
+	INDEX `FK_SeasonPlayer_Season` (`SeasonId`) USING BTREE,
+	INDEX `FK_SeasonPlayer_Player` (`PlayerId`) USING BTREE,
+	CONSTRAINT `FK_SeasonPlayer_Player` FOREIGN KEY (`PlayerId`) REFERENCES `Player` (`Id`) ON UPDATE NO ACTION ON DELETE NO ACTION,
+	CONSTRAINT `FK_SeasonPlayer_Season` FOREIGN KEY (`SeasonId`) REFERENCES `Season` (`Id`) ON UPDATE NO ACTION ON DELETE NO ACTION
+)
+COLLATE='utf8mb4_unicode_ci'
+ENGINE=InnoDB
+;
