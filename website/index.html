@@ -26,37 +26,63 @@
       font-size: 30px;
       text-align: center;
     }
+
+    .result-container {
+      display: grid;
+      grid-template-columns: 2fr 2fr 1fr 1fr;
+      grid-gap: 10px;
+    }
+
+    .result-item {
+      background-color: #f2f2f2;
+      padding: 20px;
+      font-size: 30px;
+      text-align: center;
+    }
+
+    .result-item .form-control {
+      font-size: 2rem;
+    }
+
+    .result-input {
+      height: 100%;
+    }
   </style>
 </head>
 
 <body>
   <!-- Navbar -->
-  <nav class="navbar navbar-expand-lg navbar-light bg-light">
+  <nav class="navbar navbar-expand-lg navbar-light bg-light sticky-top">
     <!-- Container wrapper -->
     <div class="container-fluid">
       Intra-app
       <span id="playersPresent">Aantal spelers: 0</span>
       <div class="d-flex align-items-center">
-        <button type="button" class="btn btn-primary me-3" data-mdb-toggle="modal" data-mdb-target="#exampleModal">
+        <button type="button" class="btn btn-primary me-3" data-mdb-toggle="modal" data-mdb-target="#addPlayerModal">
           <i class="fa fa-plus me-1"></i>Nieuwe speler
         </button>
-        <button type="button" class="btn btn-primary me-3" onclick="generateMatches()">
+        <button type="button" class="btn btn-secondary me-3" onclick="generateMatches()">
           Genereer wedstrijden
         </button>
+        <button type="button" id="togglePlayerListButton" class="btn btn-tertiary me-3" style="display: none;"
+          onclick="togglePlayerList()">
+          Toon spelerslijst
+        </button>
       </div>
-    </div>
     </div>
     <!-- Container wrapper -->
   </nav>
 
   <div class="grid-container" id="playerList">
   </div>
-  <!-- Modal -->
-  <div class="modal fade" id="exampleModal" tabindex="-1" aria-labelledby="exampleModalLabel" aria-hidden="true">
+  <div class="grid-container" id="matchList">
+  </div>
+  <!-- Add Player Modal -->
+  <div class="modal fade" id="addPlayerModal" tabindex="-1" aria-labelledby="addPlayerModalLabel" aria-hidden="true">
     <div class="modal-dialog">
       <div class="modal-content">
         <div class="modal-header">
-          <h5 class="modal-title" id="exampleModalLabel">Nieuwe speler</h5>
+          <h5 class="modal-title" id="addPlayerModalLabel">Nieuwe speler</h5>
           <button type="button" class="btn-close" data-mdb-dismiss="modal" aria-label="Close"></button>
         </div>
         <div class="modal-body">...</div>
@@ -67,13 +93,74 @@
       </div>
     </div>
   </div>
-  <!-- MDB -->
-  <script type="text/javascript" src="js/mdb.min.js"></script>
-  <script type="text/javascript" src="js/intra.js"></script>
-  <!-- Custom scripts -->
-  <script type="text/javascript">
-    loadRanking();
-  </script>
+  <!-- Add Result Modal -->
+  <div class="modal fade" id="addResultModal" tabindex="-1" aria-labelledby="addResultModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-fullscreen">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title" id="addResultModalLabel">Uitslag invoeren</h5>
+          <button type="button" class="btn-close" data-mdb-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body">
+          <div class="result-container">
+            <div class="result-item">
+              <p id="set1Player1">Lennart Martens</p>
+              <p id="set1Player2">Lowie Meganck</p>
+            </div>
+            <div class="result-item">
+              <p id="set1Player3">Frank Van Hove</p>
+              <p id="set1Player4">Christophe Verbeke</p>
+            </div>
+            <div class="form-outline result-item">
+              <input type="number" id="set1ScoreHome" class="form-control result-input" />
+            </div>
+            <div class="form-outline result-item">
+              <input type="number" id="set1ScoreAway" class="form-control result-input" />
+            </div>
+            <div class="result-item">
+              <p id="set2Player1">Lennart Martens</p>
+              <p id="set2Player2">Frank Van Hove</p>
+            </div>
+            <div class="result-item">
+              <p id="set2Player3">Lowie Meganck</p>
+              <p id="set2Player4">Christophe Verbeke</p>
+            </div>
+            <div class="form-outline result-item">
+              <input type="number" id="set2Score" class="form-control result-input" />
+            </div>
+            <div class="form-outline result-item">
+              <input type="number" id="set2ScoreAway" class="form-control result-input" />
+            </div>
+            <div class="result-item">
+              <p id="set3Player1">Lennart Martens</p>
+              <p id="set3Player2">Christophe Verbeke</p>
+            </div>
+            <div class="result-item">
+              <p id="set3Player3">Lowie Meganck</p>
+              <p id="set3Player4">Frank Van Hove</p>
+            </div>
+            <div class="form-outline result-item">
+              <input type="number" id="set3Score" class="form-control result-input" />
+            </div>
+            <div class="form-outline result-item">
+              <input type="number" id="set3ScoreAway" class="form-control result-input" />
+            </div>
+          </div>
+
+          <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" data-mdb-dismiss="modal">Annuleer</button>
+            <button type="button" class="btn btn-primary">Voeg toe</button>
+          </div>
+        </div>
+      </div>
+    </div>
+    <!-- MDB -->
+    <script type="text/javascript" src="js/mdb.min.js"></script>
+    <script type="text/javascript" src="js/intra.js"></script>
+    <!-- Custom scripts -->
+    <script type="text/javascript">
+      loadRanking();
+    </script>
 </body>
 
 </html>

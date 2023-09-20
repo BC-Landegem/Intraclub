@@ -1,5 +1,7 @@
 presentPlayers = [];
 allPlayers = [];
+drawnOutPlayers = [];
+matches = [];
 
 function loadRanking() {
     fetch('https://www.bclandegem.be/intraclub-api/index.php/rankings/general')
@@ -25,10 +27,10 @@ function loadRanking() {
 
 
                 const button = document.createElement("button");
-                button.classList.add('btn', 'btn-success', 'btn-lg', 'me-3');
+                button.classList.add('btn', 'btn-danger', 'btn-lg', 'me-3');
                 //add fa-check icon inside
                 const icon = document.createElement('i');
-                icon.classList.add('fa', 'fa-check');
+                icon.classList.add('fa', 'fa-ban');
                 button.appendChild(icon);
                 button.onclick = function () {
                     addPlayerPresent(item.id);
@@ -62,12 +64,12 @@ function updatePresentButton(button, id) {
     span.classList.remove('badge-danger');
     span.classList.add('badge-success');
 
-    button.classList.remove('btn-success');
-    button.classList.add('btn-danger');
+    button.classList.remove('btn-danger');
+    button.classList.add('btn-success');
     //update icon inside
     var icon = button.firstChild;
-    icon.classList.remove('fa-check');
-    icon.classList.add('fa-ban');
+    icon.classList.remove('fa-ban');
+    icon.classList.add('fa-check');
 
     button.appendChild(icon);
     button.onclick = function () {
@@ -81,11 +83,11 @@ function updateAbsentButton(button, id) {
     span.textContent = 'Nog niet gezien';
     span.classList.remove('badge-success');
     span.classList.add('badge-danger');
-    button.classList.remove('btn-danger');
-    button.classList.add('btn-success');
+    button.classList.remove('btn-success');
+    button.classList.add('btn-danger');
     var icon = button.firstChild;
-    icon.classList.remove('fa-ban');
-    icon.classList.add('fa-check');
+    icon.classList.remove('fa-check');
+    icon.classList.add('fa-ban');
     button.onclick = function () {
         addPlayerPresent(id);
         updatePresentButton(button, id);
@@ -108,14 +110,177 @@ function generateMatches() {
     // Overlap between those two groups is 50%
     const firstGroup = presentPlayers.slice(0, Math.floor(presentPlayers.length * 0.75));
     const secondGroup = presentPlayers.slice(Math.floor(presentPlayers.length * 0.25), presentPlayers.length);
-
     // Create matches
-    const matches = [];
-    // 1 match = 4 players
+    matches = [];
+
     // Create match with 4 random players from first group
     // Then match with 4 random players from second group
     // Repeat until all players are matched (or less than 4 players left)
     // Don't forget to remove matched players from the groups
 
+    while (firstGroup.length >= 4 || secondGroup.length >= 4) {
+        if (firstGroup.length >= 4) {
+            const match = [];
+            for (let i = 0; i < 4; i++) {
+                const randomIndex = Math.floor(Math.random() * firstGroup.length);
+                match.push(firstGroup[randomIndex]);
+                firstGroup.splice(randomIndex, 1);
+            }
+            matches.push(match);
+            // remove matched players from second group
+            match.forEach(player => {
+                const index = secondGroup.indexOf(player);
+                if (index > -1) {
+                    secondGroup.splice(index, 1);
+                }
+            });
+        }
+        if (secondGroup.length >= 4) {
+            const match2 = [];
+            for (let i = 0; i < 4; i++) {
+                const randomIndex = Math.floor(Math.random() * secondGroup.length);
+                match2.push(secondGroup[randomIndex]);
+                secondGroup.splice(randomIndex, 1);
+            }
+            matches.push(match2);
+            // remove matched players from first group
+            match2.forEach(player => {
+                const index = firstGroup.indexOf(player);
+                if (index > -1) {
+                    firstGroup.splice(index, 1);
+                }
+            });
+        }
+    }
 
+    // If there are still players left, create a match with them
+    if (firstGroup.length > 0 || secondGroup.length > 0) {
+        // combine the two groups, but don't add the same player twice
+        const remainingPlayers = firstGroup.concat(secondGroup).reduce((acc, current) => {
+            const x = acc.find(item => item.id === current.id);
+            if (!x) {
+                return acc.concat([current]);
+            } else {
+                return acc;
+            }
+        }, []);
+
+        // If there are more than 4 players left, pick 4 random players
+        // Else pick all remaining players
+        if (remainingPlayers.length >= 4) {
+            const remainingPlayersMatch = [];
+            // Pick 4 random players from the remaining players
+            for (let i = 0; i < 4; i++) {
+                const randomIndex = Math.floor(Math.random() * remainingPlayers.length);
+                remainingPlayersMatch.push(remainingPlayers[randomIndex]);
+                remainingPlayers.splice(randomIndex, 1);
+            }
+            matches.push(remainingPlayersMatch);
+        }
+        if (remainingPlayers.length > 0) {
+            // put all remaining players in the match
+            const drawnOutMatch = [];
+            remainingPlayers.forEach(player => {
+                drawnOutMatch.push(player);
+            });
+            matches.push(drawnOutMatch);
+            drawnOutPlayers = remainingPlayers;
+        }
+    }
+    displayMatches(matches);
+
+    // hide playerlist
+    document.getElementById('playerList').style.display = 'none';
+    document.getElementById('matchList').style.display = '';
+    // show toggle button
+    document.getElementById('togglePlayerListButton').style.display = '';
+    document.getElementById('togglePlayerListButton').textContent = 'Toon spelerslijst';
+
+}
+
+function displayMatches(matches) {
+    // display matches
+    const matchesContainer = document.getElementById('matchList');
+    matchesContainer.innerHTML = '';
+    matches.forEach((match, index) => {
+        // create match container
+        const firstTeamContainer = document.createElement('div');
+        firstTeamContainer.classList.add('grid-item');
+        // add first two players to match container
+        displayPlayer(match[0], firstTeamContainer);
+        if (match.length > 1)
+            displayPlayer(match[1], firstTeamContainer);
+        else {
+            displayPlayerDropdown(firstTeamContainer);
+        }
+        matchesContainer.appendChild(firstTeamContainer);
+        // create second team container
+        const secondTeamContainer = document.createElement('div');
+        secondTeamContainer.classList.add('grid-item');
+        // add second two players to match container
+        if (match.length > 2)
+            displayPlayer(match[2], secondTeamContainer);
+        else {
+            displayPlayerDropdown(secondTeamContainer);
+        }
+        if (match.length > 3)
+            displayPlayer(match[3], secondTeamContainer);
+        else {
+            displayPlayerDropdown(secondTeamContainer);
+        }
+        matchesContainer.appendChild(secondTeamContainer);
+
+        // add results div to match container
+        const resultDiv = document.createElement('div');
+        resultDiv.classList.add('grid-item');
+        //add button to result div
+        const button = document.createElement("button");
+        //add data-mdb-toggle="modal" data-mdb-target="#addPlayerModal"
+        button.setAttribute('data-mdb-toggle', 'modal');
+        button.setAttribute('data-mdb-target', '#addResultModal');
+        button.classList.add('btn', 'btn-primary', 'btn-lg', 'me-3');
+        button.innerHTML = '<i class="fa fa-pencil me-1"></i> Voeg resultaat toe';
+
+        button.onclick = function () {
+            console.log('clicked');
+        };
+        resultDiv.appendChild(button);
+        matchesContainer.appendChild(resultDiv);
+
+    });
+}
+
+function displayPlayer(player, container) {
+    const playerElement = document.createElement('p');
+    playerElement.textContent = player.firstName + ' ' + player.name;
+    container.appendChild(playerElement);
+}
+function displayPlayerDropdown(container) {
+    const dropdownElement = document.createElement('p');
+    const dropdown = document.createElement('select');
+    dropdown.innerHTML = '';
+    presentPlayers.forEach((player, index) => {
+        const option = document.createElement('option');
+        option.value = player.id;
+        option.textContent = player.firstName + ' ' + player.name;
+        dropdown.appendChild(option);
+    });
+    dropdownElement.appendChild(dropdown);
+    container.appendChild(dropdownElement);
+}
+
+function togglePlayerList() {
+    const playerList = document.getElementById('playerList');
+    if (playerList.style.display === 'none') {
+        playerList.style.display = '';
+        //change button text
+        document.getElementById('togglePlayerListButton').textContent = 'Verberg spelerslijst';
+        document.getElementById('matchList').style.display = 'none';
+    } else {
+        playerList.style.display = 'none';
+        //change button text
+        document.getElementById('togglePlayerListButton').textContent = 'Toon spelerslijst';
+        document.getElementById('matchList').style.display = '';
+
+    }
 }
