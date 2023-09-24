@@ -102,17 +102,6 @@ class PlayerManager
     }
 
     /**
-     * Haal speler op
-     *
-     * @param  int $id
-     * @return array speler
-     */
-    public function getById($id)
-    {
-        return $this->playerRepository->getById($id);
-    }
-
-    /**
      * Haal speler op met seizoensstatistieken
      *
      * @param  int $id
@@ -135,16 +124,6 @@ class PlayerManager
         //GetRankingHistory
         $response["statistics"]["rankingHistory"] = $this->getAndMapRankingHistory($id, $seasonId);
         return $response;
-    }
-
-    /**
-     * Alle mogelijke klassementen
-     *
-     * @return array klassementen
-     */
-    public function getPossibleRankings()
-    {
-        return $this->playerRepository->getPossibleRankings();
     }
 
     /**

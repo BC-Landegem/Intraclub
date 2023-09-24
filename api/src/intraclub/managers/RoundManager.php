@@ -84,29 +84,6 @@ class RoundManager
     }
 
     /**
-     * Haal speeldag op
-     *
-     * @param  int $id
-     * @return array speeldag
-     */
-    public function getById($id)
-    {
-        return $this->roundRepository->getById($id);
-    }
-
-    /**
-     * Haal speeldag op per nummer/seizoen
-     *
-     * @param  int $seasonId
-     * @param  int $number
-     * @return array speeldag
-     */
-    public function getBySeasonAndNumber($seasonId, $number)
-    {
-        return $this->roundRepository->getBySeasonAndNumber($seasonId, $number);
-    }
-
-    /**
      * Haal laatste ronde op van seizoen
      *
      * @param  mixed $seasonId

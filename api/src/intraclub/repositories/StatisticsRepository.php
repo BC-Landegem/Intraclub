@@ -3,7 +3,8 @@ namespace intraclub\repositories;
 
 use PDO;
 
-class StatisticsRepository {
+class StatisticsRepository
+{
     /**
      * Database connection
      *
@@ -11,38 +12,11 @@ class StatisticsRepository {
      */
     protected $db;
 
-    public function __construct($db){
+    public function __construct($db)
+    {
         $this->db = $db;
     }
-    
-    /**
-     * Maak seizoenstatistieken aan (nieuw seizoen of nieuwe speler)
-     *
-     * @param  int $seasonId
-     * @param  int $playerId
-     * @param  int $basePoints
-     * @return void
-     */
-    public function createSeasonStatistics($seasonId, $playerId, $basePoints){
-        $insertPlayerSeasonQuery = "INSERT INTO intra_spelerperseizoen
-            SET
-                speler_id = :playerId,
-                seizoen_id = :seasonId,
-                basispunten = :basePoints,
-                gespeelde_sets = 0,
-                gewonnen_sets = 0,
-                gespeelde_punten = 0,
-                gewonnen_punten = 0,
-                gespeelde_matchen = 0,
-                gewonnen_matchen = 0
-                ";
-        $insertPlayerSeasonStmt = $this->db->prepare($insertPlayerSeasonQuery);
-        $insertPlayerSeasonStmt->bindParam(':basePoints', $basePoints, PDO::PARAM_STR);
-        $insertPlayerSeasonStmt->bindParam(':seasonId', $seasonId, PDO::PARAM_INT);
-        $insertPlayerSeasonStmt->bindParam(':playerId', $playerId, PDO::PARAM_INT);
-        $insertPlayerSeasonStmt->execute();
-    }
-    
+
     /**
      * Update seizoensstatistieken (bereken tussenstand)
      *
@@ -57,7 +31,8 @@ class StatisticsRepository {
      * @param  int $roundsPresent
      * @return void
      */
-    public function updateSeasonStatistics($seasonId, $playerId, $setsPlayed, $setsWon, $pointsPlayed, $pointsWon, $matchesPlayed, $matchesWon, $roundsPresent){
+    public function updateSeasonStatistics($seasonId, $playerId, $setsPlayed, $setsWon, $pointsPlayed, $pointsWon, $matchesPlayed, $matchesWon, $roundsPresent)
+    {
 
         $updatePlayerSeasonStmt = $this->db->prepare("UPDATE intra_spelerperseizoen
             SET
@@ -82,7 +57,7 @@ class StatisticsRepository {
         $updatePlayerSeasonStmt->bindParam(':roundsPresent', $roundsPresent, PDO::PARAM_INT);
         $updatePlayerSeasonStmt->execute();
     }
-    
+
     /**
      * Voeg (of update) rondestatistieken (bereken tussenstand)
      *
@@ -91,7 +66,8 @@ class StatisticsRepository {
      * @param  int $average
      * @return void
      */
-    public function insertOrUpdateRoundStatistics($roundId, $playerId, $average){
+    public function insertOrUpdateRoundStatistics($roundId, $playerId, $average)
+    {
 
         $updatePlayerSeasonStmt = $this->db->prepare("INSERT INTO
             intra_spelerperspeeldag
@@ -107,5 +83,5 @@ class StatisticsRepository {
         $updatePlayerSeasonStmt->bindParam(':roundId', $roundId, PDO::PARAM_INT);
         $updatePlayerSeasonStmt->execute();
     }
-   
+
 }
