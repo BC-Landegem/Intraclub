@@ -3,6 +3,10 @@ allPlayers = [];
 drawnOutPlayers = [];
 matches = [];
 
+// window.onbeforeunload = function () {
+//     return "Matchen en aangeduide spelers zullen verloren gaan.";
+// };
+
 function loadRanking() {
     fetch('https://www.bclandegem.be/intraclub-api/index.php/rankings/general')
         .then(response => response.json())
@@ -27,10 +31,10 @@ function loadRanking() {
 
 
                 const button = document.createElement("button");
-                button.classList.add('btn', 'btn-danger', 'btn-lg', 'me-3');
+                button.classList.add('btn', 'btn-primary', 'btn-lg', 'me-3');
                 //add fa-check icon inside
                 const icon = document.createElement('i');
-                icon.classList.add('fa', 'fa-ban');
+                icon.classList.add('fa', 'fa-plus');
                 button.appendChild(icon);
                 button.onclick = function () {
                     addPlayerPresent(item.id);
@@ -38,7 +42,7 @@ function loadRanking() {
                 };
                 pointsElement.appendChild(button);
                 const label = document.createElement('span');
-                label.classList.add('badge', 'badge-danger');
+                label.classList.add('badge', 'badge-primary');
                 label.textContent = 'Nog niet gezien';
                 pointsElement.appendChild(label);
 
@@ -57,18 +61,19 @@ function addPlayerPresent(id) {
     presentPlayers.push(player);
     const span = document.getElementById('playersPresent');
     span.textContent = "Aantal spelers: " + presentPlayers.length;
+    //TODO: Update to API
 }
 function updatePresentButton(button, id) {
     var span = button.nextSibling;
     span.textContent = 'Is hier!';
-    span.classList.remove('badge-danger');
+    span.classList.remove('badge-primary');
     span.classList.add('badge-success');
 
-    button.classList.remove('btn-danger');
+    button.classList.remove('btn-primary');
     button.classList.add('btn-success');
     //update icon inside
     var icon = button.firstChild;
-    icon.classList.remove('fa-ban');
+    icon.classList.remove('fa-plus');
     icon.classList.add('fa-check');
 
     button.appendChild(icon);
@@ -82,12 +87,12 @@ function updateAbsentButton(button, id) {
     var span = button.nextSibling;
     span.textContent = 'Nog niet gezien';
     span.classList.remove('badge-success');
-    span.classList.add('badge-danger');
+    span.classList.add('badge-primary');
     button.classList.remove('btn-success');
-    button.classList.add('btn-danger');
+    button.classList.add('btn-primary');
     var icon = button.firstChild;
     icon.classList.remove('fa-check');
-    icon.classList.add('fa-ban');
+    icon.classList.add('fa-plus');
     button.onclick = function () {
         addPlayerPresent(id);
         updatePresentButton(button, id);
@@ -100,6 +105,7 @@ function removePlayerPresent(id) {
     presentPlayers.splice(presentPlayers.indexOf(player), 1);
     const span = document.getElementById('playersPresent');
     span.textContent = "Aantal spelers: " + presentPlayers.length;
+    //TODO: Update API
 }
 
 
@@ -242,12 +248,29 @@ function displayMatches(matches) {
         button.innerHTML = '<i class="fa fa-pencil me-1"></i> Voeg resultaat toe';
 
         button.onclick = function () {
-            console.log('clicked');
+            //add players to modal
+            displayPlayerInModal(matches[index][0], 'set1Player1', 'set2Player1', 'set3Player1');
+            displayPlayerInModal(matches[index][1], 'set1Player2', 'set2Player3', 'set3Player3');
+            displayPlayerInModal(matches[index][2], 'set1Player3', 'set2Player2', 'set3Player4');
+            displayPlayerInModal(matches[index][3], 'set1Player4', 'set2Player4', 'set3Player2');
+
+
         };
         resultDiv.appendChild(button);
         matchesContainer.appendChild(resultDiv);
 
     });
+}
+
+//TODO: Fix "dropdown" players
+function displayPlayerInModal(player, pElementId1, pElementId2, pElementId3) {
+    const playerElement1 = document.getElementById(pElementId1);
+    playerElement1.textContent = player.firstName + ' ' + player.name;
+    const playerElement2 = document.getElementById(pElementId2);
+    playerElement2.textContent = player.firstName + ' ' + player.name;
+    const playerElement3 = document.getElementById(pElementId3);
+    playerElement3.textContent = player.firstName + ' ' + player.name;
+
 }
 
 function displayPlayer(player, container) {
@@ -284,3 +307,4 @@ function togglePlayerList() {
 
     }
 }
+
