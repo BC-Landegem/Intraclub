@@ -15,7 +15,7 @@ class MatchValidator
     /**
      * Database connection
      *
-     * @var PDO
+     * @var \PDO
      */
     protected $db;
     /**
@@ -169,7 +169,7 @@ class MatchValidator
      * @param  int $set2Away
      * @param  int $set3Home
      * @param  int $set3Away
-     * @return void
+     * @return array(string) errors
      */
     private function validateMatch(
         $playerId1,
@@ -223,9 +223,7 @@ class MatchValidator
         $errors = $this->checkSet($set2Home, $set2Away, "tweede set", $errors);
 
         //SET 3
-        if ($set3Home != 0 && $set3Away != 0) {
-            $errors = $this->checkSet($set3Home, $set3Away, "derde set", $errors);
-        }
+        $errors = $this->checkSet($set3Home, $set3Away, "derde set", $errors);
         return $errors;
     }
 
@@ -245,13 +243,15 @@ class MatchValidator
     private function checkSet($homeScore, $awayScore, $message, $errors)
     {
         //Uitzondering: 30-29
-        if (($homeScore === 30 && $awayScore === 29) ||
+        if (
+            ($homeScore === 30 && $awayScore === 29) ||
             ($awayScore === 30 && $homeScore === 29)
         ) {
             return $errors;
         }
         //Indien normale set
-        if (($homeScore >= 21 && $homeScore > $awayScore && $awayScore > $homeScore - 2) ||
+        if (
+            ($homeScore >= 21 && $homeScore > $awayScore && $awayScore > $homeScore - 2) ||
             ($awayScore >= 21 && $awayScore > $homeScore && $homeScore > $awayScore - 2)
         ) {
             $errors[] = "Foutieve score voor " . $message;

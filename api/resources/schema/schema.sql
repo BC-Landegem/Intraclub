@@ -70,7 +70,7 @@ ENGINE=InnoDB
 ;
 
 
-CREATE TABLE `RoundPlayer` (
+CREATE TABLE `PlayerRoundStatistic` (
 	`Id` INT(11) NOT NULL,
 	`RoundId` INT(11) NOT NULL,
 	`PlayerId` INT(11) NOT NULL,
@@ -88,7 +88,7 @@ ENGINE=InnoDB
 ;
 
 
-CREATE TABLE `SeasonPlayerStatistic` (
+CREATE TABLE `PlayerSeasonStatistic` (
 	`Id` INT(11) NOT NULL AUTO_INCREMENT,
 	`SeasonId` INT(11) NOT NULL DEFAULT '0',
 	`PlayerId` INT(11) NOT NULL DEFAULT '0',
@@ -97,8 +97,6 @@ CREATE TABLE `SeasonPlayerStatistic` (
 	`SetsWon` INT(11) NOT NULL DEFAULT '0',
 	`PointsPlayed` INT(11) NOT NULL DEFAULT '0',
 	`PointsWon` INT(11) NOT NULL DEFAULT '0',
-	`MatchesPlayed` INT(11) NOT NULL DEFAULT '0',
-	`MatchesWon` INT(11) NOT NULL DEFAULT '0',
 	`RoundsPresent` INT(11) NOT NULL DEFAULT '0',
 	PRIMARY KEY (`Id`) USING BTREE,
 	INDEX `FK_SeasonPlayer_Season` (`SeasonId`) USING BTREE,

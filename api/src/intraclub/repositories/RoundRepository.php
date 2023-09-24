@@ -71,14 +71,14 @@ class RoundRepository
      * @param  int $averageAbsent
      * @return void
      */
-    public function update($id, $averageAbsent)
+    public function updateAverageAbsent($id, $averageAbsent)
     {
 
-        $updateRoundstmt = $this->db->prepare("UPDATE intra_speeldagen
+        $updateRoundstmt = $this->db->prepare("UPDATE ROUND
         SET
-            gemiddeld_verliezend = ?,
-            is_berekend = 1
-        WHERE id = ?");
+            AverageAbsent = ?,
+            Calculated = 1
+        WHERE Id = ?");
 
         $updateRoundstmt->bindParam(1, $averageAbsent, PDO::PARAM_STR);
         $updateRoundstmt->bindParam(2, $id, PDO::PARAM_INT);

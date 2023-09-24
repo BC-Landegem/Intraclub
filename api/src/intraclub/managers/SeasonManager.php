@@ -4,7 +4,6 @@ namespace intraclub\managers;
 
 use intraclub\common\Utilities;
 use intraclub\repositories\SeasonRepository;
-use intraclub\repositories\StatisticsRepository;
 use intraclub\repositories\RoundRepository;
 use intraclub\repositories\MatchRepository;
 use intraclub\repositories\PlayerRepository;
@@ -49,20 +48,11 @@ class SeasonManager
      */
     protected $playerRepository;
 
-
-    /**
-     *Statistics Repository
-     *
-     * @var StatisticsRepository
-     */
-    protected $statisticsRepository;
-
     public function __construct($db)
     {
         $this->db = $db;
         $this->rankingManager = new RankingManager($this->db);
         $this->seasonRepository = new SeasonRepository($this->db);
-        $this->statisticsRepository = new StatisticsRepository($this->db);
         $this->roundRepository = new RoundRepository($this->db);
         $this->matchRepository = new MatchRepository($this->db);
         $this->playerRepository = new PlayerRepository($this->db);
@@ -109,7 +99,7 @@ class SeasonManager
         $reversedRanking = array_reverse($ranking["general"]);
         $basePoints = 19.000;
         foreach ($reversedRanking as $rankedPlayer) {
-            $this->seasonRepository->createSeasonPlayerStatistic($newSeasonId, $rankedPlayer["id"], $basePoints);
+            $this->playerRepository->createSeasonStatistic($newSeasonId, $rankedPlayer["id"], $basePoints);
             $basePoints += 0.0001;
         }
     }
@@ -137,24 +127,24 @@ class SeasonManager
             $matches = $this->matchRepository->getAllByRoundId($round["id"]);
             foreach ($matches as $match) {
                 $score_array = Utilities::calculateMatchStatistics(
-                    $match["home_firstPlayer_Id"],
-                    $match["home_secondPlayer_Id"],
-                    $match["away_firstPlayer_Id"],
-                    $match["away_secondPlayer_Id"],
-                    $match["firstSet_home"],
-                    $match["firstSet_away"],
-                    $match["secondSet_home"],
-                    $match["secondSet_away"],
-                    $match["thirdSet_home"],
-                    $match["thirdSet_away"]
+                    $match["Player1Id"],
+                    $match["Player2Id"],
+                    $match["Player3Id"],
+                    $match["Player4Id"],
+                    $match["Set1Home"],
+                    $match["Set1Away"],
+                    $match["Set2Home"],
+                    $match["Set2Away"],
+                    $match["Set3Home"],
+                    $match["Set3Away"]
                 );
 
-                $averageLosers += $score_array['averagePointsLosingTeam'];
+                $averageLosers += $score_array['averageLosing'];
                 $totalMatches++;
             }
 
             $averageLosingCurrentRound = $averageLosers / $totalMatches;
-            $this->roundRepository->update($round["id"], $averageLosingCurrentRound);
+            $this->roundRepository->updateAverageAbsent($round["id"], $averageLosingCurrentRound);
             $averageLosersArray[$roundNumber] = $averageLosingCurrentRound;
             $roundNumber++;
         }
@@ -173,17 +163,16 @@ class SeasonManager
 
             $resultArray = array();
             // basispunt als beginwaarde zetten
-            $resultArray[0] = $player['basePoints'];
+            $resultArray[0] = $player['BasePoints'];
             $roundNumber = 1;
 
             $seasonStats = array(
                 "setsPlayed" => 0,
                 "setsWon" => 0,
-                "pointsPlayed" => 0,
-                "pointsWon" => 0,
+                "roundsPresent" => 0,
                 "matchesPlayed" => 0,
-                "matchesWon" => 0,
-                "roundsPresent" => 0
+                "pointsPlayed" => 0,
+                "pointsWon" => 0
             );
 
             /*
@@ -191,49 +180,51 @@ class SeasonManager
              */
             $matchesCurrentPlayer = $this->matchRepository->getAllBySeasonAndPlayerId($currentSeasonId, $player["id"]);
             foreach ($matchesCurrentPlayer as $matchCurrentPlayer) {
-                while ($matchCurrentPlayer["roundNumber"] > $roundNumber) {
+                while ($matchCurrentPlayer["RoundNumber"] > $roundNumber) {
                     //Speler niet aanwezig op $roundNumber
                     //Geef hem gemiddelde verliezers van die speeldag!
                     $resultArray[$roundNumber] = $averageLosersArray[$roundNumber];
                     $roundNumber++;
                 }
                 // meerdere spelletjes gespeeld, OVERSLAAN
-                if ($roundNumber > $matchCurrentPlayer["roundNumber"]) {
+                if ($roundNumber > $matchCurrentPlayer["RoundNumber"]) {
                     //Meermaals aanwezig op huidige speeldag
                 } //We zitten goed!
-                else if ($roundNumber == $matchCurrentPlayer["roundNumber"]) {
+                else if ($roundNumber == $matchCurrentPlayer["RoundNumber"]) {
 
                     $matchStatistics = Utilities::calculateMatchStatistics(
-                        $matchCurrentPlayer["home_firstPlayer_Id"],
-                        $matchCurrentPlayer["home_secondPlayer_Id"],
-                        $matchCurrentPlayer["away_firstPlayer_Id"],
-                        $matchCurrentPlayer["away_secondPlayer_Id"],
-                        $matchCurrentPlayer["firstSet_home"],
-                        $matchCurrentPlayer["firstSet_away"],
-                        $matchCurrentPlayer["secondSet_home"],
-                        $matchCurrentPlayer["secondSet_away"],
-                        $matchCurrentPlayer["thirdSet_home"],
-                        $matchCurrentPlayer["thirdSet_away"]
+                        $matchCurrentPlayer["Player1Id"],
+                        $matchCurrentPlayer["Player2Id"],
+                        $matchCurrentPlayer["Player3Id"],
+                        $matchCurrentPlayer["Player4Id"],
+                        $matchCurrentPlayer["Set1Home"],
+                        $matchCurrentPlayer["Set1Away"],
+                        $matchCurrentPlayer["Set2Home"],
+                        $matchCurrentPlayer["Set2Away"],
+                        $matchCurrentPlayer["Set3Home"],
+                        $matchCurrentPlayer["Set3Away"]
                     );
 
-                    $seasonStats["pointsPlayed"] += $matchStatistics["totalPoints"];
-                    $seasonStats["setsPlayed"] += $matchStatistics["amountOfSets"];
                     $seasonStats["roundsPresent"]++;
                     $seasonStats["matchesPlayed"]++;
-
-                    if (in_array($player["id"], $matchStatistics["winningTeamIds"])) {
-                        // speler heeft gewonnen!
-                        $resultArray[$roundNumber] = $matchStatistics["averagePointsWinningTeam"];
-                        $seasonStats["pointsWon"] += $matchStatistics["totalPointsWinningTeam"];
-                        $seasonStats["setsWon"] += 2;
-                        $seasonStats["matchesWon"]++;
-                    } else {
-                        // speler heeft verloren, jammer
-                        $resultArray[$roundNumber] = $matchStatistics["averagePointsLosingTeam"];
-                        $seasonStats["pointsWon"] += $matchStatistics["totalPointsLosingTeam"];
-                        $seasonStats["setsWon"] += $matchStatistics["amountOfSets"] - 2;
+                    switch ($player["id"]) {
+                        case $matchCurrentPlayer["Player1Id"]:
+                            $resultArray[$roundNumber] = $matchStatistics["averagePlayer1"];
+                            $seasonStats["setsWon"] += $matchStatistics["setsWonPlayer1"];
+                            break;
+                        case $matchCurrentPlayer["Player2Id"]:
+                            $resultArray[$roundNumber] = $matchStatistics["averagePlayer2"];
+                            $seasonStats["setsWon"] += $matchStatistics["setsWonPlayer2"];
+                            break;
+                        case $matchCurrentPlayer["Player3Id"]:
+                            $resultArray[$roundNumber] = $matchStatistics["averagePlayer3"];
+                            $seasonStats["setsWon"] += $matchStatistics["setsWonPlayer3"];
+                            break;
+                        case $matchCurrentPlayer["Player4Id"]:
+                            $resultArray[$roundNumber] = $matchStatistics["averagePlayer4"];
+                            $seasonStats["setsWon"] += $matchStatistics["setsWonPlayer4"];
+                            break;
                     }
-
                     //Volgende speeldag...
                     $roundNumber++;
                 }
@@ -259,18 +250,20 @@ class SeasonManager
                 //+1 = basispunten
                 // +1 valt weg : laatste for-lus hierboven
                 $averageRound = $sumOfAveragePerRound / ($totalRounds);
-                $this->statisticsRepository->insertOrUpdateRoundStatistics($round["id"], $player["id"], $averageRound);
+                $this->playerRepository->insertOrUpdateRoundStatistic(
+                    $round["id"],
+                    $player["id"],
+                    $averageRound
+                );
 
             }
-            $this->statisticsRepository->updateSeasonStatistics(
+            $this->playerRepository->updateSeasonStatistic(
                 $currentSeasonId,
                 $player["id"],
                 $seasonStats["setsPlayed"],
                 $seasonStats["setsWon"],
                 $seasonStats["pointsPlayed"],
                 $seasonStats["pointsWon"],
-                $seasonStats["matchesPlayed"],
-                $seasonStats["matchesWon"],
                 $seasonStats["roundsPresent"]
             );
         }

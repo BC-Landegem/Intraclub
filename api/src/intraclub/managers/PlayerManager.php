@@ -7,8 +7,6 @@ use intraclub\repositories\MatchRepository;
 use intraclub\repositories\PlayerRepository;
 use intraclub\repositories\RankingRepository;
 use intraclub\repositories\SeasonRepository;
-use intraclub\repositories\StatisticsRepository;
-
 
 class PlayerManager
 {
@@ -36,12 +34,6 @@ class PlayerManager
      * @var MatchRepository
      */
     protected $matchRepository;
-    /**
-     * statisticsRepository
-     *
-     * @var StatisticsRepository
-     */
-    protected $statisticsRepository;
 
     public function __construct($db)
     {
@@ -49,7 +41,6 @@ class PlayerManager
         $this->seasonRepository = new SeasonRepository($db);
         $this->rankingRepository = new RankingRepository($db);
         $this->matchRepository = new MatchRepository($db);
-        $this->statisticsRepository = new StatisticsRepository($db);
     }
     /**
      * Toevoegen nieuwe speler + lege seizoensstats
@@ -69,7 +60,7 @@ class PlayerManager
         $playerId = $this->playerRepository->create($firstName, $name, $gender, $birthDate, $doubleRanking, $playsCompetition);
         //Aanmaak statistieken
         $seasonId = $this->seasonRepository->getCurrentSeasonId();
-        $this->seasonRepository->createSeasonPlayerStatistic($seasonId, $playerId, $basePoints);
+        $this->playerRepository->createSeasonStatistic($seasonId, $playerId, $basePoints);
     }
 
     /**

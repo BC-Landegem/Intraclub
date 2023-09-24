@@ -75,32 +75,5 @@ class SeasonRepository
         return $this->db->lastInsertId();
     }
 
-    /**
-     * Maak seizoenstatistieken aan (nieuw seizoen of nieuwe speler)
-     *
-     * @param  int $seasonId
-     * @param  int $playerId
-     * @param  int $basePoints
-     * @return void
-     */
-    public function createSeasonPlayerStatistic($seasonId, $playerId, $basePoints)
-    {
-        $insertPlayerSeasonQuery = "INSERT INTO SeasonPlayerStatistic
-            SET
-                PlayerId = :playerId,
-                SeasonId = :seasonId,
-                BasePoints = :basePoints,
-                SetsPlayed = 0,
-                SetsWon = 0,
-                PointsPlayed = 0,
-                PointsWon = 0,
-                MatchesPlayed = 0,
-                MatchesWon = 0
-                ";
-        $insertPlayerSeasonStmt = $this->db->prepare($insertPlayerSeasonQuery);
-        $insertPlayerSeasonStmt->bindParam(':basePoints', $basePoints, PDO::PARAM_STR);
-        $insertPlayerSeasonStmt->bindParam(':seasonId', $seasonId, PDO::PARAM_INT);
-        $insertPlayerSeasonStmt->bindParam(':playerId', $playerId, PDO::PARAM_INT);
-        $insertPlayerSeasonStmt->execute();
-    }
+
 }

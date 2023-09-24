@@ -10,7 +10,7 @@ class MatchManager
     /**
      * Database connection
      *
-     * @var PDO
+     * @var \PDO
      */
     protected $db;
     /**
@@ -37,7 +37,7 @@ class MatchManager
      * Haal alle wedstrijden op van een ronde
      *
      * @param  int $roundId
-     * @return Array of matches
+     * @return array of matches
      */
     public function getAllByRoundId($roundId)
     {
@@ -64,7 +64,7 @@ class MatchManager
      * @param  int $set2Away
      * @param  int $set3Home
      * @param  int $set3Away
-     * @return int
+     * @return void
      */
     public function create(
         $roundId,
@@ -80,7 +80,7 @@ class MatchManager
         $set3Away
     ) {
 
-        return $this->matchRepository->create(
+        $this->matchRepository->create(
             $roundId,
             $playerId1,
             $playerId2,

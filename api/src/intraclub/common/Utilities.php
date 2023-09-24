@@ -107,94 +107,86 @@ class Utilities
     /**
      * Bereken matchstatistieken (winnaar, sets, ...)
      *
-     * @param  int $home_firstPlayer_Id
-     * @param  int $home_secondPlayer_Id
-     * @param  int $away_firstPlayer_Id
-     * @param  int $away_secondPlayer_Id
-     * @param  int $firstSet_home
-     * @param  int $firstSet_away
-     * @param  int $secondSet_home
-     * @param  int $secondSet_away
-     * @param  int $thirdSet_home
-     * @param  int $thirdSet_away
+     * @param  int $player1Id
+     * @param  int $player2Id
+     * @param  int $player3Id
+     * @param  int $player4Id
+     * @param  int $set1Home
+     * @param  int $set1Away
+     * @param  int $set2Home
+     * @param  int $set2Away
+     * @param  int $set3Home
+     * @param  int $set3Away
      * @return array matchststatistieken
      */
     public static function calculateMatchStatistics(
-        $home_firstPlayer_Id,
-        $home_secondPlayer_Id,
-        $away_firstPlayer_Id,
-        $away_secondPlayer_Id,
-        $firstSet_home,
-        $firstSet_away,
-        $secondSet_home,
-        $secondSet_away,
-        $thirdSet_home,
-        $thirdSet_away
+        $player1Id,
+        $player2Id,
+        $player3Id,
+        $player4Id,
+        $set1Home,
+        $set1Away,
+        $set2Home,
+        $set2Away,
+        $set3Home,
+        $set3Away
     ) {
-        $setsWonHometeam = 0;
-        $setsWonAwayteam = 0;
-        $totalPointsWinningTeam = 0;
-        $totalPointsLosingTeam = 0;
-        $amountOfSetsPlayed = 0;
+        $setsWonPlayer1 = 0;
+        $setsWonPlayer2 = 0;
+        $setsWonPlayer3 = 0;
+        $setsWonPlayer4 = 0;
 
+        $pointsLosingTeam = 0;
         //Bepaal wie welke set wint
-        if ($firstSet_home > $firstSet_away) {
-            $setsWonHometeam++;
+        if ($set1Home > $set2Away) {
+            $setsWonPlayer1++;
+            $setsWonPlayer2++;
+            $pointsLosingTeam += Utilities::trimSets($set1Away, $set1Home);
         } else {
-            $setsWonAwayteam++;
+            $setsWonPlayer3++;
+            $setsWonPlayer4++;
+            $pointsLosingTeam += Utilities::trimSets($set1Home, $set1Away);
         }
-        if ($secondSet_home > $secondSet_away) {
-            $setsWonHometeam++;
+        if ($set2Home > $set2Away) {
+            $setsWonPlayer1++;
+            $setsWonPlayer3++;
+            $pointsLosingTeam += Utilities::trimSets($set2Away, $set2Home);
         } else {
-            $setsWonAwayteam++;
+            $setsWonPlayer2++;
+            $setsWonPlayer4++;
+            $pointsLosingTeam += Utilities::trimSets($set2Home, $set2Away);
         }
-        if (($thirdSet_home != '' && $thirdSet_away != '') && ($thirdSet_home != 0 && $thirdSet_away != 0)) {
-            $amountOfSetsPlayed = 3;
-            if ($thirdSet_home > $thirdSet_away) {
-                $setsWonHometeam++;
-            } else {
-                $setsWonAwayteam++;
-            }
+        if ($set3Home > $set3Away) {
+            $setsWonPlayer1++;
+            $setsWonPlayer4++;
+            $pointsLosingTeam += Utilities::trimSets($set3Away, $set3Home);
         } else {
-            $amountOfSetsPlayed = 2;
+            $setsWonPlayer2++;
+            $setsWonPlayer3++;
+            $pointsLosingTeam += Utilities::trimSets($set3Home, $set3Away);
         }
-
-        //Bepaal winnaar
-        $winner = ($setsWonHometeam > $setsWonAwayteam) ? 1 : 2;
 
         //Bereken totaal aantal punten
-        $totalHometeam = Utilities::trimSets($firstSet_home, $firstSet_away) + Utilities::trimSets($secondSet_home, $secondSet_away) + Utilities::trimSets($thirdSet_home, $thirdSet_away);
-        $totalAwayteam = Utilities::trimSets($firstSet_away, $firstSet_home) + Utilities::trimSets($secondSet_away, $secondSet_home) + Utilities::trimSets($thirdSet_away, $thirdSet_home);
+        $totalPlayer1 = Utilities::trimSets($set1Home, $set1Away)
+            + Utilities::trimSets($set2Home, $set2Away) + Utilities::trimSets($set3Home, $set3Away);
+        $totalPlayer2 = Utilities::trimSets($set1Home, $set1Away)
+            + Utilities::trimSets($set2Away, $set2Home) + Utilities::trimSets($set3Away, $set3Home);
+        $totalPlayer3 = Utilities::trimSets($set1Away, $set1Home)
+            + Utilities::trimSets($set2Home, $set2Away) + Utilities::trimSets($set3Away, $set3Home);
+        $totalPlayer4 = Utilities::trimSets($set1Away, $set1Home)
+            + Utilities::trimSets($set2Away, $set2Home) + Utilities::trimSets($set3Home, $set3Away);
 
-        //Koppel de 'winnende' punten aan het juiste team
-        if ($winner == 1) {
-            $trimmedPointsWinningTeam = $totalHometeam;
-            $trimmedPointsLosingTeam = $totalAwayteam;
-            $totalPointsWinningTeam = $firstSet_home + $secondSet_home + $thirdSet_home;
-            $totalPointsLosingTeam = $firstSet_away + $secondSet_away + $thirdSet_away;
-            $winningTeamIds = array($home_firstPlayer_Id, $home_secondPlayer_Id);
-            $losingTeamIds = array($away_firstPlayer_Id, $away_secondPlayer_Id);
-        } else {
-            $trimmedPointsWinningTeam = $totalAwayteam;
-            $trimmedPointsLosingTeam = $totalHometeam;
-            $totalPointsWinningTeam = $firstSet_away + $secondSet_away + $thirdSet_away;
-            $totalPointsLosingTeam = $firstSet_home + $secondSet_home + $thirdSet_home;
-            $winningTeamIds = array($away_firstPlayer_Id, $away_secondPlayer_Id);
-            $losingTeamIds = array($home_firstPlayer_Id, $home_secondPlayer_Id);
-        }
-
-        $return = array(
-            "winner" => $winner,
-            "amountOfSets" => $amountOfSetsPlayed,
-            "totalPointsWinningTeam" => $totalPointsWinningTeam,
-            "totalPointsLosingTeam" => $totalPointsLosingTeam,
-            "averagePointsWinningTeam" => $trimmedPointsWinningTeam / $amountOfSetsPlayed,
-            "averagePointsLosingTeam" => $trimmedPointsLosingTeam / $amountOfSetsPlayed,
-            "winningTeamIds" => $winningTeamIds,
-            "losingTeamIds" => $losingTeamIds,
-            "totalPoints" => $totalPointsLosingTeam + $totalPointsWinningTeam
+        return array(
+            "setsWonPlayer1" => $setsWonPlayer1,
+            "setsWonPlayer2" => $setsWonPlayer2,
+            "setsWonPlayer3" => $setsWonPlayer3,
+            "setsWonPlayer4" => $setsWonPlayer4,
+            "averagePlayer1" => $totalPlayer1 / 3,
+            "averagePlayer2" => $totalPlayer2 / 3,
+            "averagePlayer3" => $totalPlayer3 / 3,
+            "averagePlayer4" => $totalPlayer4 / 3,
+            "averageLosing" => $pointsLosingTeam / 3
         );
-        return $return;
     }
 
     /**

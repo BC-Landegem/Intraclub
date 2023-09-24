@@ -28,15 +28,13 @@ class PlayerRepository
      * @var string
      */
     protected $playerWithSeasonInfoQuery = "
-    SELECT IPLAYER.id, IPLAYER.voornaam AS firstname, IPLAYER.naam AS name, IPLAYER.is_lid AS member,
-        IPLAYER.geslacht AS gender, IPLAYER.jeugd AS youth, IPLAYER.is_veteraan AS veteran , IPLAYER.klassement AS ranking,
-        ISPS.basispunten AS basePoints, ISPS.gespeelde_sets AS setsPlayed, ISPS.gewonnen_sets AS setsWon, ISPS.gespeelde_punten AS pointsPlayed,
-        ISPS.gewonnen_punten AS pointsWon, ISPS.gespeelde_matchen as matchesPlayed, ISPS.gewonnen_matchen AS matchesWon,
-        ISPS.speeldagen_aanwezig AS roundsPresent
-        FROM intra_spelers IPLAYER
-        INNER JOIN intra_spelerperseizoen ISPS ON ISPS.speler_id = IPLAYER.Id
-        WHERE ISPS.seizoen_id = ?";
-
+    SELECT IPLAYER.id, IPLAYER.FirstName, IPLAYER.Name, IPLAYER.Member,
+        IPLAYER.Gender, IPLAYER.DoubleRanking,
+        ISPS.BasePoints, ISPS.SetsPlayed, ISPS.SetsWon, ISPS.PointsPlayed,
+        ISPS.PointsWon, ISPS.RoundsPresent
+        FROM Player IPLAYER
+        INNER JOIN PlayerSeasonStatistic ISPS ON ISPS.PlayerId = IPLAYER.Id
+        WHERE ISPS.SeasonId = ?";
 
     public function __construct($db)
     {
@@ -231,4 +229,98 @@ class PlayerRepository
 
         return $stmt->execute();
     }
+
+    /**
+     * Maak seizoenstatistieken aan (nieuw seizoen of nieuwe speler)
+     *
+     * @param  int $seasonId
+     * @param  int $playerId
+     * @param  int $basePoints
+     * @return void
+     */
+    public function createSeasonStatistic($seasonId, $playerId, $basePoints)
+    {
+        $insertPlayerSeasonQuery = "INSERT INTO PlayerSeasonStatistic
+            SET
+                PlayerId = :playerId,
+                SeasonId = :seasonId,
+                BasePoints = :basePoints,
+                SetsPlayed = 0,
+                SetsWon = 0,
+                PointsPlayed = 0,
+                PointsWon = 0,
+                MatchesPlayed = 0,
+                MatchesWon = 0
+                ";
+        $insertPlayerSeasonStmt = $this->db->prepare($insertPlayerSeasonQuery);
+        $insertPlayerSeasonStmt->bindParam(':basePoints', $basePoints, PDO::PARAM_STR);
+        $insertPlayerSeasonStmt->bindParam(':seasonId', $seasonId, PDO::PARAM_INT);
+        $insertPlayerSeasonStmt->bindParam(':playerId', $playerId, PDO::PARAM_INT);
+        $insertPlayerSeasonStmt->execute();
+    }
+    /**
+     * Update seizoensstatistieken (bereken tussenstand)
+     *
+     * @param  int $seasonId
+     * @param  int $playerId
+     * @param  int $setsPlayed
+     * @param  int $setsWon
+     * @param  int $pointsPlayed
+     * @param  int $pointsWon
+     * @param  int $roundsPresent
+     * @return void
+     */
+    public function updateSeasonStatistic($seasonId, $playerId, $setsPlayed, $setsWon, $pointsPlayed, $pointsWon, $roundsPresent)
+    {
+
+        $updatePlayerSeasonStmt = $this->db->prepare("UPDATE PlayerSeasonStatistic
+            SET
+                SetsPlayed = :setsPlayed,
+                SetsWon = :setsWon,
+                PointsPlayed= :pointsPlayed,
+                PointsWon = :pointsWon,
+                MatchesPlayed = :matchesPlayed,
+                MatchesWon = :matchesWon,
+                RoundsPresent = :roundsPresent
+
+            WHERE PlayerId = :playerId AND SeasonId = :seasonId");
+
+        $updatePlayerSeasonStmt->bindParam(':setsPlayed', $setsPlayed, PDO::PARAM_INT);
+        $updatePlayerSeasonStmt->bindParam(':setsWon', $setsWon, PDO::PARAM_INT);
+        $updatePlayerSeasonStmt->bindParam(':pointsPlayed', $pointsPlayed, PDO::PARAM_INT);
+        $updatePlayerSeasonStmt->bindParam(':pointsWon', $pointsWon, PDO::PARAM_INT);
+        $updatePlayerSeasonStmt->bindParam(':matchesPlayed', $matchesPlayed, PDO::PARAM_INT);
+        $updatePlayerSeasonStmt->bindParam(':matchesWon', $matchesWon, PDO::PARAM_INT);
+        $updatePlayerSeasonStmt->bindParam(':playerId', $playerId, PDO::PARAM_INT);
+        $updatePlayerSeasonStmt->bindParam(':seasonId', $seasonId, PDO::PARAM_INT);
+        $updatePlayerSeasonStmt->bindParam(':roundsPresent', $roundsPresent, PDO::PARAM_INT);
+        $updatePlayerSeasonStmt->execute();
+    }
+
+    /**
+     * Voeg (of update) rondestatistieken (bereken tussenstand)
+     *
+     * @param  int $roundId
+     * @param  int $playerId
+     * @param  int $average
+     * @return void
+     */
+    public function insertOrUpdateRoundStatistic($roundId, $playerId, $average)
+    {
+
+        $updatePlayerSeasonStmt = $this->db->prepare("INSERT INTO
+            PlayerRoundStatistic
+            SET
+                Average = :average,
+                PlayerId = :playerId,
+                RoundId = :roundId
+            ON DUPLICATE KEY UPDATE
+                Average = :average");
+
+        $updatePlayerSeasonStmt->bindParam(':average', $average, PDO::PARAM_STR);
+        $updatePlayerSeasonStmt->bindParam(':playerId', $playerId, PDO::PARAM_INT);
+        $updatePlayerSeasonStmt->bindParam(':roundId', $roundId, PDO::PARAM_INT);
+        $updatePlayerSeasonStmt->execute();
+    }
+
 }
