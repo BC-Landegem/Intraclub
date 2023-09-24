@@ -88,8 +88,6 @@ return function (App $app) {
         $data = $rankingManager->get($items, true);
         return $response->withJson($data);
     });
-
-
     /*Creatie nieuw seizoen
     {
         "period": "2020 - 2021"

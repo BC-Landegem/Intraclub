@@ -38,7 +38,7 @@ class RoundManager
         $roundNumber = 1;
         $round = $this->roundRepository->getLast($currentSeasonId);
         if (!empty($round)) {
-            $roundNumber = $round["roundNumber"] + 1;
+            $roundNumber = $round["Number"] + 1;
         }
 
         $this->roundRepository->create($currentSeasonId, $date, $roundNumber);

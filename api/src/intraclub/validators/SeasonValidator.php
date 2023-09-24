@@ -5,14 +5,15 @@ use \Datetime;
 use intraclub\common\Utilities;
 use intraclub\repositories\SeasonRepository;
 
-class SeasonValidator {
+class SeasonValidator
+{
 
     /**
      * Database connection
      *
-     * @var PDO
+     * @var \PDO
      */
-    protected $db;    
+    protected $db;
     /**
      * seasonRepository
      *
@@ -20,25 +21,27 @@ class SeasonValidator {
      */
     protected $seasonRepository;
 
-    public function __construct($db){
+    public function __construct($db)
+    {
         $this->db = $db;
         $this->seasonRepository = new SeasonRepository($db);
     }
-    
+
     /**
      * Validatie creatie seizoen
      *
-     * @param  string $period
+     * @param  string $name
      * @return array(string) errors
      */
-    public function validateCreateSeason($period){
+    public function validateCreateSeason($name)
+    {
         $errors = array();
-        if (!isset($period) || trim($period) === ''){
-            $errors[] = "Periode moet ingevuld zijn."; 
+        if (!isset($name) || trim($name) === '') {
+            $errors[] = "Periode moet ingevuld zijn.";
         }
-        if(empty($errors)){
-            if($this->seasonRepository->existsWithPeriod($period)){
-                $errors[] = "Er bestaat al een seizoen met dezelfde periode."; 
+        if (empty($errors)) {
+            if ($this->seasonRepository->exists($name)) {
+                $errors[] = "Er bestaat al een seizoen met dezelfde periode.";
             }
         }
         return $errors;

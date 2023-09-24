@@ -54,12 +54,14 @@ class RoundRepository
     public function create($seasonId, $date, $roundNumber)
     {
 
-        $stmt = $this->db->prepare("INSERT INTO intra_speeldagen (seizoen_id, datum, speeldagnummer, gemiddeld_verliezend, is_berekend) VALUES (:seasonId, :date, :roundNumber, 0, 0)");
+        $stmt = $this->db->prepare("INSERT INTO Round (SeasonId, Date,
+             Number, AverageAbsent, Calculated, DrawClosed) 
+             VALUES (:seasonId, :date, :roundNumber, 0, 0, 0)");
         $stmt->bindParam(':seasonId', $seasonId, PDO::PARAM_INT);
         $stmt->bindParam(':date', $date, PDO::PARAM_STR);
         $stmt->bindParam(':roundNumber', $roundNumber, PDO::PARAM_INT);
 
-        return $stmt->execute();
+        $stmt->execute();
     }
 
     /**
@@ -90,7 +92,7 @@ class RoundRepository
      */
     public function existsWithDate($date)
     {
-        $stmt = $this->db->prepare("SELECT COUNT(*) as num FROM intra_speeldagen WHERE datum = ? ");
+        $stmt = $this->db->prepare("SELECT COUNT(*) as num FROM Round WHERE [Date] = ? ");
         $stmt->execute([$date]);
         $row = $stmt->fetch();
         return $row["num"] > 0;
@@ -140,12 +142,9 @@ class RoundRepository
      * @param  int $seasonId
      * @return array speeldag
      */
-    public function getLast($seasonId = null)
+    public function getLast($seasonId)
     {
-        if (empty($seasonId)) {
-            return null;
-        }
-        $stmt = $this->db->prepare($this->roundQuery . " WHERE ISP.seizoen_id=? ORDER BY ISP.speeldagnummer DESC LIMIT 1;");
+        $stmt = $this->db->prepare($this->roundQuery . " WHERE RND.SeasonId=? ORDER BY RND.Number DESC LIMIT 1;");
         $stmt->execute([$seasonId]);
         return $stmt->fetch();
     }

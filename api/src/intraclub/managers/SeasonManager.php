@@ -15,33 +15,33 @@ class SeasonManager
     /**
      * Database connection
      *
-     * @var PDO
+     * @var \PDO
      */
-    protected $db;    
+    protected $db;
     /**
      * rankingManager
      *
      * @var RankingManager
      */
-    protected $rankingManager;    
+    protected $rankingManager;
     /**
      * seasonRepository
      *
      * @var SeasonRepository
      */
-    protected $seasonRepository;    
+    protected $seasonRepository;
     /**
      * roundRepository
      *
      * @var RoundRepository
      */
-    protected $roundRepository;    
+    protected $roundRepository;
     /**
      * matchRepository
      *
      * @var MatchRepository
      */
-    protected $matchRepository;    
+    protected $matchRepository;
     /**
      * playerRepository
      *
@@ -68,7 +68,7 @@ class SeasonManager
         $this->playerRepository = new PlayerRepository($this->db);
 
     }
-    
+
     /**
      * Haal seizoenstatistieken op
      *
@@ -90,7 +90,7 @@ class SeasonManager
             }
         }
         return $response;
-    }    
+    }
     /**
      * Creatie nieuw seizoen, inclusief lege seizoensstatistieken
      *
@@ -103,17 +103,17 @@ class SeasonManager
         $ranking = $this->rankingManager->get(null, true);
 
         //2. Insert new season
-        $newSeasonId = $this->seasonRepository->create($period);    
+        $newSeasonId = $this->seasonRepository->create($period);
 
         //3. Insert playerPerSeason Record for every player & Based on ranking -> Add some points 
         $reversedRanking = array_reverse($ranking["general"]);
         $basePoints = 19.000;
         foreach ($reversedRanking as $rankedPlayer) {
-            $this->statisticsRepository->createSeasonStatistics($newSeasonId, $rankedPlayer["id"], $basePoints);
+            $this->seasonRepository->createSeasonPlayerStatistic($newSeasonId, $rankedPlayer["id"], $basePoints);
             $basePoints += 0.0001;
         }
     }
-    
+
     /**
      * Bereken tussenstand huidig seizoen
      *
@@ -136,10 +136,18 @@ class SeasonManager
 
             $matches = $this->matchRepository->getAllByRoundId($round["id"]);
             foreach ($matches as $match) {
-                $score_array = Utilities::calculateMatchStatistics($match["home_firstPlayer_Id"], $match["home_secondPlayer_Id"], 
-                    $match["away_firstPlayer_Id"], $match["away_secondPlayer_Id"], 
-                    $match["firstSet_home"], $match["firstSet_away"], $match["secondSet_home"], 
-                    $match["secondSet_away"], $match["thirdSet_home"], $match["thirdSet_away"]);
+                $score_array = Utilities::calculateMatchStatistics(
+                    $match["home_firstPlayer_Id"],
+                    $match["home_secondPlayer_Id"],
+                    $match["away_firstPlayer_Id"],
+                    $match["away_secondPlayer_Id"],
+                    $match["firstSet_home"],
+                    $match["firstSet_away"],
+                    $match["secondSet_home"],
+                    $match["secondSet_away"],
+                    $match["thirdSet_home"],
+                    $match["thirdSet_away"]
+                );
 
                 $averageLosers += $score_array['averagePointsLosingTeam'];
                 $totalMatches++;
@@ -183,7 +191,7 @@ class SeasonManager
              */
             $matchesCurrentPlayer = $this->matchRepository->getAllBySeasonAndPlayerId($currentSeasonId, $player["id"]);
             foreach ($matchesCurrentPlayer as $matchCurrentPlayer) {
-                while ($matchCurrentPlayer["roundNumber"]> $roundNumber) {
+                while ($matchCurrentPlayer["roundNumber"] > $roundNumber) {
                     //Speler niet aanwezig op $roundNumber
                     //Geef hem gemiddelde verliezers van die speeldag!
                     $resultArray[$roundNumber] = $averageLosersArray[$roundNumber];
@@ -194,11 +202,19 @@ class SeasonManager
                     //Meermaals aanwezig op huidige speeldag
                 } //We zitten goed!
                 else if ($roundNumber == $matchCurrentPlayer["roundNumber"]) {
-                    
-                    $matchStatistics = Utilities::calculateMatchStatistics($matchCurrentPlayer["home_firstPlayer_Id"], $matchCurrentPlayer["home_secondPlayer_Id"], 
-                        $matchCurrentPlayer["away_firstPlayer_Id"], $matchCurrentPlayer["away_secondPlayer_Id"], 
-                        $matchCurrentPlayer["firstSet_home"], $matchCurrentPlayer["firstSet_away"], $matchCurrentPlayer["secondSet_home"], 
-                        $matchCurrentPlayer["secondSet_away"], $matchCurrentPlayer["thirdSet_home"], $matchCurrentPlayer["thirdSet_away"]);
+
+                    $matchStatistics = Utilities::calculateMatchStatistics(
+                        $matchCurrentPlayer["home_firstPlayer_Id"],
+                        $matchCurrentPlayer["home_secondPlayer_Id"],
+                        $matchCurrentPlayer["away_firstPlayer_Id"],
+                        $matchCurrentPlayer["away_secondPlayer_Id"],
+                        $matchCurrentPlayer["firstSet_home"],
+                        $matchCurrentPlayer["firstSet_away"],
+                        $matchCurrentPlayer["secondSet_home"],
+                        $matchCurrentPlayer["secondSet_away"],
+                        $matchCurrentPlayer["thirdSet_home"],
+                        $matchCurrentPlayer["thirdSet_away"]
+                    );
 
                     $seasonStats["pointsPlayed"] += $matchStatistics["totalPoints"];
                     $seasonStats["setsPlayed"] += $matchStatistics["amountOfSets"];
@@ -246,8 +262,17 @@ class SeasonManager
                 $this->statisticsRepository->insertOrUpdateRoundStatistics($round["id"], $player["id"], $averageRound);
 
             }
-            $this->statisticsRepository->updateSeasonStatistics($currentSeasonId, $player["id"], $seasonStats["setsPlayed"], $seasonStats["setsWon"],
-                $seasonStats["pointsPlayed"], $seasonStats["pointsWon"], $seasonStats["matchesPlayed"], $seasonStats["matchesWon"], $seasonStats["roundsPresent"]);
+            $this->statisticsRepository->updateSeasonStatistics(
+                $currentSeasonId,
+                $player["id"],
+                $seasonStats["setsPlayed"],
+                $seasonStats["setsWon"],
+                $seasonStats["pointsPlayed"],
+                $seasonStats["pointsWon"],
+                $seasonStats["matchesPlayed"],
+                $seasonStats["matchesWon"],
+                $seasonStats["roundsPresent"]
+            );
         }
 
 

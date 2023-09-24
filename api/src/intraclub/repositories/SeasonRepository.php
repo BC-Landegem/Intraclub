@@ -8,7 +8,7 @@ class SeasonRepository
     /**
      * Database connection
      *
-     * @var PDO
+     * @var \PDO
      */
     protected $db;
 
@@ -28,15 +28,15 @@ class SeasonRepository
         return $currentSeason["id"];
     }
     /**
-     * Controle of er een seizoen bestaat met zelfde periode
+     * Controle of er een seizoen bestaat met zelfde naam
      *
-     * @param  string $period
-     * @return bool true indien periode reeds bestaat
+     * @param  string $name
+     * @return bool true indien naam reeds bestaat
      */
-    public function existsWithPeriod($period)
+    public function exists($name)
     {
-        $stmt = $this->db->prepare("SELECT COUNT(*) as num FROM intra_seizoen WHERE seizoen = ? ");
-        $stmt->execute([$period]);
+        $stmt = $this->db->prepare("SELECT COUNT(*) as num FROM Season WHERE [Name] = ? ");
+        $stmt->execute([$name]);
         $row = $stmt->fetch();
         return $row["num"] > 0;
     }

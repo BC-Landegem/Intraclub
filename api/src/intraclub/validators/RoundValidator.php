@@ -5,14 +5,15 @@ use \Datetime;
 use intraclub\common\Utilities;
 use intraclub\repositories\RoundRepository;
 
-class RoundValidator {
+class RoundValidator
+{
 
     /**
      * Database connection
      *
      * @var PDO
      */
-    protected $db;    
+    protected $db;
     /**
      * roundRepository
      *
@@ -20,11 +21,12 @@ class RoundValidator {
      */
     protected $roundRepository;
 
-    public function __construct($db){
+    public function __construct($db)
+    {
         $this->db = $db;
         $this->roundRepository = new RoundRepository($db);
     }
-    
+
     /**
      * Validatie creatie speeldag
      * 
@@ -33,15 +35,15 @@ class RoundValidator {
      * @param  string $date
      * @return array(string) errors
      */
-    public function validateCreateRound($date){
+    public function validateCreateRound($date)
+    {
         $errors = array();
-        $dt = DateTime::createFromFormat("Y-m-d", $date);
-        if (! ($dt !== false && !array_sum($dt::getLastErrors()))){
-            $errors[] = "Ongeldige datum voor ronde."; 
+        if (!Utilities::isDate($date)) {
+            $errors[] = "Ongeldige datum voor ronde.";
         }
-        if(empty($errors)){
-            if($this->roundRepository->existsWithDate($date)){
-                $errors[] = "Er bestaat al een ronde met deze datum."; 
+        if (empty($errors)) {
+            if ($this->roundRepository->existsWithDate($date)) {
+                $errors[] = "Er bestaat al een ronde met deze datum.";
             }
         }
         return $errors;
