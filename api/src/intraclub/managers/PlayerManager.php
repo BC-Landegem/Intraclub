@@ -127,16 +127,6 @@ class PlayerManager
     }
 
     /**
-     * Mogelijke geslachten
-     *
-     * @return array geslachten
-     */
-    public function getPossibleGenders()
-    {
-        return $this->playerRepository->getPossibleGenders();
-    }
-
-    /**
      * Map array naar rankingobjeccten
      *
      * @param  int $id

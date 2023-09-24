@@ -11,7 +11,7 @@ class RoundValidator
     /**
      * Database connection
      *
-     * @var PDO
+     * @var \PDO
      */
     protected $db;
     /**

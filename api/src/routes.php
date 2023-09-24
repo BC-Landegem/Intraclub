@@ -308,12 +308,6 @@ return function (App $app) {
         return $response->withJson($data);
     });
 
-    $app->get('/players/genders', function (Request $request, Response $response, array $args) {
-        $playerManager = new PlayerManager($this->db);
-        $data = $playerManager->getPossibleGenders();
-        return $response->withJson($data);
-    });
-
     $app->get('/players/{id}', function (Request $request, Response $response, array $args) {
         $id = $args['id'];
         $playerManager = new PlayerManager($this->db);
