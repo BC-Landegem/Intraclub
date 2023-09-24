@@ -33,6 +33,7 @@ CREATE TABLE `Round` (
 	`AverageAbsent` DOUBLE NULL DEFAULT NULL,
 	`SeasonId` INT(11) NOT NULL,
 	`Calculated` TINYINT(1) NOT NULL,
+	`DrawClosed` TINYINT(1) NOT NULL DEFAULT '0',
 	PRIMARY KEY (`Id`) USING BTREE,
 	INDEX `FK_Round_Season` (`SeasonId`) USING BTREE,
 	CONSTRAINT `FK_Round_Season` FOREIGN KEY (`SeasonId`) REFERENCES `Season` (`Id`) ON UPDATE NO ACTION ON DELETE NO ACTION
@@ -87,7 +88,7 @@ ENGINE=InnoDB
 ;
 
 
-CREATE TABLE `SeasonPlayer` (
+CREATE TABLE `SeasonPlayerStatistic` (
 	`Id` INT(11) NOT NULL AUTO_INCREMENT,
 	`SeasonId` INT(11) NOT NULL DEFAULT '0',
 	`PlayerId` INT(11) NOT NULL DEFAULT '0',

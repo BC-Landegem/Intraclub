@@ -1,0 +1,54 @@
+{
+    "require": {
+        "cakephp/database": "^4.4",
+        "fig/http-message-util": "^1.1",
+        "monolog/monolog": "^2.9",
+        "nyholm/psr7": "^1.8",
+        "nyholm/psr7-server": "^1.0",
+        "php-di/php-di": "^6",
+        "selective/basepath": "^2.1",
+        "selective/validation": "^2.0",
+        "slim/php-view": "^3.2",
+        "slim/slim": "4.*",
+        "symfony/uid": "^5.4",
+        "tuupola/slim-basic-auth": "^3.3",
+        "symfony/validator": "^5.4",
+        "cakephp/validation": "^4.4"
+    },
+    "require-dev": {
+        "symfony/console": "^5.4",
+        "symfony/dotenv": "^5.4"
+    },
+    "autoload": {
+        "psr-4": {
+            "App\\": "src/"
+        }
+    },
+    "autoload-dev": {
+        "psr-4": {
+            "App\\Test\\": "tests/"
+        }
+    },
+    "scripts": {
+        "cs:check": [
+            "@putenv PHP_CS_FIXER_IGNORE_ENV=1",
+            "php-cs-fixer fix --dry-run --format=txt --verbose --diff --config=.cs.php --ansi"
+        ],
+        "cs:fix": [
+            "@putenv PHP_CS_FIXER_IGNORE_ENV=1",
+            "php-cs-fixer fix --config=.cs.php --ansi --verbose"
+        ],
+        "sniffer:check": "phpcs --standard=phpcs.xml",
+        "sniffer:fix": "phpcbf --standard=phpcs.xml",
+        "stan": "phpstan analyse -c phpstan.neon --no-progress --ansi",
+        "start": "php -S localhost:8080 -t public/",
+        "test": "phpunit --configuration phpunit.xml --do-not-cache-result --colors=always --display-deprecations",
+        "test:all": [
+            "@cs:check",
+            "@sniffer:check",
+            "@stan",
+            "@test"
+        ],
+        "test:coverage": "php -d xdebug.mode=coverage -r \"require 'vendor/bin/phpunit';\" -- --configuration phpunit.xml --do-not-cache-result --colors=always --coverage-clover build/logs/clover.xml --coverage-html build/coverage"
+    }
+}
