@@ -89,6 +89,7 @@ class SeasonManager
      */
     public function create($period)
     {
+
         //1. Get current ranking
         $ranking = $this->rankingManager->get(null, true);
 
@@ -99,7 +100,7 @@ class SeasonManager
         $reversedRanking = array_reverse($ranking["general"]);
         $basePoints = 19.000;
         foreach ($reversedRanking as $rankedPlayer) {
-            $this->playerRepository->createSeasonStatistic($newSeasonId, $rankedPlayer["id"], $basePoints);
+            $this->playerRepository->createSeasonStatistic($newSeasonId, $rankedPlayer["Id"], $basePoints);
             $basePoints += 0.0001;
         }
     }

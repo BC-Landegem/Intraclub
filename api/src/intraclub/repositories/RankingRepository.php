@@ -26,10 +26,10 @@ class RankingRepository
     {
         $query = "SELECT ROW_NUMBER() OVER (ORDER BY ISPS.BasePoints DESC) AS Rank,
             IP.Id, IP.Name, IP.FirstName,
-            IP.Gender, IP.BirthDate, ISPS.BasePoints AS Average
+            IP.Gender, IP.BirthDate, ISPS.BasePoints AS Average, IP.DoubleRanking
         FROM  PlayerSeasonStatistic ISPS
         INNER JOIN Player IP ON IP.id = ISPS.PlayerId
-        WHERE ISPS.seizoen_id = ? AND IP.Member = 1
+        WHERE ISPS.SeasonId = ? AND IP.Member = 1
         ORDER BY Rank;";
 
         $stmt = $this->db->prepare($query);

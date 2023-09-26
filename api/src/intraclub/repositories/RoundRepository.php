@@ -17,8 +17,8 @@ class RoundRepository
      *
      * @var string
      */
-    protected $roundQuery = "SELECT RND.id, RND.Number  ROUND(RND.AverageAbsent,2) AS AverageAbsent, 
-    RND.Date, RND.Calculated, (SELECT COUNT(MT.id) FROM Match MT where MT.RoundId = RND.Id) as Matches
+    protected $roundQuery = "SELECT RND.id, RND.Number, ROUND(RND.AverageAbsent,2) AS AverageAbsent, 
+    RND.Date, RND.Calculated, (SELECT COUNT(MT.id) FROM `Match` MT where MT.RoundId = RND.Id) as Matches
     FROM Round RND";
 
     public function __construct($db)

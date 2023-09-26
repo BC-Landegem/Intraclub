@@ -20,12 +20,12 @@ class SeasonRepository
     /**
      * Haal huidig seizoen op
      *
-     * @return array seizoen
+     * @return int seizoen
      */
     public function getCurrentSeasonId(): int
     {
-        $currentSeason = $this->db->query("SELECT id, seizoen as season FROM intra_seizoen ORDER BY id DESC LIMIT 1;")->fetch();
-        return $currentSeason["id"];
+        $currentSeason = $this->db->query("SELECT Id FROM Season ORDER BY Id DESC LIMIT 1;")->fetch();
+        return $currentSeason["Id"];
     }
     /**
      * Controle of er een seizoen bestaat met zelfde naam
@@ -35,7 +35,7 @@ class SeasonRepository
      */
     public function exists($name)
     {
-        $stmt = $this->db->prepare("SELECT COUNT(*) as num FROM Season WHERE [Name] = ? ");
+        $stmt = $this->db->prepare("SELECT COUNT(*) as num FROM Season WHERE Name = ? ");
         $stmt->execute([$name]);
         $row = $stmt->fetch();
         return $row["num"] > 0;
@@ -69,7 +69,7 @@ class SeasonRepository
      */
     public function create($period)
     {
-        $insertSeasonQuery = "INSERT INTO intra_seizoen (seizoen) VALUES (?)";
+        $insertSeasonQuery = "INSERT INTO Season (Name) VALUES (?)";
         $insertStmt = $this->db->prepare($insertSeasonQuery);
         $insertStmt->execute([$period]);
         return $this->db->lastInsertId();

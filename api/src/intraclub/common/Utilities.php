@@ -6,6 +6,7 @@ use DateTime;
 
 class Utilities
 {
+
     /**
      * Map spelerstatistieken naar array
      *

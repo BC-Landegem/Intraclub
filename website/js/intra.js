@@ -8,13 +8,21 @@ matches = [];
 // };
 
 function loadRanking() {
-    fetch('https://www.bclandegem.be/intraclub-api/index.php/rankings/general')
-        .then(response => response.json())
+    const requestFetchAllPlayers = fetch('https://www.bclandegem.be/intra-app/api/index.php/players');
+    const requestFetchRanking = fetch('https://www.bclandegem.be/intra-app/api/index.php/rankings/general');
+    Promise.all([requestFetchAllPlayers, requestFetchRanking])
+        .then(responses => {
+            return Promise.all(responses.map(response => response.json()));
+        })
         .then(data => {
-            allPlayers = data.general;
-            data.general.forEach((item, index) => {
+            const data1 = data[0];
+            const data2 = data[1];
+            allPlayers = data1;
+            data2.general.forEach((item, index) => {
+                const player = allPlayers.find(player => player.id === item.id);
+
                 const rank = item.rank;
-                const name = item.firstName + ' ' + item.name;
+                const name = item.firstName + ' ' + item.name + ' (' + calculateHandicap(player) + ')';
                 const points = item.points;
 
                 const rankElement = document.createElement('div');
@@ -275,7 +283,7 @@ function displayPlayerInModal(player, pElementId1, pElementId2, pElementId3) {
 
 function displayPlayer(player, container) {
     const playerElement = document.createElement('p');
-    playerElement.textContent = player.firstName + ' ' + player.name;
+    playerElement.textContent = player.firstName + ' ' + player.name + ' (' + calculateHandicap(player) + ')';
     container.appendChild(playerElement);
 }
 function displayPlayerDropdown(container) {
@@ -285,11 +293,31 @@ function displayPlayerDropdown(container) {
     presentPlayers.forEach((player, index) => {
         const option = document.createElement('option');
         option.value = player.id;
-        option.textContent = player.firstName + ' ' + player.name;
+        option.textContent = player.firstName + ' ' + player.name + ' (' + calculateHandicap(player) + ')';
         dropdown.appendChild(option);
     });
     dropdownElement.appendChild(dropdown);
     container.appendChild(dropdownElement);
+}
+
+function calculateHandicap(player) {
+    var handicap = 0;
+    if (player.gender === 'Woman') {
+        handicap += 2;
+    }
+    if (player.playsCompetition == 0) {
+        handicap += 5;
+    }
+    if (player.doubleRanking > 10) {
+        handicap += 4;
+    } else if (player.doubleRanking > 8) {
+        handicap += 3;
+    } else if (player.doubleRanking > 6) {
+        handicap += 2;
+    } else if (player.doubleRanking > 4) {
+        handicap += 1;
+    }
+    return handicap;
 }
 
 function togglePlayerList() {

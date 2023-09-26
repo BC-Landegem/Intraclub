@@ -17,10 +17,10 @@ class PlayerRepository
      *
      * @var string
      */
-    protected $playerQuery = "SELECT IPLAYER.Id, IPLAYER.Firstname, IPLAYER.Name,
-    IPLAYER.PlaysCompetition, IPLAYER.Member,
-    IPLAYER.Gender, IPLAYER.doubleRanking, IPLAYER.BirthDate
-    FROM player IPLAYER";
+    protected $playerQuery = "SELECT IPLAYER.id, IPLAYER.firstName, IPLAYER.name,
+    IPLAYER.playsCompetition, IPLAYER.member,
+    IPLAYER.gender, IPLAYER.doubleRanking
+    FROM Player IPLAYER";
 
     /**
      * Spelerinfo mét seizoensgegevens
@@ -122,21 +122,6 @@ class PlayerRepository
         $stmt->execute([$seasonId, $id]);
         return $stmt->fetch();
     }
-
-    /**
-     * Haal basisinfo speler op
-     *
-     * @param  int $id
-     * @return array met spelerinfo
-     */
-    public function getById($id)
-    {
-        $stmt = $this->db->prepare($this->playerQuery . " WHERE IPLAYER.Id=?");
-        $stmt->execute([$id]);
-        return $stmt->fetch();
-    }
-
-
 
     /**
      * Geslachten in database
