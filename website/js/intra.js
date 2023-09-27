@@ -41,6 +41,24 @@ function loadData() {
 
                 updateAmountPlayersSpan();
             }
+            if (roundData.matches) {
+                roundData.matches.forEach((match) => {
+                    const matchObject = [];
+                    matchObject["id"] = match.id;
+                    matchObject["players"] = [];
+                    matchObject["players"].push(allPlayers.find(player => player.id === match.firstPlayer.id));
+                    matchObject["players"].push(allPlayers.find(player => player.id === match.secondPlayer.id));
+                    matchObject["players"].push(allPlayers.find(player => player.id === match.thirdPlayer.id));
+                    matchObject["players"].push(allPlayers.find(player => player.id === match.fourthPlayer.id));
+                    matchObject["set1Home"] = match.firstSet.home;
+                    matchObject["set1Away"] = match.firstSet.away;
+                    matchObject["set2Home"] = match.secondSet.home;
+                    matchObject["set2Away"] = match.secondSet.away;
+                    matchObject["set3Home"] = match.thirdSet.home;
+                    matchObject["set3Away"] = match.thirdSet.away;
+                    matches.push(matchObject);
+                });
+            }
 
             data2.general.forEach((item, index) => {
                 const player = allPlayers.find(player => player.id === item.id);
@@ -96,6 +114,10 @@ function loadData() {
                 document.querySelector('.grid-container').appendChild(nameElement);
                 document.querySelector('.grid-container').appendChild(pointsElement);
             });
+
+            if (matches.length > 0) {
+                displayMatches(matches);
+            }
         })
         .catch(error => console.error(error));
 }
@@ -264,9 +286,13 @@ function generateMatches() {
             drawnOutPlayers = remainingPlayers;
         }
     }
+
+    displayMatches(matches);
+}
+function displayMatches(matches) {
     // sort players now on name
     presentPlayers.sort((a, b) => (a.firstName > b.firstName) ? 1 : -1);
-    displayMatches(matches);
+    generateMatchesHtml(matches);
 
     // hide playerlist
     document.getElementById('playerList').style.display = 'none';
@@ -274,10 +300,9 @@ function generateMatches() {
     // show toggle button
     document.getElementById('togglePlayerListButton').style.display = '';
     document.getElementById('togglePlayerListButton').textContent = 'Toon spelerslijst';
-
 }
 
-function displayMatches(matches) {
+function generateMatchesHtml(matches) {
     // display matches
     const matchesContainer = document.getElementById('matchList');
     matchesContainer.innerHTML = '';
@@ -314,26 +339,37 @@ function displayMatches(matches) {
         resultDiv.classList.add('grid-item');
         //add button to result div
         const button = document.createElement("button");
-        button.classList.add('btn', 'btn-success', 'btn-lg', 'me-3');
-        button.innerHTML = '<i class="fa fa-check mcountNonEmptySpotse-1"></i> Bevestig match';
-
-        button.onclick = function () {
-            const countNonEmptySpots = match["players"].reduce((count, obj) => {
-                if (obj !== undefined) {
-                    return count + 1;
-                } else {
-                    return count;
-                }
-            }, 0);
-
-            if (countNonEmptySpots < 4) {
-                showErrorModal(['Gelieve alle spelers in te vullen.']);
-                return;
-            }
-            createMatch(match, button);
-        };
         resultDiv.appendChild(button);
         matchesContainer.appendChild(resultDiv);
+        if (match["id"]) {
+            generateUpdateMatchHtml(button, match);
+        }
+        else {
+            //clear classList
+            while (button.classList.length > 0) {
+                button.classList.remove(button.classList.item(0));
+            }
+            button.classList.add('btn', 'btn-success', 'btn-lg', 'me-3');
+
+            button.innerHTML = '<i class="fa fa-check me-1"></i> Bevestig match';
+
+            button.onclick = function () {
+                const countNonEmptySpots = match["players"].reduce((count, obj) => {
+                    if (obj !== undefined) {
+                        return count + 1;
+                    } else {
+                        return count;
+                    }
+                }, 0);
+
+                if (countNonEmptySpots < 4) {
+                    showErrorModal(['Gelieve alle spelers in te vullen.']);
+                    return;
+                }
+                createMatch(match, button);
+            };
+        }
+
 
     });
 }
@@ -367,45 +403,10 @@ function createMatch(match, button) {
             }
         })
         .then(data => {
-            match["id"] = data.id;
-            button.classList.remove('btn-success');
-            button.classList.add('btn-primary');
-            button.innerHTML = '<i class="fa fa-pencil me-1"></i> Vul resultaat in';
-            button.onclick = function () {
-                //add players to modal
-                displayPlayerInModal(match["players"][0], 'set1Player1', 'set2Player1', 'set3Player1');
-                displayPlayerInModal(match["players"][1], 'set1Player2', 'set2Player3', 'set3Player3');
-                displayPlayerInModal(match["players"][2], 'set1Player3', 'set2Player2', 'set3Player4');
-                displayPlayerInModal(match["players"][3], 'set1Player4', 'set2Player4', 'set3Player2');
-                //add scores to modal
-                document.getElementById('set1ScoreHome').value = match["set1Home"];
-                document.getElementById('set1ScoreAway').value = match["set1Away"];
-                document.getElementById('set2ScoreHome').value = match["set2Home"];
-                document.getElementById('set2ScoreAway').value = match["set2Away"];
-                document.getElementById('set3ScoreHome').value = match["set3Home"];
-                document.getElementById('set3ScoreAway').value = match["set3Away"];
-                //show modal
-                addResultModal.show();
-                //get save button
-                const saveButton = document.getElementById('saveMatchButton');
-                saveButton.onclick = function () {
-                    //Get value of every input
-                    const set1HomeValue = document.getElementById('set1ScoreHome').value;
-                    const set1Home = set1HomeValue ? parseInt(set1HomeValue) : 0;
-                    const set1AwayValue = document.getElementById('set1ScoreAway').value;
-                    const set1Away = set1AwayValue ? parseInt(set1AwayValue) : 0;
-                    const set2HomeValue = document.getElementById('set2ScoreHome').value;
-                    const set2Home = set2HomeValue ? parseInt(set2HomeValue) : 0;
-                    const set2AwayValue = document.getElementById('set2ScoreAway').value;
-                    const set2Away = set2AwayValue ? parseInt(set2AwayValue) : 0;
-                    const set3HomeValue = document.getElementById('set3ScoreHome').value;
-                    const set3Home = set3HomeValue ? parseInt(set3HomeValue) : 0;
-                    const set3AwayValue = document.getElementById('set3ScoreAway').value;
-                    const set3Away = set3AwayValue ? parseInt(set3AwayValue) : 0;
-                    updateMatch(set1Home, set1Away, set2Home, set2Away, set3Home, set3Away, match);
 
-                }
-            }
+            match["id"] = data.id;
+
+            generateUpdateMatchHtml(button, match);
         })
         .catch((error) => {
             //show popup
@@ -413,9 +414,61 @@ function createMatch(match, button) {
         });
 };
 
+function generateUpdateMatchHtml(button, match) {
+    // once you start confirming matches: hide generate button
+    document.getElementById('generateMatchesButton').style.display = 'none';
+    // add sibling p next to button
+    const p = document.createElement('p');
+    // set id of p to matchId
+    p.id = 'match-' + match.id;
+    if (match["set1Home"]) {
+        p.textContent = match["set1Home"] + '-' + match["set1Away"] + ' ' + match["set2Home"] + '-' + match["set2Away"] + ' '
+            + match["set3Home"] + '-' + match["set3Away"];
+    }
+    button.parentNode.insertBefore(p, button.nextSibling);
+    //clear classList
+    while (button.classList.length > 0) {
+        button.classList.remove(button.classList.item(0));
+    }
+    button.classList.add('btn', 'btn-primary', 'btn-lg', 'me-3');
+    button.innerHTML = '<i class="fa fa-pencil me-1"></i> Vul resultaat in';
+    button.onclick = function () {
+        //add players to modal
+        displayPlayerInModal(match["players"][0], 'set1Player1', 'set2Player1', 'set3Player1');
+        displayPlayerInModal(match["players"][1], 'set1Player2', 'set2Player3', 'set3Player3');
+        displayPlayerInModal(match["players"][2], 'set1Player3', 'set2Player2', 'set3Player4');
+        displayPlayerInModal(match["players"][3], 'set1Player4', 'set2Player4', 'set3Player2');
+        //add scores to modal
+        document.getElementById('set1ScoreHome').value = match["set1Home"];
+        document.getElementById('set1ScoreAway').value = match["set1Away"];
+        document.getElementById('set2ScoreHome').value = match["set2Home"];
+        document.getElementById('set2ScoreAway').value = match["set2Away"];
+        document.getElementById('set3ScoreHome').value = match["set3Home"];
+        document.getElementById('set3ScoreAway').value = match["set3Away"];
+        //show modal
+        addResultModal.show();
+        //get save button
+        const saveButton = document.getElementById('saveMatchButton');
+        saveButton.onclick = function () {
+            //Get value of every input
+            const set1HomeValue = document.getElementById('set1ScoreHome').value;
+            const set1Home = set1HomeValue ? parseInt(set1HomeValue) : 0;
+            const set1AwayValue = document.getElementById('set1ScoreAway').value;
+            const set1Away = set1AwayValue ? parseInt(set1AwayValue) : 0;
+            const set2HomeValue = document.getElementById('set2ScoreHome').value;
+            const set2Home = set2HomeValue ? parseInt(set2HomeValue) : 0;
+            const set2AwayValue = document.getElementById('set2ScoreAway').value;
+            const set2Away = set2AwayValue ? parseInt(set2AwayValue) : 0;
+            const set3HomeValue = document.getElementById('set3ScoreHome').value;
+            const set3Home = set3HomeValue ? parseInt(set3HomeValue) : 0;
+            const set3AwayValue = document.getElementById('set3ScoreAway').value;
+            const set3Away = set3AwayValue ? parseInt(set3AwayValue) : 0;
+            updateMatch(set1Home, set1Away, set2Home, set2Away, set3Home, set3Away, match);
+
+        }
+    }
+}
 function updateMatch(set1Home, set1Away, set2Home, set2Away, set3Home, set3Away, match) {
-
-
     //save in the API
     // PUT to /api/index.php/matches/{matchId}
     var url = "api/index.php/matches/" + match["id"];
@@ -450,6 +503,10 @@ function updateMatch(set1Home, set1Away, set2Home, set2Away, set3Home, set3Away,
                 match["set2Away"] = set2Away;
                 match["set3Home"] = set3Home;
                 match["set3Away"] = set3Away;
+                // display result
+                const p = document.getElementById('match-' + match["id"]);
+                p.textContent = set1Home + '-' + set1Away + ' ' + set2Home + '-' + set2Away + ' ' + set3Home + '-' + set3Away;
+
             }
         })
         .catch((error) => {

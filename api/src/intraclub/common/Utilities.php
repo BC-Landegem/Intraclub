@@ -50,38 +50,38 @@ class Utilities
     public static function mapToMatchObject($match)
     {
         return array(
-
+            "id" => $match["id"],
             "firstPlayer" => array(
                 "id" => $match["player1Id"],
-                "firstName" => $match["player1firstName"],
-                "name" => $match["player1name"]
+                "firstName" => $match["player1FirstName"],
+                "name" => $match["player1Name"]
             ),
             "secondPlayer" => array(
                 "id" => $match["player2Id"],
-                "firstName" => $match["player2firstName"],
-                "name" => $match["player2name"]
+                "firstName" => $match["player2FirstName"],
+                "name" => $match["player2Name"]
             ),
             "thirdPlayer" => array(
                 "id" => $match["player3Id"],
-                "firstName" => $match["player3firstName"],
-                "name" => $match["player3name"]
+                "firstName" => $match["player3FirstName"],
+                "name" => $match["player3Name"]
             ),
             "fourthPlayer" => array(
                 "id" => $match["player4Id"],
-                "firstName" => $match["player4firstName"],
-                "name" => $match["player4name"]
+                "firstName" => $match["player4FirstName"],
+                "name" => $match["player4Name"]
             ),
             "firstSet" => array(
-                "home" => intval($match["firstSet_home"]),
-                "away" => intval($match["firstSet_away"])
+                "home" => intval($match["set1Home"]),
+                "away" => intval($match["set1Away"])
             ),
             "secondSet" => array(
-                "home" => intval($match["secondSet_home"]),
-                "away" => intval($match["secondSet_away"])
+                "home" => intval($match["set2Home"]),
+                "away" => intval($match["set2Away"])
             ),
             "thirdSet" => array(
-                "home" => intval($match["thirdSet_home"]),
-                "away" => intval($match["thirdSet_away"]),
+                "home" => intval($match["set3Home"]),
+                "away" => intval($match["set3Away"]),
             ),
             "round" => array(
                 "id" => intval($match["roundId"]),
