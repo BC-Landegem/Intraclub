@@ -2,7 +2,6 @@
 
 namespace intraclub\validators;
 
-use intraclub\repositories\SeasonRepository;
 use intraclub\repositories\MatchRepository;
 use intraclub\repositories\RoundRepository;
 use intraclub\repositories\PlayerRepository;
@@ -54,12 +53,6 @@ class MatchValidator
      * @param  int $playerId2
      * @param  int $playerId3
      * @param  int $playerId4
-     * @param  int $set1Home
-     * @param  int $set1Away
-     * @param  int $set2Home
-     * @param  int $set2Away
-     * @param  int $set3Home
-     * @param  int $set3Away
      * @return array(string) errors
      */
     public function validateCreateMatch(
@@ -67,13 +60,7 @@ class MatchValidator
         $playerId1,
         $playerId2,
         $playerId3,
-        $playerId4,
-        $set1Home,
-        $set1Away,
-        $set2Home,
-        $set2Away,
-        $set3Home,
-        $set3Away
+        $playerId4
     ) {
 
         $errors = array();
@@ -83,17 +70,11 @@ class MatchValidator
             $errors[] = "Ronde bestaat niet.";
         }
         //Validatie wedstrijd
-        $errors = $this->validateMatch(
+        $errors = $this->validateTeam(
             $playerId1,
             $playerId2,
             $playerId3,
             $playerId4,
-            $set1Home,
-            $set1Away,
-            $set2Home,
-            $set2Away,
-            $set3Home,
-            $set3Away,
             $errors
         );
 
@@ -104,10 +85,6 @@ class MatchValidator
      * Validatie update wedstrijd
      *
      * @param  int $id
-     * @param  int $playerId1
-     * @param  int $playerId2
-     * @param  int $playerId3
-     * @param  int $playerId4
      * @param  int $set1Home
      * @param  int $set1Away
      * @param  int $set2Home
@@ -118,10 +95,6 @@ class MatchValidator
      */
     public function validateUpdateMatch(
         $id,
-        $playerId1,
-        $playerId2,
-        $playerId3,
-        $playerId4,
         $set1Home,
         $set1Away,
         $set2Home,
@@ -136,11 +109,7 @@ class MatchValidator
         if (!$this->matchRepository->exists($id)) {
             $errors[] = "Match bestaat niet.";
         }
-        $errors = $this->validateMatch(
-            $playerId1,
-            $playerId2,
-            $playerId3,
-            $playerId4,
+        $errors = $this->validateSets(
             $set1Home,
             $set1Away,
             $set2Home,
@@ -154,34 +123,21 @@ class MatchValidator
     }
 
     /**
-     * Valideer westrijd
+     * Valideer team
      * 
      * Spelers moeten lid zijn
-     * Setstanden moeten kloppen
      *
      * @param  int $playerId1
      * @param  int $playerId2
      * @param  int $playerId3
      * @param  int $playerId4
-     * @param  int $set1Home
-     * @param  int $set1Away
-     * @param  int $set2Home
-     * @param  int $set2Away
-     * @param  int $set3Home
-     * @param  int $set3Away
      * @return array(string) errors
      */
-    private function validateMatch(
+    private function validateTeam(
         $playerId1,
         $playerId2,
         $playerId3,
         $playerId4,
-        $set1Home,
-        $set1Away,
-        $set2Home,
-        $set2Away,
-        $set3Home,
-        $set3Away,
         $errors
     ) {
         //Controleer of spelers bestaan én moeten lid zijn
@@ -197,6 +153,32 @@ class MatchValidator
         if (!$this->playerRepository->existsAndIsMember($playerId4)) {
             $errors[] = "Tweede uitspeler is geen lid.";
         }
+        return $errors;
+    }
+
+    /**
+     * Valideer westrijd
+     * 
+     * Setstanden moeten kloppen
+     *
+     * @param  int $set1Home
+     * @param  int $set1Away
+     * @param  int $set2Home
+     * @param  int $set2Away
+     * @param  int $set3Home
+     * @param  int $set3Away
+     * @return array(string) errors
+     */
+    private function validateSets(
+        $set1Home,
+        $set1Away,
+        $set2Home,
+        $set2Away,
+        $set3Home,
+        $set3Away,
+        $errors
+    ) {
+
 
         //Basisvalidatie
         //SET 1
@@ -217,13 +199,19 @@ class MatchValidator
 
         //Verdere validatie setscores
         //SET 1
-        $errors = $this->checkSet($set1Home, $set1Away, "eerste set", $errors);
+        if ($set1Home != 0 && $set1Away != 0) {
+            $errors = $this->checkSet($set1Home, $set1Away, "eerste set", $errors);
+        }
 
         //SET 2
-        $errors = $this->checkSet($set2Home, $set2Away, "tweede set", $errors);
+        if ($set2Home != 0 && $set2Away != 0) {
+            $errors = $this->checkSet($set2Home, $set2Away, "tweede set", $errors);
+        }
 
         //SET 3
-        $errors = $this->checkSet($set3Home, $set3Away, "derde set", $errors);
+        if ($set3Home != 0 && $set3Away != 0) {
+            $errors = $this->checkSet($set3Home, $set3Away, "derde set", $errors);
+        }
         return $errors;
     }
 
@@ -249,13 +237,25 @@ class MatchValidator
         ) {
             return $errors;
         }
-        //Indien normale set
+        //Verlengingen
+        //if score is larger than 21, but smaller or equal to 30, then the other score must be exact minus 2
         if (
-            ($homeScore >= 21 && $homeScore > $awayScore && $awayScore > $homeScore - 2) ||
-            ($awayScore >= 21 && $awayScore > $homeScore && $homeScore > $awayScore - 2)
+            ($homeScore > 21 && $homeScore <= 30 && $homeScore > $awayScore && $awayScore != $homeScore - 2) ||
+            ($awayScore > 21 && $awayScore <= 30 && $awayScore > $homeScore && $homeScore != $awayScore - 2)
         ) {
             $errors[] = "Foutieve score voor " . $message;
         }
+
+        //Normale sets
+        // if one score is exact 21, the other score must be smaller than 20
+        if (
+            ($homeScore === 21 && $homeScore > $awayScore && $awayScore >= 20) ||
+            ($awayScore === 21 && $awayScore > $homeScore && $homeScore >= 20)
+        ) {
+            $errors[] = "Foutieve score voor " . $message;
+        }
+
+
         return $errors;
     }
 

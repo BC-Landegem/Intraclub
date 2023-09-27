@@ -308,4 +308,27 @@ class PlayerRepository
         $updatePlayerSeasonStmt->execute();
     }
 
+    public function insertOrUpdateAttendanceData($playerId, $roundId, $present, $drawnOut)
+    {
+        $presentInteger = $present ? 1 : 0;
+        $drawnOutInteger = $drawnOut ? 1 : 0;
+
+        $updatePlayerSeasonStmt = $this->db->prepare("INSERT INTO
+            PlayerRoundStatistic
+            SET
+                Present = :present,
+                DrawnOut = :drawnOut,
+                PlayerId = :playerId,
+                RoundId = :roundId
+            ON DUPLICATE KEY UPDATE
+                Present = :present,
+                DrawnOut = :drawnOut");
+
+        $updatePlayerSeasonStmt->bindParam(':present', $presentInteger, PDO::PARAM_INT);
+        $updatePlayerSeasonStmt->bindParam(':drawnOut', $drawnOutInteger, PDO::PARAM_INT);
+        $updatePlayerSeasonStmt->bindParam(':playerId', $playerId, PDO::PARAM_INT);
+        $updatePlayerSeasonStmt->bindParam(':roundId', $roundId, PDO::PARAM_INT);
+        $updatePlayerSeasonStmt->execute();
+    }
+
 }

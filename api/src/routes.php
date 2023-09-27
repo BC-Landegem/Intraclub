@@ -46,7 +46,7 @@ return function (App $app) {
     /* Creatie speler
      */
     $app->post('/players', function (Request $request, Response $response, array $args) {
-        checkAccessRights();
+        //checkAccessRights();
         $playerManager = new PlayerManager($this->db);
         $playerValidator = new PlayerValidator($this->db);
 
@@ -107,7 +107,7 @@ return function (App $app) {
     }
     */
     $app->post('/rounds', function (Request $request, Response $response, array $args) {
-        checkAccessRights();
+        //checkAccessRights();
         $roundManager = new RoundManager($this->db);
         $roundValidator = new RoundValidator($this->db);
 
@@ -123,13 +123,34 @@ return function (App $app) {
         $roundManager->create($date);
         return $response;
     });
+    $app->post('/rounds/{id}/players/{playerId}', function (Request $request, Response $response, array $args) {
+        $playerManager = new PlayerManager($this->db);
+        $playerValidator = new PlayerValidator($this->db);
+
+        $postArr = $request->getParsedBody();
+        $roundId = $args['id'];
+        $playerId = $args['playerId'];
+        $present = $postArr["present"];
+        $drawnOut = isset($postArr["drawnOut"]) ? $postArr["drawnOut"] : false;
+
+        $errors = $playerValidator->validateAttendanceData($playerId, $roundId);
+        if (!empty($errors)) {
+            $newResponse = $response->withStatus(400);
+            return $newResponse->withJson($errors);
+        }
+
+        $playerManager->updateAttendanceData($playerId, $roundId, $present, $drawnOut);
+
+        return $response;
+    });
+
     /* Creatie match
     {
         "roundId": 118,
         "playerId1": 1,
         "playerId2": 2,
         "playerId3": 3,
-        "playerId4": -4,
+        "playerId4": 4,
         "set1Home": 20,
         "set1Away": 21,
         "set2Home": 6,
@@ -139,7 +160,7 @@ return function (App $app) {
     }
     */
     $app->post('/matches', function (Request $request, Response $response, array $args) {
-        checkAccessRights();
+        //checkAccessRights();
 
         $matchValidator = new MatchValidator($this->db);
         $matchManager = new MatchManager($this->db);
@@ -148,10 +169,52 @@ return function (App $app) {
 
         $errors = $matchValidator->validateCreateMatch(
             $postArr["roundId"],
-            $postArr["playerId1"],
-            $postArr["playerId2"],
-            $postArr["playerId3"],
-            $postArr["playerId4"],
+            $postArr["player1Id"],
+            $postArr["player2Id"],
+            $postArr["player3Id"],
+            $postArr["player4Id"]
+        );
+
+        if (!empty($errors)) {
+            $newResponse = $response->withStatus(400);
+            return $newResponse->withJson($errors);
+        }
+        $matchId = $matchManager->create(
+            $postArr["roundId"],
+            $postArr["player1Id"],
+            $postArr["player2Id"],
+            $postArr["player3Id"],
+            $postArr["player4Id"]
+        );
+
+        return $response->withJson(array("id" => $matchId));
+    });
+
+    /* POST ipv PATCH - werkt niet op server
+{
+    "playerId1": 7,
+    "playerId2": 8,
+    "playerId3": 9,
+    "playerId4": 11,
+    "set1Home": 19,
+    "set1Away": 21,
+    "set2Home": 6,
+    "set2Away": 21,
+    "set3Home": 0,
+    "set3Away": 0
+}
+*/
+    $app->post('/matches/{id}', function (Request $request, Response $response, array $args) {
+        //checkAccessRights();
+        $id = $args['id'];
+
+        $matchValidator = new MatchValidator($this->db);
+        $matchManager = new MatchManager($this->db);
+
+        $postArr = $request->getParsedBody();
+
+        $errors = $matchValidator->validateUpdateMatch(
+            $id,
             $postArr["set1Home"],
             $postArr["set1Away"],
             $postArr["set2Home"],
@@ -164,12 +227,8 @@ return function (App $app) {
             $newResponse = $response->withStatus(400);
             return $newResponse->withJson($errors);
         }
-        $matchManager->create(
-            $postArr["roundId"],
-            $postArr["playerId1"],
-            $postArr["playerId2"],
-            $postArr["playerId3"],
-            $postArr["playerId4"],
+        $matchManager->update(
+            $id,
             $postArr["set1Home"],
             $postArr["set1Away"],
             $postArr["set2Home"],
@@ -180,6 +239,7 @@ return function (App $app) {
 
         return $response;
     });
+
 
 
 
@@ -237,91 +297,21 @@ return function (App $app) {
         return $response;
     });
 
-    /* POST ipv PATCH - werkt niet op server
-    {
-        "playerId1": 7,
-        "playerId2": 8,
-        "playerId3": 9,
-        "playerId4": 11,
-        "set1Home": 19,
-        "set1Away": 21,
-        "set2Home": 6,
-        "set2Away": 21,
-        "set3Home": 0,
-        "set3Away": 0
-    }
-    */
-    $app->post('/matches/{id}', function (Request $request, Response $response, array $args) {
-        checkAccessRights();
-        $id = $args['id'];
-
-        $matchValidator = new MatchValidator($this->db);
-        $matchManager = new MatchManager($this->db);
-
-        $postArr = $request->getParsedBody();
-
-        $errors = $matchValidator->validateUpdateMatch(
-            $id,
-            $postArr["playerId1"],
-            $postArr["playerId2"],
-            $postArr["playerId3"],
-            $postArr["playerId4"],
-            $postArr["set1Home"],
-            $postArr["set1Away"],
-            $postArr["set2Home"],
-            $postArr["set2Away"],
-            $postArr["set3Home"],
-            $postArr["set3Away"]
-        );
-
-        if (!empty($errors)) {
-            $newResponse = $response->withStatus(400);
-            return $newResponse->withJson($errors);
-        }
-        $matchManager->update(
-            $id,
-            $postArr["playerId1"],
-            $postArr["playerId2"],
-            $postArr["playerId3"],
-            $postArr["playerId4"],
-            $postArr["set1Home"],
-            $postArr["set1Away"],
-            $postArr["set2Home"],
-            $postArr["set2Away"],
-            $postArr["set3Home"],
-            $postArr["set3Away"]
-        );
-
-        return $response;
-    });
-
     $app->get('/players', function (Request $request, Response $response, array $args) {
         $playerManager = new PlayerManager($this->db);
         $data = $playerManager->getAll();
         return $response->withJson($data);
     });
 
-    $app->get('/players/{id}', function (Request $request, Response $response, array $args) {
-        $id = $args['id'];
-        $playerManager = new PlayerManager($this->db);
-        $queryParams = $request->getQueryParams();
-        $seasonId = $queryParams["seasonId"];
-        $data = $playerManager->getByIdWithSeasonInfo($id, $seasonId);
-        return $response->withJson($data);
-    });
-    $app->get('/rounds', function (Request $request, Response $response) {
-        $roundManager = new RoundManager($this->db);
-        $queryParams = $request->getQueryParams();
-        $seasonId = $queryParams["seasonId"];
-
-        $data = $roundManager->getAll($seasonId);
-        return $response->withJson($data);
-    });
     $app->get('/rounds/latest', function (Request $request, Response $response) {
         $roundManager = new RoundManager($this->db);
         $data = $roundManager->getLast();
         return $response->withJson($data);
     });
+
+
+
+    // Region rankings
     $app->get('/rankings', function (Request $request, Response $response, array $args) {
         $items = $request->getQueryParam('$top');
         $rankingManager = new RankingManager($this->db);
@@ -350,21 +340,6 @@ return function (App $app) {
         $items = $request->getQueryParam('$top');
         $rankingManager = new RankingManager($this->db);
         $data = $rankingManager->get($items, false, false, false, true);
-        return $response->withJson($data);
-    });
-    $app->get('/rounds/{id}', function (Request $request, Response $response, array $args) {
-        $roundManager = new RoundManager($this->db);
-        $data = $roundManager->getByIdWithMatches($args['id']);
-        return $response->withJson($data);
-    });
-    $app->get('/rounds/{id}/matches', function (Request $request, Response $response, array $args) {
-        $matchManager = new MatchManager($this->db);
-        $data = $matchManager->getAllByRoundId($args['id']);
-        return $response->withJson($data);
-    });
-    $app->get('/seasons/latest/statistics', function (Request $request, Response $response, array $args) {
-        $seasonManager = new SeasonManager($this->db);
-        $data = $seasonManager->getStatistics();
         return $response->withJson($data);
     });
 };

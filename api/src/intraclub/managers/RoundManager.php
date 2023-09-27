@@ -1,6 +1,7 @@
 <?php
 namespace intraclub\managers;
 
+use intraclub\repositories\MatchRepository;
 use intraclub\repositories\RoundRepository;
 use intraclub\repositories\SeasonRepository;
 use intraclub\common\Utilities;
@@ -19,10 +20,16 @@ class RoundManager
      * @var SeasonRepository
      */
     protected $seasonRepository;
-
+    /**
+     * matchRepository
+     *
+     * @var MatchRepository
+     */
+    protected $matchRepository;
     public function __construct($db)
     {
         $this->roundRepository = new RoundRepository($db);
+        $this->matchRepository = new MatchRepository($db);
         $this->seasonRepository = new SeasonRepository($db);
     }
 
@@ -94,7 +101,16 @@ class RoundManager
         if (empty($seasonId)) {
             $seasonId = $this->seasonRepository->getCurrentSeasonId();
         }
-        return $this->roundRepository->getLast($seasonId);
+        $round = $this->roundRepository->getLast($seasonId);
+        $matches = $this->matchRepository->getAllByRoundId($round["id"]);
+        $round["matches"] = array();
+        foreach ($matches as $match) {
+            $convertedMatch = Utilities::mapToMatchObject($match);
+            $round["matches"][] = $convertedMatch;
+        }
+        $round["availabilityData"] = $this->roundRepository->getAvailabilityData($round["id"]);
+
+        return $round;
     }
 
 }

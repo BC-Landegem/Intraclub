@@ -77,6 +77,22 @@
   </div>
   <div class="grid-container" id="matchList">
   </div>
+  <!-- Error Modal -->
+  <div class="modal fade" id="errorModal" tabindex="-1" aria-labelledby="errorModalLabel" aria-hidden="true"
+    style="z-index: 9000;">
+    <div class="modal-dialog">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title" id="errorModalLabel">Foutmelding</h5>
+          <button type="button" class="btn-close" data-mdb-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body"></div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-mdb-dismiss="modal">Sluit</button>
+        </div>
+      </div>
+    </div>
+  </div>
   <!-- Add Player Modal -->
   <div class="modal fade" id="addPlayerModal" tabindex="-1" aria-labelledby="addPlayerModalLabel" aria-hidden="true">
     <div class="modal-dialog">
@@ -126,7 +142,7 @@
               <p id="set2Player4">Christophe Verbeke</p>
             </div>
             <div class="form-outline result-item">
-              <input type="number" id="set2Score" class="form-control result-input" />
+              <input type="number" id="set2ScoreHome" class="form-control result-input" />
             </div>
             <div class="form-outline result-item">
               <input type="number" id="set2ScoreAway" class="form-control result-input" />
@@ -140,7 +156,7 @@
               <p id="set3Player4">Frank Van Hove</p>
             </div>
             <div class="form-outline result-item">
-              <input type="number" id="set3Score" class="form-control result-input" />
+              <input type="number" id="set3ScoreHome" class="form-control result-input" />
             </div>
             <div class="form-outline result-item">
               <input type="number" id="set3ScoreAway" class="form-control result-input" />
@@ -149,17 +165,17 @@
 
           <div class="modal-footer">
             <button type="button" class="btn btn-secondary" data-mdb-dismiss="modal">Annuleer</button>
-            <button type="button" class="btn btn-primary">Opslaan</button>
+            <button type="button" class="btn btn-primary" id="saveMatchButton">Opslaan</button>
           </div>
         </div>
       </div>
     </div>
     <!-- MDB -->
     <script type="text/javascript" src="js/mdb.min.js"></script>
-    <script type="text/javascript" src="js/intra.js"></script>
+    <script type="text/javascript" src="js/intra.js?v=20230927"></script>
     <!-- Custom scripts -->
     <script type="text/javascript">
-      loadRanking();
+      loadData();
     </script>
 </body>
 

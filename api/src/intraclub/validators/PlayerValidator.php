@@ -4,6 +4,7 @@ namespace intraclub\validators;
 use DateTime;
 use intraclub\repositories\PlayerRepository;
 use intraclub\common\Utilities;
+use intraclub\repositories\RoundRepository;
 
 class PlayerValidator
 {
@@ -21,10 +22,18 @@ class PlayerValidator
      */
     protected $playerRepository;
 
+    /**
+     * roundRepository
+     *
+     * @var RoundRepository
+     */
+    protected $roundRepository;
     public function __construct($db)
     {
         $this->db = $db;
         $this->playerRepository = new PlayerRepository($db);
+        $this->roundRepository = new RoundRepository($db);
+
     }
 
     /**
@@ -77,6 +86,18 @@ class PlayerValidator
             $errors[] = "Speler met gegeven id bestaat niet!";
         }
         $errors = $this->validatePlayer($firstName, $name, $gender, $birthDate, $doubleRanking, $playsCompetition, $errors);
+        return $errors;
+    }
+
+    public function validateAttendanceData($playerId, $roundId)
+    {
+        $errors = array();
+        if (!$this->playerRepository->exists($playerId)) {
+            $errors[] = "Speler met gegeven id bestaat niet!";
+        }
+        if (!$this->roundRepository->exists($roundId)) {
+            $errors[] = "Ronde met gegeven id bestaat niet!";
+        }
         return $errors;
     }
 

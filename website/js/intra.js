@@ -2,27 +2,58 @@ presentPlayers = [];
 allPlayers = [];
 drawnOutPlayers = [];
 matches = [];
+roundId = 0;
+const addResultModalHtml = document.getElementById('addResultModal');
+const addResultModal = new mdb.Modal(addResultModalHtml);
 
 // window.onbeforeunload = function () {
 //     return "Matchen en aangeduide spelers zullen verloren gaan.";
 // };
 
-function loadRanking() {
-    const requestFetchAllPlayers = fetch('https://www.bclandegem.be/intra-app/api/index.php/players');
-    const requestFetchRanking = fetch('https://www.bclandegem.be/intra-app/api/index.php/rankings/general');
-    Promise.all([requestFetchAllPlayers, requestFetchRanking])
+function loadData() {
+    const requestFetchAllPlayers = fetch('api/index.php/players');
+    const requestFetchRanking = fetch('api/index.php/rankings/general');
+    const requestFetchRound = fetch('api/index.php/rounds/latest');
+
+    Promise.all([requestFetchAllPlayers, requestFetchRanking, requestFetchRound])
         .then(responses => {
             return Promise.all(responses.map(response => response.json()));
         })
         .then(data => {
             const data1 = data[0];
             const data2 = data[1];
+            const roundData = data[2];
+            roundId = roundData.id;
             allPlayers = data1;
+
+            if (roundData.calculated == 1) {
+                //TODO: Show new round popup
+            }
+            if (roundData.availabilityData) {
+                roundData.availabilityData.forEach((playerPresentData) => {
+                    if (playerPresentData.present == 1) {
+                        //find player in allPlayers
+                        const player = allPlayers.find(player => player.id === playerPresentData.playerId);
+                        //add player to presentPlayers
+                        presentPlayers.push(player);
+                    }
+                });
+
+                updateAmountPlayersSpan();
+            }
+
             data2.general.forEach((item, index) => {
                 const player = allPlayers.find(player => player.id === item.id);
+                isPresent = false;
+                //check if player is present
+                presentPlayers.forEach(presentPlayer => {
+                    if (presentPlayer.id == player.id) {
+                        isPresent = true;
+                    }
+                });
 
                 const rank = item.rank;
-                const name = item.firstName + ' ' + item.name + ' (' + calculateHandicap(player) + ')';
+                const name = item.firstName + ' ' + item.name + ' (' + calculateBonusPoints(player) + ')';
                 const points = item.points;
 
                 const rankElement = document.createElement('div');
@@ -39,19 +70,26 @@ function loadRanking() {
 
 
                 const button = document.createElement("button");
-                button.classList.add('btn', 'btn-primary', 'btn-lg', 'me-3');
-                //add fa-check icon inside
+                button.classList.add('btn', isPresent ? 'btn-success' : 'btn-primary', 'btn-lg', 'me-3');
                 const icon = document.createElement('i');
-                icon.classList.add('fa', 'fa-plus');
+                icon.classList.add('fa', isPresent ? 'fa-check' : 'fa-plus');
                 button.appendChild(icon);
-                button.onclick = function () {
-                    addPlayerPresent(item.id);
-                    updatePresentButton(button, item.id);
-                };
+                if (isPresent) {
+                    button.onclick = function () {
+                        removePlayerPresent(item.id);
+                        updateAbsentButton(button, item.id);
+                    };
+                }
+                else {
+                    button.onclick = function () {
+                        addPlayerPresent(item.id);
+                        updatePresentButton(button, item.id);
+                    };
+                }
                 pointsElement.appendChild(button);
                 const label = document.createElement('span');
-                label.classList.add('badge', 'badge-primary');
-                label.textContent = 'Nog niet gezien';
+                label.classList.add('badge', isPresent ? 'badge-success' : 'badge-primary');
+                label.textContent = isPresent ? 'Is hier!' : 'Nog niet gezien';
                 pointsElement.appendChild(label);
 
                 document.querySelector('.grid-container').appendChild(rankElement);
@@ -67,9 +105,31 @@ function addPlayerPresent(id) {
     const player = allPlayers.find(player => player.id === id);
     //add player to presentPlayers
     presentPlayers.push(player);
+    updateAmountPlayersSpan();
+    // POST to /api/index.php/rounds/{roundId}/players/{playerId}
+    updateAvailabilityApi(player.id, true);
+
+}
+
+function updateAmountPlayersSpan() {
     const span = document.getElementById('playersPresent');
-    span.textContent = "Aantal spelers: " + presentPlayers.length;
-    //TODO: Update to API
+    span.textContent = "Aantal spelers: " + presentPlayers.length
+}
+
+function updateAvailabilityApi(playerId, present, drawnOut = false) {
+    var url = "api/index.php/rounds/" + roundId + "/players/" + playerId;
+    fetch(url, {
+        method: 'POST',
+        body: JSON.stringify({ present: present, drawnOut: drawnOut }),
+        headers: {
+            'Content-Type': 'application/json',
+        }
+    })
+        .then(response => console.log('Success:', response))
+        .catch((error) => {
+            //show popup
+            showErrorModal(['Er is iets misgelopen bij het updaten van de aanwezigheid van een speler.']);
+        });
 }
 function updatePresentButton(button, id) {
     var span = button.nextSibling;
@@ -111,9 +171,8 @@ function removePlayerPresent(id) {
     const player = presentPlayers.find(player => player.id === id);
     //remove player from presentPlayers
     presentPlayers.splice(presentPlayers.indexOf(player), 1);
-    const span = document.getElementById('playersPresent');
-    span.textContent = "Aantal spelers: " + presentPlayers.length;
-    //TODO: Update API
+    updateAmountPlayersSpan();
+    updateAvailabilityApi(player.id, false);
 }
 
 
@@ -135,14 +194,15 @@ function generateMatches() {
     while (firstGroup.length >= 4 || secondGroup.length >= 4) {
         if (firstGroup.length >= 4) {
             const match = [];
+            match["players"] = [];
             for (let i = 0; i < 4; i++) {
                 const randomIndex = Math.floor(Math.random() * firstGroup.length);
-                match.push(firstGroup[randomIndex]);
+                match["players"].push(firstGroup[randomIndex]);
                 firstGroup.splice(randomIndex, 1);
             }
             matches.push(match);
             // remove matched players from second group
-            match.forEach(player => {
+            match["players"].forEach(player => {
                 const index = secondGroup.indexOf(player);
                 if (index > -1) {
                     secondGroup.splice(index, 1);
@@ -151,14 +211,15 @@ function generateMatches() {
         }
         if (secondGroup.length >= 4) {
             const match2 = [];
+            match2["players"] = [];
             for (let i = 0; i < 4; i++) {
                 const randomIndex = Math.floor(Math.random() * secondGroup.length);
-                match2.push(secondGroup[randomIndex]);
+                match2["players"].push(secondGroup[randomIndex]);
                 secondGroup.splice(randomIndex, 1);
             }
             matches.push(match2);
             // remove matched players from first group
-            match2.forEach(player => {
+            match2["players"].forEach(player => {
                 const index = firstGroup.indexOf(player);
                 if (index > -1) {
                     firstGroup.splice(index, 1);
@@ -183,10 +244,11 @@ function generateMatches() {
         // Else pick all remaining players
         if (remainingPlayers.length >= 4) {
             const remainingPlayersMatch = [];
+            remainingPlayersMatch["players"] = [];
             // Pick 4 random players from the remaining players
             for (let i = 0; i < 4; i++) {
                 const randomIndex = Math.floor(Math.random() * remainingPlayers.length);
-                remainingPlayersMatch.push(remainingPlayers[randomIndex]);
+                remainingPlayersMatch["players"].push(remainingPlayers[randomIndex]);
                 remainingPlayers.splice(randomIndex, 1);
             }
             matches.push(remainingPlayersMatch);
@@ -194,13 +256,16 @@ function generateMatches() {
         if (remainingPlayers.length > 0) {
             // put all remaining players in the match
             const drawnOutMatch = [];
+            drawnOutMatch["players"] = [];
             remainingPlayers.forEach(player => {
-                drawnOutMatch.push(player);
+                drawnOutMatch["players"].push(player);
             });
             matches.push(drawnOutMatch);
             drawnOutPlayers = remainingPlayers;
         }
     }
+    // sort players now on name
+    presentPlayers.sort((a, b) => (a.firstName > b.firstName) ? 1 : -1);
     displayMatches(matches);
 
     // hide playerlist
@@ -221,26 +286,26 @@ function displayMatches(matches) {
         const firstTeamContainer = document.createElement('div');
         firstTeamContainer.classList.add('grid-item');
         // add first two players to match container
-        displayPlayer(match[0], firstTeamContainer);
-        if (match.length > 1)
-            displayPlayer(match[1], firstTeamContainer);
+        displayPlayer(match["players"][0], firstTeamContainer);
+        if (match["players"].length > 1)
+            displayPlayer(match["players"][1], firstTeamContainer);
         else {
-            displayPlayerDropdown(firstTeamContainer);
+            displayPlayerDropdown(match, firstTeamContainer, 1);
         }
         matchesContainer.appendChild(firstTeamContainer);
         // create second team container
         const secondTeamContainer = document.createElement('div');
         secondTeamContainer.classList.add('grid-item');
         // add second two players to match container
-        if (match.length > 2)
-            displayPlayer(match[2], secondTeamContainer);
+        if (match["players"].length > 2)
+            displayPlayer(match["players"][2], secondTeamContainer);
         else {
-            displayPlayerDropdown(secondTeamContainer);
+            displayPlayerDropdown(match, secondTeamContainer, 2);
         }
-        if (match.length > 3)
-            displayPlayer(match[3], secondTeamContainer);
+        if (match["players"].length > 3)
+            displayPlayer(match["players"][3], secondTeamContainer);
         else {
-            displayPlayerDropdown(secondTeamContainer);
+            displayPlayerDropdown(match, secondTeamContainer, 3);
         }
         matchesContainer.appendChild(secondTeamContainer);
 
@@ -249,20 +314,23 @@ function displayMatches(matches) {
         resultDiv.classList.add('grid-item');
         //add button to result div
         const button = document.createElement("button");
-        //add data-mdb-toggle="modal" data-mdb-target="#addPlayerModal"
-        button.setAttribute('data-mdb-toggle', 'modal');
-        button.setAttribute('data-mdb-target', '#addResultModal');
-        button.classList.add('btn', 'btn-primary', 'btn-lg', 'me-3');
-        button.innerHTML = '<i class="fa fa-pencil me-1"></i> Voeg resultaat toe';
+        button.classList.add('btn', 'btn-success', 'btn-lg', 'me-3');
+        button.innerHTML = '<i class="fa fa-check mcountNonEmptySpotse-1"></i> Bevestig match';
 
         button.onclick = function () {
-            //add players to modal
-            displayPlayerInModal(matches[index][0], 'set1Player1', 'set2Player1', 'set3Player1');
-            displayPlayerInModal(matches[index][1], 'set1Player2', 'set2Player3', 'set3Player3');
-            displayPlayerInModal(matches[index][2], 'set1Player3', 'set2Player2', 'set3Player4');
-            displayPlayerInModal(matches[index][3], 'set1Player4', 'set2Player4', 'set3Player2');
+            const countNonEmptySpots = match["players"].reduce((count, obj) => {
+                if (obj !== undefined) {
+                    return count + 1;
+                } else {
+                    return count;
+                }
+            }, 0);
 
-
+            if (countNonEmptySpots < 4) {
+                showErrorModal(['Gelieve alle spelers in te vullen.']);
+                return;
+            }
+            createMatch(match, button);
         };
         resultDiv.appendChild(button);
         matchesContainer.appendChild(resultDiv);
@@ -270,7 +338,127 @@ function displayMatches(matches) {
     });
 }
 
-//TODO: Fix "dropdown" players
+function createMatch(match, button) {
+    // create match in API
+    // POST to /api/index.php/matches
+    var url = "api/index.php/matches";
+    fetch(url, {
+        method: 'POST',
+        body: JSON.stringify({
+            roundId: roundId,
+            player1Id: match["players"][0].id,
+            player2Id: match["players"][1].id,
+            player3Id: match["players"][2].id,
+            player4Id: match["players"][3].id
+        }),
+        headers: {
+            'Content-Type': 'application/json',
+        }
+    })
+        .then(response => {
+            if (response.status === 400) {
+                return response.json().then(error => {
+                    // Handle the error response
+                    throw new Error(error);
+                });
+            } else {
+                // Process the successful response
+                return response.json();
+            }
+        })
+        .then(data => {
+            match["id"] = data.id;
+            button.classList.remove('btn-success');
+            button.classList.add('btn-primary');
+            button.innerHTML = '<i class="fa fa-pencil me-1"></i> Vul resultaat in';
+            button.onclick = function () {
+                //add players to modal
+                displayPlayerInModal(match["players"][0], 'set1Player1', 'set2Player1', 'set3Player1');
+                displayPlayerInModal(match["players"][1], 'set1Player2', 'set2Player3', 'set3Player3');
+                displayPlayerInModal(match["players"][2], 'set1Player3', 'set2Player2', 'set3Player4');
+                displayPlayerInModal(match["players"][3], 'set1Player4', 'set2Player4', 'set3Player2');
+                //add scores to modal
+                document.getElementById('set1ScoreHome').value = match["set1Home"];
+                document.getElementById('set1ScoreAway').value = match["set1Away"];
+                document.getElementById('set2ScoreHome').value = match["set2Home"];
+                document.getElementById('set2ScoreAway').value = match["set2Away"];
+                document.getElementById('set3ScoreHome').value = match["set3Home"];
+                document.getElementById('set3ScoreAway').value = match["set3Away"];
+                //show modal
+                addResultModal.show();
+                //get save button
+                const saveButton = document.getElementById('saveMatchButton');
+                saveButton.onclick = function () {
+                    //Get value of every input
+                    const set1HomeValue = document.getElementById('set1ScoreHome').value;
+                    const set1Home = set1HomeValue ? parseInt(set1HomeValue) : 0;
+                    const set1AwayValue = document.getElementById('set1ScoreAway').value;
+                    const set1Away = set1AwayValue ? parseInt(set1AwayValue) : 0;
+                    const set2HomeValue = document.getElementById('set2ScoreHome').value;
+                    const set2Home = set2HomeValue ? parseInt(set2HomeValue) : 0;
+                    const set2AwayValue = document.getElementById('set2ScoreAway').value;
+                    const set2Away = set2AwayValue ? parseInt(set2AwayValue) : 0;
+                    const set3HomeValue = document.getElementById('set3ScoreHome').value;
+                    const set3Home = set3HomeValue ? parseInt(set3HomeValue) : 0;
+                    const set3AwayValue = document.getElementById('set3ScoreAway').value;
+                    const set3Away = set3AwayValue ? parseInt(set3AwayValue) : 0;
+                    updateMatch(set1Home, set1Away, set2Home, set2Away, set3Home, set3Away, match);
+
+                }
+            }
+        })
+        .catch((error) => {
+            //show popup
+            showErrorModal([error.message]);
+        });
+};
+
+function updateMatch(set1Home, set1Away, set2Home, set2Away, set3Home, set3Away, match) {
+
+
+    //save in the API
+    // PUT to /api/index.php/matches/{matchId}
+    var url = "api/index.php/matches/" + match["id"];
+    fetch(url, {
+        method: 'POST',
+        body: JSON.stringify({
+            roundId: roundId,
+            set1Home: set1Home,
+            set1Away: set1Away,
+            set2Home: set2Home,
+            set2Away: set2Away,
+            set3Home: set3Home,
+            set3Away: set3Away,
+        }),
+        headers: {
+            'Content-Type': 'application/json',
+        }
+    })
+        .then(response => {
+            if (response.status === 400) {
+                return response.json().then(error => {
+                    // Handle the error response
+                    throw new Error(error);
+                });
+            } else {
+                // Process the successful response
+
+                addResultModal.hide();
+                match["set1Home"] = set1Home;
+                match["set1Away"] = set1Away;
+                match["set2Home"] = set2Home;
+                match["set2Away"] = set2Away;
+                match["set3Home"] = set3Home;
+                match["set3Away"] = set3Away;
+            }
+        })
+        .catch((error) => {
+            //show popup
+            showErrorModal([error.message]);
+        });
+
+}
+
 function displayPlayerInModal(player, pElementId1, pElementId2, pElementId3) {
     const playerElement1 = document.getElementById(pElementId1);
     playerElement1.textContent = player.firstName + ' ' + player.name;
@@ -283,41 +471,58 @@ function displayPlayerInModal(player, pElementId1, pElementId2, pElementId3) {
 
 function displayPlayer(player, container) {
     const playerElement = document.createElement('p');
-    playerElement.textContent = player.firstName + ' ' + player.name + ' (' + calculateHandicap(player) + ')';
+    playerElement.textContent = player.firstName + ' ' + player.name + ' (' + calculateBonusPoints(player) + ')';
     container.appendChild(playerElement);
 }
-function displayPlayerDropdown(container) {
+function displayPlayerDropdown(match, container, index) {
     const dropdownElement = document.createElement('p');
     const dropdown = document.createElement('select');
     dropdown.innerHTML = '';
+
     presentPlayers.forEach((player, index) => {
         const option = document.createElement('option');
         option.value = player.id;
-        option.textContent = player.firstName + ' ' + player.name + ' (' + calculateHandicap(player) + ')';
+        option.textContent = player.firstName + ' ' + player.name + ' (' + calculateBonusPoints(player) + ')';
         dropdown.appendChild(option);
     });
     dropdownElement.appendChild(dropdown);
-    container.appendChild(dropdownElement);
-}
 
-function calculateHandicap(player) {
-    var handicap = 0;
+    //Add Button
+    const button = document.createElement("button");
+    button.classList.add('btn', 'btn-primary', 'btn-lg', 'ms-3');
+    button.innerHTML = '<i class="fa fa-check me-1"></i>';
+    button.onclick = function () {
+        console.log(dropdown.value);
+        //find player in allPlayers
+        const player = allPlayers.find(player => player.id === dropdown.value);
+        match["players"][index] = player;
+        //remove dropdownElement from container
+        container.removeChild(dropdownElement);
+        displayPlayer(player, container);
+    };
+    dropdownElement.appendChild(button);
+    container.appendChild(dropdownElement);
+
+
+}
+function calculateBonusPoints(player) {
+    var bonus = 0;
     if (player.gender === 'Woman') {
-        handicap += 2;
+        bonus += 2;
     }
     if (player.playsCompetition == 0) {
-        handicap += 5;
+        bonus += 5;
     }
     if (player.doubleRanking > 10) {
-        handicap += 4;
+        bonus += 4;
     } else if (player.doubleRanking > 8) {
-        handicap += 3;
+        bonus += 3;
     } else if (player.doubleRanking > 6) {
-        handicap += 2;
+        bonus += 2;
     } else if (player.doubleRanking > 4) {
-        handicap += 1;
+        bonus += 1;
     }
-    return handicap;
+    return bonus;
 }
 
 function togglePlayerList() {
@@ -336,3 +541,16 @@ function togglePlayerList() {
     }
 }
 
+function showErrorModal(errors) {
+    const errorModalHtml = document.getElementById('errorModal');
+    const errorModal = new mdb.Modal(errorModalHtml);
+    errorModalHtml.querySelector('.modal-body').innerHTML = '';
+    errors.forEach(error => {
+        //create p element and add error message
+        const p = document.createElement('p');
+        p.textContent = error;
+        //add p element to modal
+        errorModalHtml.querySelector('.modal-body').appendChild(p);
+    });
+    errorModal.show();
+}

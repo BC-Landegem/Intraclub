@@ -117,6 +117,11 @@ class PlayerManager
         return $response;
     }
 
+    public function updateAttendanceData($playerId, $roundId, $present, $drawnOut)
+    {
+        $this->playerRepository->insertOrUpdateAttendanceData($playerId, $roundId, $present, $drawnOut);
+    }
+
     /**
      * Map array naar rankingobjeccten
      *
@@ -166,7 +171,7 @@ class PlayerManager
      *
      * @param  int $id
      * @param  int $seasonId
-     * @return object spelerstats
+     * @return array spelerstats
      */
     private function getAndMapPlayerInfoWithSeasonStats($id, $seasonId)
     {

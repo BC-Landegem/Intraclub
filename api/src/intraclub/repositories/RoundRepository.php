@@ -17,8 +17,8 @@ class RoundRepository
      *
      * @var string
      */
-    protected $roundQuery = "SELECT RND.id, RND.Number, ROUND(RND.AverageAbsent,2) AS AverageAbsent, 
-    RND.Date, RND.Calculated, (SELECT COUNT(MT.id) FROM `Match` MT where MT.RoundId = RND.Id) as Matches
+    protected $roundQuery = "SELECT RND.id, RND.number, ROUND(RND.AverageAbsent,2) AS averageAbsent, 
+    RND.date, RND.calculated, (SELECT COUNT(MT.id) FROM `Match` MT where MT.RoundId = RND.Id) as matches
     FROM Round RND";
 
     public function __construct($db)
@@ -37,7 +37,7 @@ class RoundRepository
         if (empty($seasonId)) {
             return null;
         }
-        $stmt = $this->db->prepare($this->roundQuery . " WHERE ISP.seizoen_id = ? ORDER BY ISP.id ASC;");
+        $stmt = $this->db->prepare($this->roundQuery . " WHERE RND.seasonId = ? ORDER BY RND.id ASC;");
 
         $stmt->execute([$seasonId]);
         return $stmt->fetchAll();
@@ -92,7 +92,7 @@ class RoundRepository
      */
     public function existsWithDate($date)
     {
-        $stmt = $this->db->prepare("SELECT COUNT(*) as num FROM Round WHERE [Date] = ? ");
+        $stmt = $this->db->prepare("SELECT COUNT(*) as num FROM Round WHERE `Date` = ? ");
         $stmt->execute([$date]);
         $row = $stmt->fetch();
         return $row["num"] > 0;
@@ -105,7 +105,7 @@ class RoundRepository
      */
     public function exists($id)
     {
-        $stmt = $this->db->prepare("SELECT COUNT(*) as num FROM intra_speeldagen WHERE id = ? ");
+        $stmt = $this->db->prepare("SELECT COUNT(*) as num FROM Round WHERE id = ? ");
         $stmt->execute([$id]);
         $row = $stmt->fetch();
         return $row["num"] > 0;
@@ -175,20 +175,29 @@ class RoundRepository
         if (empty($id)) {
             return null;
         }
-        $stmt = $this->db->prepare("SELECT ISP.id AS roundId, ISP.speeldagnummer AS roundNumber, ROUND(ISP.gemiddeld_verliezend,2) AS averageAbsent, 
-            ISP.datum AS date, ISP.is_berekend AS calculated, set1_1 AS firstSet_home, set1_2 AS firstSet_away, set2_1 AS secondSet_home, set2_2 AS secondSet_away, 
-            set3_1 AS thirdSet_home, set3_2 AS thirdSet_away,
-            PL1H.Id as home_firstPlayer_Id, PL1H.voornaam AS home_firstPlayer_firstName, PL1H.naam AS home_firstPlayer_name,
-            PL2H.Id as home_secondPlayer_Id, PL2H.voornaam AS home_secondPlayer_firstName, PL2H.naam AS home_secondPlayer_name,
-            PL1A.Id as away_firstPlayer_Id, PL1A.voornaam AS away_firstPlayer_firstName, PL1A.naam AS away_firstPlayer_name,
-            PL2A.Id as away_secondPlayer_Id, PL2A.voornaam AS away_secondPlayer_firstName, PL2A.naam AS away_secondPlayer_name
-            FROM intra_speeldagen ISP
-            INNER JOIN intra_wedstrijden IW ON ISP.id = IW.speeldag_id
-            INNER JOIN intra_spelers PL1H ON PL1H.id =  IW.team1_speler1
-            INNER JOIN intra_spelers PL2H ON PL2H.id =  IW.team1_speler2
-            INNER JOIN intra_spelers PL1A ON PL1A.id =  IW.team2_speler1
-            INNER JOIN intra_spelers PL2A ON PL2A.id =  IW.team2_speler2 WHERE ISP.id=?
-            ORDER BY IW.Id ASC;
+        $stmt = $this->db->prepare("SELECT RND.id AS roundId, RND.number AS roundNumber, ROUND(RND.averageAbsent,2) AS averageAbsent, 
+            RND.date, RND.calculated, set1Home,set1Away, set2Home, set2Away, set3Home, set3Away,
+            PL1H.Id as player1Id, PL1H.firstName AS player1FirstName, PL1H.name AS player1Name,
+            PL2H.Id as player2Id, PL2H.firstName AS player2FirstName, PL2H.name AS player2Name,
+            PL1A.Id as player3Id, PL1A.firstName AS player3FirstName, PL1A.name AS player3Name,
+            PL2A.Id as player4Id, PL2A.firstName AS player4FirstName, PL2A.name AS player4Name
+            FROM `Round` RND
+            INNER JOIN `Match` MT ON MT.roundId = RND.id
+            INNER JOIN Player PL1H ON PL1H.id =  MT.Player1Id
+            INNER JOIN Player PL2H ON PL2H.id =  MT.Player2Id
+            INNER JOIN Player PL1A ON PL1A.id =  MT.Player3Id
+            INNER JOIN Player PL2A ON PL2A.id =  MT.Player4Id WHERE RND.id=?
+            ORDER BY MT.Id ASC;
+        ");
+        $stmt->execute([$id]);
+        return $stmt->fetchAll();
+    }
+
+    public function getAvailabilityData($id)
+    {
+        $stmt = $this->db->prepare("SELECT playerId, present, drawnOut, average
+
+            FROM `PlayerRoundStatistic`
         ");
         $stmt->execute([$id]);
         return $stmt->fetchAll();

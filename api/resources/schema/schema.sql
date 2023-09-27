@@ -74,21 +74,20 @@ ENGINE=InnoDB
 
 
 CREATE TABLE `PlayerRoundStatistic` (
-	`Id` INT(11) NOT NULL,
 	`RoundId` INT(11) NOT NULL,
 	`PlayerId` INT(11) NOT NULL,
 	`Present` TINYINT(1) NOT NULL,
 	`DrawnOut` TINYINT(1) NOT NULL,
 	`Average` DOUBLE NULL DEFAULT NULL,
-	PRIMARY KEY (`Id`) USING BTREE,
+	PRIMARY KEY (`RoundId`, `PlayerId`) USING BTREE,
 	INDEX `FK_RoundPlayer_Player` (`PlayerId`) USING BTREE,
-	INDEX `FK_RoundPlayer_Round` (`RoundId`) USING BTREE,
 	CONSTRAINT `FK_RoundPlayer_Player` FOREIGN KEY (`PlayerId`) REFERENCES `Player` (`Id`) ON UPDATE NO ACTION ON DELETE NO ACTION,
 	CONSTRAINT `FK_RoundPlayer_Round` FOREIGN KEY (`RoundId`) REFERENCES `Round` (`Id`) ON UPDATE NO ACTION ON DELETE NO ACTION
 )
 COLLATE='utf8mb4_unicode_ci'
 ENGINE=InnoDB
 ;
+
 
 
 CREATE TABLE `PlayerSeasonStatistic` (

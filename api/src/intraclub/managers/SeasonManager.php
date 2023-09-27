@@ -128,16 +128,16 @@ class SeasonManager
             $matches = $this->matchRepository->getAllByRoundId($round["id"]);
             foreach ($matches as $match) {
                 $score_array = Utilities::calculateMatchStatistics(
-                    $match["Player1Id"],
-                    $match["Player2Id"],
-                    $match["Player3Id"],
-                    $match["Player4Id"],
-                    $match["Set1Home"],
-                    $match["Set1Away"],
-                    $match["Set2Home"],
-                    $match["Set2Away"],
-                    $match["Set3Home"],
-                    $match["Set3Away"]
+                    $match["player1Id"],
+                    $match["player2Id"],
+                    $match["player3Id"],
+                    $match["player4Id"],
+                    $match["set1Home"],
+                    $match["set1Away"],
+                    $match["set2Home"],
+                    $match["set2Away"],
+                    $match["set3Home"],
+                    $match["set3Away"]
                 );
 
                 $averageLosers += $score_array['averageLosing'];
@@ -164,7 +164,7 @@ class SeasonManager
 
             $resultArray = array();
             // basispunt als beginwaarde zetten
-            $resultArray[0] = $player['BasePoints'];
+            $resultArray[0] = $player['basePoints'];
             $roundNumber = 1;
 
             $seasonStats = array(
@@ -181,29 +181,29 @@ class SeasonManager
              */
             $matchesCurrentPlayer = $this->matchRepository->getAllBySeasonAndPlayerId($currentSeasonId, $player["id"]);
             foreach ($matchesCurrentPlayer as $matchCurrentPlayer) {
-                while ($matchCurrentPlayer["RoundNumber"] > $roundNumber) {
+                while ($matchCurrentPlayer["roundNumber"] > $roundNumber) {
                     //Speler niet aanwezig op $roundNumber
                     //Geef hem gemiddelde verliezers van die speeldag!
                     $resultArray[$roundNumber] = $averageLosersArray[$roundNumber];
                     $roundNumber++;
                 }
                 // meerdere spelletjes gespeeld, OVERSLAAN
-                if ($roundNumber > $matchCurrentPlayer["RoundNumber"]) {
+                if ($roundNumber > $matchCurrentPlayer["roundNumber"]) {
                     //Meermaals aanwezig op huidige speeldag
                 } //We zitten goed!
-                else if ($roundNumber == $matchCurrentPlayer["RoundNumber"]) {
+                else if ($roundNumber == $matchCurrentPlayer["roundNumber"]) {
 
                     $matchStatistics = Utilities::calculateMatchStatistics(
-                        $matchCurrentPlayer["Player1Id"],
-                        $matchCurrentPlayer["Player2Id"],
-                        $matchCurrentPlayer["Player3Id"],
-                        $matchCurrentPlayer["Player4Id"],
-                        $matchCurrentPlayer["Set1Home"],
-                        $matchCurrentPlayer["Set1Away"],
-                        $matchCurrentPlayer["Set2Home"],
-                        $matchCurrentPlayer["Set2Away"],
-                        $matchCurrentPlayer["Set3Home"],
-                        $matchCurrentPlayer["Set3Away"]
+                        $matchCurrentPlayer["player1Id"],
+                        $matchCurrentPlayer["player2Id"],
+                        $matchCurrentPlayer["player3Id"],
+                        $matchCurrentPlayer["player4Id"],
+                        $matchCurrentPlayer["set1Home"],
+                        $matchCurrentPlayer["set1Away"],
+                        $matchCurrentPlayer["set2Home"],
+                        $matchCurrentPlayer["set2Away"],
+                        $matchCurrentPlayer["set3Home"],
+                        $matchCurrentPlayer["set3Away"]
                     );
 
                     $seasonStats["roundsPresent"]++;

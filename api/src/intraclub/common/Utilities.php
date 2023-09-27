@@ -50,29 +50,26 @@ class Utilities
     public static function mapToMatchObject($match)
     {
         return array(
-            "home" => array(
-                "firstPlayer" => array(
-                    "id" => $match["home_firstPlayer_Id"],
-                    "firstName" => $match["home_firstPlayer_firstName"],
-                    "name" => $match["home_firstPlayer_name"]
-                ),
-                "secondPlayer" => array(
-                    "id" => $match["home_secondPlayer_Id"],
-                    "firstName" => $match["home_secondPlayer_firstName"],
-                    "name" => $match["home_secondPlayer_name"]
-                ),
+
+            "firstPlayer" => array(
+                "id" => $match["player1Id"],
+                "firstName" => $match["player1firstName"],
+                "name" => $match["player1name"]
             ),
-            "away" => array(
-                "firstPlayer" => array(
-                    "id" => $match["away_firstPlayer_Id"],
-                    "firstName" => $match["away_firstPlayer_firstName"],
-                    "name" => $match["away_firstPlayer_name"]
-                ),
-                "secondPlayer" => array(
-                    "id" => $match["away_secondPlayer_Id"],
-                    "firstName" => $match["away_secondPlayer_firstName"],
-                    "name" => $match["away_secondPlayer_name"]
-                ),
+            "secondPlayer" => array(
+                "id" => $match["player2Id"],
+                "firstName" => $match["player2firstName"],
+                "name" => $match["player2name"]
+            ),
+            "thirdPlayer" => array(
+                "id" => $match["player3Id"],
+                "firstName" => $match["player3firstName"],
+                "name" => $match["player3name"]
+            ),
+            "fourthPlayer" => array(
+                "id" => $match["player4Id"],
+                "firstName" => $match["player4firstName"],
+                "name" => $match["player4name"]
             ),
             "firstSet" => array(
                 "home" => intval($match["firstSet_home"]),
@@ -85,7 +82,6 @@ class Utilities
             "thirdSet" => array(
                 "home" => intval($match["thirdSet_home"]),
                 "away" => intval($match["thirdSet_away"]),
-                "played" => $match["thirdSet_home"] != "0" && $match["thirdSet_away"] != "0"
             ),
             "round" => array(
                 "id" => intval($match["roundId"]),
