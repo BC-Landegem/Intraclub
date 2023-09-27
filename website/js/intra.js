@@ -534,6 +534,8 @@ function displayPlayer(player, container) {
 function displayPlayerDropdown(match, container, index) {
     const dropdownElement = document.createElement('p');
     const dropdown = document.createElement('select');
+    //set width to 75%
+    dropdown.style.width = '75%';
     dropdown.innerHTML = '';
 
     presentPlayers.forEach((player, index) => {
