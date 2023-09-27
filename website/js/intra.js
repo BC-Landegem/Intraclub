@@ -6,10 +6,6 @@ roundId = 0;
 const addResultModalHtml = document.getElementById('addResultModal');
 const addResultModal = new mdb.Modal(addResultModalHtml);
 
-// window.onbeforeunload = function () {
-//     return "Matchen en aangeduide spelers zullen verloren gaan.";
-// };
-
 function loadData() {
     const requestFetchAllPlayers = fetch('api/index.php/players');
     const requestFetchRanking = fetch('api/index.php/rankings/general');
@@ -291,7 +287,7 @@ function generateMatches() {
 }
 function displayMatches(matches) {
     // sort players now on name
-    presentPlayers.sort((a, b) => (a.firstName > b.firstName) ? 1 : -1);
+    allPlayers.sort((a, b) => (a.firstName > b.firstName) ? 1 : -1);
     generateMatchesHtml(matches);
 
     // hide playerlist
@@ -366,6 +362,14 @@ function generateMatchesHtml(matches) {
                     showErrorModal(['Gelieve alle spelers in te vullen.']);
                     return;
                 }
+                //if any of those players are in drawnOutPlayers, call updateAvailabilityApi with drawnOut = true
+                match["players"].forEach(player => {
+                    drawnOutPlayers.forEach(drawnOutPlayer => {
+                        if (player.id == drawnOutPlayer.id) {
+                            updateAvailabilityApi(player.id, true, true);
+                        }
+                    });
+                });
                 createMatch(match, button);
             };
         }
@@ -403,9 +407,7 @@ function createMatch(match, button) {
             }
         })
         .then(data => {
-
             match["id"] = data.id;
-
             generateUpdateMatchHtml(button, match);
         })
         .catch((error) => {
@@ -538,7 +540,7 @@ function displayPlayerDropdown(match, container, index) {
     dropdown.style.width = '75%';
     dropdown.innerHTML = '';
 
-    presentPlayers.forEach((player, index) => {
+    allPlayers.forEach((player, index) => {
         const option = document.createElement('option');
         option.value = player.id;
         option.textContent = player.firstName + ' ' + player.name + ' (' + calculateBonusPoints(player) + ')';
@@ -551,9 +553,10 @@ function displayPlayerDropdown(match, container, index) {
     button.classList.add('btn', 'btn-primary', 'btn-lg', 'ms-3');
     button.innerHTML = '<i class="fa fa-check me-1"></i>';
     button.onclick = function () {
-        console.log(dropdown.value);
         //find player in allPlayers
         const player = allPlayers.find(player => player.id === dropdown.value);
+        updateAvailabilityApi(player.id, true);
+
         match["players"][index] = player;
         //remove dropdownElement from container
         container.removeChild(dropdownElement);

@@ -172,9 +172,13 @@
     </div>
     <!-- MDB -->
     <script type="text/javascript" src="js/mdb.min.js"></script>
-    <script type="text/javascript" src="js/intra.js?v=202309273"></script>
+    <script type="text/javascript" src="js/intra.js?v=20230928"></script>
     <!-- Custom scripts -->
     <script type="text/javascript">
+      window.onunload = window.onbeforeunload = function () {
+        return "Liever niet. Thx";
+      };
+
       loadData();
     </script>
 </body>
