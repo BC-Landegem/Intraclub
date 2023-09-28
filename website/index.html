@@ -61,11 +61,10 @@
         <button type="button" class="btn btn-primary me-3" data-mdb-toggle="modal" data-mdb-target="#addPlayerModal">
           <i class="fa fa-plus me-1"></i>Nieuwe speler
         </button>
-        <button type="button" id="generateMatchesButton" class="btn btn-secondary me-3" onclick="generateMatches()">
+        <button type="button" id="generateMatchesButton" class="btn btn-secondary me-3">
           Genereer wedstrijden
         </button>
-        <button type="button" id="togglePlayerListButton" class="btn btn-tertiary me-3" style="display: none;"
-          onclick="togglePlayerList()">
+        <button type="button" id="togglePlayerListButton" class="btn btn-tertiary me-3" style="display: none;">
           Toon spelerslijst
         </button>
       </div>
@@ -115,7 +114,10 @@
       <div class="modal-content">
         <div class="modal-header">
           <h5 class="modal-title" id="addResultModalLabel">Uitslag invoeren</h5>
-          <button type="button" class="btn-close" data-mdb-dismiss="modal" aria-label="Close"></button>
+          <div>
+            <button type="button" class="btn btn-secondary" data-mdb-dismiss="modal">Annuleer</button>
+            <button type="button" class="btn btn-primary ms-4" id="saveMatchButton">Opslaan</button>
+          </div>
         </div>
         <div class="modal-body">
           <div class="result-container">
@@ -162,24 +164,17 @@
               <input type="number" id="set3ScoreAway" class="form-control result-input" />
             </div>
           </div>
-
-          <div class="modal-footer">
-            <button type="button" class="btn btn-secondary" data-mdb-dismiss="modal">Annuleer</button>
-            <button type="button" class="btn btn-primary" id="saveMatchButton">Opslaan</button>
-          </div>
         </div>
       </div>
     </div>
     <!-- MDB -->
     <script type="text/javascript" src="js/mdb.min.js"></script>
-    <script type="text/javascript" src="js/intra.js?v=20230928"></script>
+    <script type="module" src="js/main.js?v=20230928"></script>
     <!-- Custom scripts -->
     <script type="text/javascript">
       window.onunload = window.onbeforeunload = function () {
         return "Liever niet. Thx";
       };
-
-      loadData();
     </script>
 </body>
 

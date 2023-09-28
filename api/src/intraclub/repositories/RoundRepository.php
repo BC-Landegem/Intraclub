@@ -196,8 +196,8 @@ class RoundRepository
     public function getAvailabilityData($id)
     {
         $stmt = $this->db->prepare("SELECT playerId, present, drawnOut, average
-
             FROM `PlayerRoundStatistic`
+            WHERE roundId = ?
         ");
         $stmt->execute([$id]);
         return $stmt->fetchAll();
