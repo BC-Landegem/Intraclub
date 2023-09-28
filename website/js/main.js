@@ -2,6 +2,7 @@ import { helpers } from './helpers.js';
 import { api } from './api.js';
 
 let presentPlayers = [];
+let rankingData = [];
 let allPlayers = [];
 let drawnOutPlayers = [];
 let matches = [];
@@ -25,10 +26,23 @@ function loadData() {
         })
         .then(data => {
             const data1 = data[0];
-            const data2 = data[1];
+            rankingData = data[1].general;
             const roundData = data[2];
             roundId = roundData.id;
             allPlayers = data1;
+
+            let manualRank = rankingData.length + 1;
+            //enrich allPlayers with rank
+            allPlayers.forEach((player) => {
+                const rank = rankingData.find(rankedPlayer => rankedPlayer.id === player.id);
+                if (rank) {
+                    player.rank = rank.rank;
+                }
+                else {
+                    player.rank = manualRank;
+                    manualRank++;
+                }
+            });
 
             if (roundData.calculated == 1) {
                 //TODO: Show new round popup
@@ -50,10 +64,10 @@ function loadData() {
                     matches.push(helpers.mapRoundMatch(match, allPlayers));
                 });
             }
-            //sort data2.general on firstName, then on name
-            data2.general.sort((a, b) => (a.firstName > b.firstName) ? 1 : (a.firstName === b.firstName) ? ((a.name > b.name) ? 1 : -1) : -1);
+            //sort allPlayers on firstName, then on name
+            allPlayers.sort((a, b) => (a.firstName > b.firstName) ? 1 : (a.firstName === b.firstName) ? ((a.name > b.name) ? 1 : -1) : -1);
 
-            data2.general.forEach((item, index) => {
+            allPlayers.forEach((item, index) => {
                 const player = allPlayers.find(player => player.id === item.id);
                 let isPresent = false;
                 //check if player is present
