@@ -30,7 +30,7 @@ class RoundRepository
      * Haal alle speeldagen van een seizoen op
      *
      * @param  int $seasonId
-     * @return array speeldagen
+     * @return ?array speeldagen
      */
     public function getAll($seasonId = null)
     {
@@ -131,7 +131,7 @@ class RoundRepository
      */
     public function getBySeasonAndNumber($seasonId, $number)
     {
-        $stmt = $this->db->prepare($this->roundQuery . " WHERE ISP.seizoen_id = :seasonId and ISP.speeldagnummer = :roundNumber;");
+        $stmt = $this->db->prepare($this->roundQuery . " WHERE RND.seasonId = :seasonId and RND.number = :roundNumber;");
         $stmt->execute(array(':seasonId' => $seasonId, ':roundNumber' => $number));
         return $stmt->fetch();
     }
@@ -175,7 +175,7 @@ class RoundRepository
         if (empty($id)) {
             return null;
         }
-        $stmt = $this->db->prepare("SELECT RND.id AS roundId, RND.number AS roundNumber, ROUND(RND.averageAbsent,2) AS averageAbsent, 
+        $stmt = $this->db->prepare("SELECT RND.id, RND.number, ROUND(RND.averageAbsent,2) AS averageAbsent, 
             RND.date, RND.calculated, set1Home,set1Away, set2Home, set2Away, set3Home, set3Away,
             PL1H.Id as player1Id, PL1H.firstName AS player1FirstName, PL1H.name AS player1Name,
             PL2H.Id as player2Id, PL2H.firstName AS player2FirstName, PL2H.name AS player2Name,

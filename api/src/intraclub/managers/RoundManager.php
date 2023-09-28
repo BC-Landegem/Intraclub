@@ -62,8 +62,8 @@ class RoundManager
         $response = array();
         if (!empty($roundInformation)) {
             $response = array(
-                "id" => $roundInformation[0]["roundId"],
-                "number" => $roundInformation[0]["roundNumber"],
+                "id" => $roundInformation[0]["id"],
+                "number" => $roundInformation[0]["number"],
                 "averageAbsent" => $roundInformation[0]["averageAbsent"],
                 "date" => $roundInformation[0]["date"]
             );

@@ -17,7 +17,7 @@ class Utilities
     {
         return array(
             "id" => $playerStats["id"],
-            "firstName" => $playerStats["firstname"],
+            "firstName" => $playerStats["firstName"],
             "name" => $playerStats["name"],
             "statistics" => array(
                 "points" => array(

@@ -65,8 +65,8 @@ class RankingManager
 
         $previousRanking = array();
 
-        if ($round["roundNumber"] > 1) {
-            $previousRound = $this->roundRepository->getBySeasonAndNumber($seasonId, $round["roundNumber"] - 1);
+        if ($round["number"] > 1) {
+            $previousRound = $this->roundRepository->getBySeasonAndNumber($seasonId, $round["number"] - 1);
             $previousRanking = $this->rankingRepository->getRankingAfterRound($previousRound["id"]);
         }
         //Build the rankings
@@ -163,7 +163,7 @@ class RankingManager
      */
     private function filterWoman($player)
     {
-        return $player["Gender"] == "Woman";
+        return $player["gender"] == "Woman";
     }
     /**
      * Filter ranking op recreanten
@@ -173,7 +173,7 @@ class RankingManager
      */
     private function filterRecreant($player)
     {
-        return $player["PlaysCompetition"] == 0;
+        return $player["playsCompetition"] == 0;
     }
     /**
      * Filter ranking op veteranen
@@ -184,7 +184,7 @@ class RankingManager
      */
     private function filterVeteran($player)
     {
-        $birthDateString = $player["BirthDate"];
+        $birthDateString = $player["birthDate"];
         // convert to Date
         $birthDate = DateTime::createFromFormat("Y-m-d", $birthDateString);
         return $birthDate->diff(new DateTime())->y >= 45;
@@ -202,12 +202,12 @@ class RankingManager
     private function mapToRankingObject($index, $currentRanking, $previousRanking)
     {
         return array(
-            "id" => $currentRanking[$index]["Id"],
-            "name" => $currentRanking[$index]["Name"],
-            "firstName" => $currentRanking[$index]["FirstName"],
-            "average" => round($currentRanking[$index]["Average"], 2),
+            "id" => $currentRanking[$index]["id"],
+            "name" => $currentRanking[$index]["name"],
+            "firstName" => $currentRanking[$index]["firstName"],
+            "average" => round($currentRanking[$index]["average"], 2),
             "rank" => $index + 1,
-            "difference" => $this->findPreviousRanking($currentRanking[$index]["Id"], $index + 1, $previousRanking),
+            "difference" => $this->findPreviousRanking($currentRanking[$index]["id"], $index + 1, $previousRanking),
         );
     }
     /**

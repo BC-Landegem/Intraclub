@@ -28,13 +28,13 @@ class PlayerRepository
      * @var string
      */
     protected $playerWithSeasonInfoQuery = "
-    SELECT IPLAYER.id, IPLAYER.FirstName, IPLAYER.Name, IPLAYER.Member,
-        IPLAYER.Gender, IPLAYER.DoubleRanking,
-        ISPS.BasePoints, ISPS.SetsPlayed, ISPS.SetsWon, ISPS.PointsPlayed,
-        ISPS.PointsWon, ISPS.RoundsPresent
-        FROM Player IPLAYER
-        INNER JOIN PlayerSeasonStatistic ISPS ON ISPS.PlayerId = IPLAYER.Id
-        WHERE ISPS.SeasonId = ?";
+    SELECT IPLAYER.id, IPLAYER.firstName, IPLAYER.name, IPLAYER.member,
+        IPLAYER.gender, IPLAYER.doubleRanking,
+        ISPS.basePoints, ISPS.setsPlayed, ISPS.setsWon, ISPS.pointsPlayed,
+        ISPS.pointsWon, ISPS.roundsPresent
+        FROM `Player` IPLAYER
+        INNER JOIN PlayerSeasonStatistic ISPS ON ISPS.playerId = IPLAYER.id
+        WHERE ISPS.seasonId = ?";
 
     public function __construct($db)
     {
@@ -99,9 +99,9 @@ class PlayerRepository
         $query = $this->playerWithSeasonInfoQuery;
 
         if ($onlyMembers) {
-            $query = $query . " AND IPLAYER.Member = true";
+            $query = $query . " AND IPLAYER.member = true";
         }
-        $query = $query . " ORDER BY FirstName, Name";
+        $query = $query . " ORDER BY firstName, name";
 
         $stmt = $this->db->prepare($query);
         $stmt->execute([$seasonId]);
@@ -117,7 +117,7 @@ class PlayerRepository
      */
     public function getByIdWithSeasonInfo($id, $seasonId)
     {
-        $query = $this->playerWithSeasonInfoQuery . " AND IPLAYER.Id=?";
+        $query = $this->playerWithSeasonInfoQuery . " AND IPLAYER.id=?";
         $stmt = $this->db->prepare($query);
         $stmt->execute([$seasonId, $id]);
         return $stmt->fetch();

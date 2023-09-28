@@ -209,19 +209,19 @@ class SeasonManager
                     $seasonStats["roundsPresent"]++;
                     $seasonStats["matchesPlayed"]++;
                     switch ($player["id"]) {
-                        case $matchCurrentPlayer["Player1Id"]:
+                        case $matchCurrentPlayer["player1Id"]:
                             $resultArray[$roundNumber] = $matchStatistics["averagePlayer1"];
                             $seasonStats["setsWon"] += $matchStatistics["setsWonPlayer1"];
                             break;
-                        case $matchCurrentPlayer["Player2Id"]:
+                        case $matchCurrentPlayer["player2Id"]:
                             $resultArray[$roundNumber] = $matchStatistics["averagePlayer2"];
                             $seasonStats["setsWon"] += $matchStatistics["setsWonPlayer2"];
                             break;
-                        case $matchCurrentPlayer["Player3Id"]:
+                        case $matchCurrentPlayer["player3Id"]:
                             $resultArray[$roundNumber] = $matchStatistics["averagePlayer3"];
                             $seasonStats["setsWon"] += $matchStatistics["setsWonPlayer3"];
                             break;
-                        case $matchCurrentPlayer["Player4Id"]:
+                        case $matchCurrentPlayer["player4Id"]:
                             $resultArray[$roundNumber] = $matchStatistics["averagePlayer4"];
                             $seasonStats["setsWon"] += $matchStatistics["setsWonPlayer4"];
                             break;
