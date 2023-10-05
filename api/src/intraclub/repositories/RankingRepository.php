@@ -26,7 +26,7 @@ class RankingRepository
     {
         $query = "SELECT ROW_NUMBER() OVER (ORDER BY ISPS.BasePoints DESC) AS rank,
             IP.id, IP.name, IP.firstName,
-            IP.gender, IP.birthDate, ISPS.BasePoints AS average, IP.doubleRanking
+            IP.gender, IP.birthDate, ISPS.BasePoints AS average, IP.doubleRanking, IP.birthDate, IP.playsCompetition
         FROM  PlayerSeasonStatistic ISPS
         INNER JOIN Player IP ON IP.id = ISPS.playerId
         WHERE ISPS.seasonId = ? AND IP.member = 1
@@ -46,7 +46,7 @@ class RankingRepository
     public function getRankingAfterRound($roundId)
     {
         $query = "SELECT ROW_NUMBER() OVER (ORDER BY ISPS.average DESC) AS rank, IP.id AS id, IP.name, IP.firstName, 
-            IP.gender,  IP.doubleRanking, ISPS.average
+            IP.gender,  IP.doubleRanking, ISPS.average, IP.birthDate, IP.playsCompetition
         FROM  PlayerRoundStatistic ISPS
         INNER JOIN `Player` IP ON IP.id = ISPS.playerId
         WHERE ISPS.roundId = ? AND IP.member = 1
@@ -66,11 +66,11 @@ class RankingRepository
     public function getRankingHistoryByPlayerAndSeason($playerId, $seasonId)
     {
         $query = "SELECT * FROM (
-                    SELECT ROW_NUMBER() OVER (PARTITION BY ISPS.speeldag_id ORDER BY ISPS.gemiddelde DESC) AS rank, 
-                    ISPS.speler_id AS id, ISPS.gemiddelde AS average, ISPS.speeldag_id, ISPEEL.speeldagnummer, ISPEEL.datum 
-                    FROM intra_spelerperspeeldag ISPS 
-                    INNER JOIN intra_speeldagen ISPEEL ON ISPEEL.id = ISPS.speeldag_id 
-                    WHERE ISPEEL.seizoen_id = ? 
+                    SELECT ROW_NUMBER() OVER (PARTITION BY ISPS.roundId ORDER BY ISPS.average DESC) AS rank, 
+                    ISPS.playerId AS id, ISPS.average, ISPS.roundId, ISPEEL.number, ISPEEL.date 
+                    FROM `PlayerRoundStatistic` ISPS 
+                    INNER JOIN `Round` ISPEEL ON ISPEEL.id = ISPS.roundId 
+                    WHERE ISPEEL.seasonId = ? 
                     ORDER BY ISPEEL.Id, rank ) AS FullRanking 
                     WHERE id = ?";
         $stmt = $this->db->prepare($query);

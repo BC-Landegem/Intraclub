@@ -31,8 +31,6 @@ class Utilities
                     "total" => intval($playerStats["setsPlayed"])
                 ),
                 "matches" => array(
-                    "won" => intval($playerStats["matchesWon"]),
-                    "lost" => $playerStats["matchesPlayed"] - $playerStats["matchesWon"],
                     "total" => intval($playerStats["matchesPlayed"])
                 ),
                 "rounds" => array(

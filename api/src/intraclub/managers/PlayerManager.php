@@ -136,8 +136,8 @@ class PlayerManager
         if (!empty($rankingHistory)) {
             for ($index = 0; $index < count($rankingHistory); $index++) {
                 $rankingObject = array(
-                    "id" => $rankingHistory[$index]["speeldag_id"],
-                    "number" => intval($rankingHistory[$index]["speeldagnummer"]),
+                    "id" => $rankingHistory[$index]["roundId"],
+                    "number" => intval($rankingHistory[$index]["number"]),
                     "average" => round($rankingHistory[$index]["average"], 2),
                     "rank" => intval($rankingHistory[$index]["rank"])
                 );

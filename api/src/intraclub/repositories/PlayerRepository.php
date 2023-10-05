@@ -31,7 +31,7 @@ class PlayerRepository
     SELECT IPLAYER.id, IPLAYER.firstName, IPLAYER.name, IPLAYER.member,
         IPLAYER.gender, IPLAYER.doubleRanking,
         ISPS.basePoints, ISPS.setsPlayed, ISPS.setsWon, ISPS.pointsPlayed,
-        ISPS.pointsWon, ISPS.roundsPresent
+        ISPS.pointsWon, ISPS.roundsPresent, ISPS.matchesPlayed
         FROM `Player` IPLAYER
         INNER JOIN PlayerSeasonStatistic ISPS ON ISPS.playerId = IPLAYER.id
         WHERE ISPS.seasonId = ?";

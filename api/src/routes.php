@@ -315,12 +315,39 @@ return function (App $app) {
         return $response->withJson($data);
     });
 
+    $app->get('/players/{id}', function (Request $request, Response $response, array $args) {
+        $id = $args['id'];
+        $playerManager = new PlayerManager($this->db);
+        $queryParams = $request->getQueryParams();
+        $seasonId = $queryParams["seasonId"];
+        $data = $playerManager->getByIdWithSeasonInfo($id, $seasonId);
+        return $response->withJson($data);
+    });
+
     $app->get('/rounds/latest', function (Request $request, Response $response) {
         $roundManager = new RoundManager($this->db);
         $data = $roundManager->getLast();
         return $response->withJson($data);
     });
+    $app->get('/rounds', function (Request $request, Response $response) {
+        $roundManager = new RoundManager($this->db);
+        $queryParams = $request->getQueryParams();
+        $seasonId = $queryParams["seasonId"];
 
+        $data = $roundManager->getAll($seasonId);
+        return $response->withJson($data);
+    });
+
+    $app->get('/rounds/{id}', function (Request $request, Response $response, array $args) {
+        $roundManager = new RoundManager($this->db);
+        $data = $roundManager->getByIdWithMatches($args['id']);
+        return $response->withJson($data);
+    });
+    $app->get('/rounds/{id}/matches', function (Request $request, Response $response, array $args) {
+        $matchManager = new MatchManager($this->db);
+        $data = $matchManager->getAllByRoundId($args['id']);
+        return $response->withJson($data);
+    });
 
 
     // Region rankings
