@@ -168,7 +168,6 @@ class SeasonManager
             $roundNumber = 1;
 
             $seasonStats = array(
-                "setsPlayed" => 0,
                 "setsWon" => 0,
                 "roundsPresent" => 0,
                 "matchesPlayed" => 0,
@@ -208,22 +207,27 @@ class SeasonManager
 
                     $seasonStats["roundsPresent"]++;
                     $seasonStats["matchesPlayed"]++;
+                    $seasonStats["pointsPlayed"] += $matchStatistics["totalPoints"];
                     switch ($player["id"]) {
                         case $matchCurrentPlayer["player1Id"]:
                             $resultArray[$roundNumber] = $matchStatistics["averagePlayer1"];
                             $seasonStats["setsWon"] += $matchStatistics["setsWonPlayer1"];
+                            $seasonStats["pointsWon"] += $matchStatistics["pointsWonPlayer1"];
                             break;
                         case $matchCurrentPlayer["player2Id"]:
                             $resultArray[$roundNumber] = $matchStatistics["averagePlayer2"];
                             $seasonStats["setsWon"] += $matchStatistics["setsWonPlayer2"];
+                            $seasonStats["pointsWon"] += $matchStatistics["pointsWonPlayer2"];
                             break;
                         case $matchCurrentPlayer["player3Id"]:
                             $resultArray[$roundNumber] = $matchStatistics["averagePlayer3"];
                             $seasonStats["setsWon"] += $matchStatistics["setsWonPlayer3"];
+                            $seasonStats["pointsWon"] += $matchStatistics["pointsWonPlayer3"];
                             break;
                         case $matchCurrentPlayer["player4Id"]:
                             $resultArray[$roundNumber] = $matchStatistics["averagePlayer4"];
                             $seasonStats["setsWon"] += $matchStatistics["setsWonPlayer4"];
+                            $seasonStats["pointsWon"] += $matchStatistics["pointsWonPlayer4"];
                             break;
                     }
                     //Volgende speeldag...
@@ -243,7 +247,7 @@ class SeasonManager
             foreach ($roundsOfCurrentSeason as $round) {
                 $sumOfAveragePerRound = 0;
                 $totalRounds = 0;
-                for ($j = 0; $j <= $round["roundNumber"]; $j++) {
+                for ($j = 0; $j <= $round["number"]; $j++) {
                     $sumOfAveragePerRound += $resultArray[$j];
                     $totalRounds++;
                 }
@@ -261,11 +265,12 @@ class SeasonManager
             $this->playerRepository->updateSeasonStatistic(
                 $currentSeasonId,
                 $player["id"],
-                $seasonStats["setsPlayed"],
+                3,
                 $seasonStats["setsWon"],
                 $seasonStats["pointsPlayed"],
                 $seasonStats["pointsWon"],
-                $seasonStats["roundsPresent"]
+                $seasonStats["roundsPresent"],
+                $seasonStats["matchesPlayed"]
             );
         }
 

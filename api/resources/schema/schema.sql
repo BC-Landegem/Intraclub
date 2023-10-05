@@ -100,6 +100,7 @@ CREATE TABLE `PlayerSeasonStatistic` (
 	`PointsPlayed` INT(11) NOT NULL DEFAULT '0',
 	`PointsWon` INT(11) NOT NULL DEFAULT '0',
 	`RoundsPresent` INT(11) NOT NULL DEFAULT '0',
+	`MatchesPlayed` INT(11) NOT NULL DEFAULT '0',
 	PRIMARY KEY (`Id`) USING BTREE,
 	INDEX `FK_SeasonPlayer_Season` (`SeasonId`) USING BTREE,
 	INDEX `FK_SeasonPlayer_Player` (`PlayerId`) USING BTREE,

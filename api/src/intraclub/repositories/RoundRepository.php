@@ -74,7 +74,7 @@ class RoundRepository
     public function updateAverageAbsent($id, $averageAbsent)
     {
 
-        $updateRoundstmt = $this->db->prepare("UPDATE ROUND
+        $updateRoundstmt = $this->db->prepare("UPDATE `Round`
         SET
             AverageAbsent = ?,
             Calculated = 1
@@ -168,7 +168,7 @@ class RoundRepository
      * Haal speeldag op, inclusief wedstrijden
      *
      * @param  int $id
-     * @return array speeldag met wedstrijden
+     * @return ?array speeldag met wedstrijden
      */
     public function getWithMatches($id)
     {

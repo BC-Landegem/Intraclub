@@ -33,16 +33,11 @@ const api = {
                 'Content-Type': 'application/json',
             }
         })
+
+            .then(api.handleErrorResponse)
             .then(response => {
-                if (response.status === 400) {
-                    return response.json().then(error => {
-                        // Handle the error response
-                        throw new Error(error);
-                    });
-                } else {
-                    // Process the successful response
-                    return response.json();
-                }
+                // Process the successful response
+                return response.json();
             })
             .then(data => {
                 onSuccess(data, match, button);
@@ -71,22 +66,54 @@ const api = {
                 'Content-Type': 'application/json',
             }
         })
-            .then(response => {
-                if (response.status === 400) {
-                    return response.json().then(error => {
-                        // Handle the error response
-                        throw new Error(error);
-                    });
-                } else {
-                    // Process the successful response
-                    onSuccess(set1Home, set1Away, set2Home, set2Away, set3Home, set3Away, match);
-                }
+            .then(api.handleErrorResponse)
+            .then(data => {
+                onSuccess(set1Home, set1Away, set2Home, set2Away, set3Home, set3Away, match);
+
             })
             .catch((error) => {
                 //show popup
-                showErrorModal([error.message]);
+                helpers.showErrorModal([error.message]);
             });
 
+    },
+    calculateRanking: function (onSuccess) {
+        //calculate ranking
+        // POST to /api/index.php/ranking
+        var url = "api/index.php/seasons/calculate";
+        fetch(url, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            }
+        })
+            .then(api.handleErrorResponse)
+            .then(data => {
+                onSuccess();
+            })
+            .catch((error) => {
+                //show popup
+                helpers.showErrorModal([error.message]);
+            });
+    },
+    handleErrorResponse: function (response) {
+        if (response.status === 500) {
+            // Handle the error response
+            throw new Error("Foutmelding op de server! Probeer opnieuw.");
+        }
+        else if (response.status === 400) {
+            return response.json().then(error => {
+                // Handle the error response
+                throw new Error(error);
+            });
+        }
+        else if (response.status === 401) {
+            throw new Error("Je bent niet ingelogd. Log eerst in op <a href='https://www.bclandegem.be'" +
+                "target='blank' >www.bclandegem.be</a> en probeer opnieuw.");
+        } else {
+            // Return the response if it's not an error
+            return response;
+        }
     }
 }
 

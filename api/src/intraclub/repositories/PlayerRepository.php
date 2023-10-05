@@ -212,7 +212,7 @@ class PlayerRepository
         $stmt->bindParam(':isVeteran', $isVeteranInteger, PDO::PARAM_INT);
         $stmt->bindParam(':id', $id, PDO::PARAM_INT);
 
-        return $stmt->execute();
+        $stmt->execute();
     }
 
     /**
@@ -235,7 +235,6 @@ class PlayerRepository
                 PointsPlayed = 0,
                 PointsWon = 0,
                 MatchesPlayed = 0,
-                MatchesWon = 0
                 ";
         $insertPlayerSeasonStmt = $this->db->prepare($insertPlayerSeasonQuery);
         $insertPlayerSeasonStmt->bindParam(':basePoints', $basePoints, PDO::PARAM_STR);
@@ -253,10 +252,19 @@ class PlayerRepository
      * @param  int $pointsPlayed
      * @param  int $pointsWon
      * @param  int $roundsPresent
+     * @param  int $matchesPlayed
      * @return void
      */
-    public function updateSeasonStatistic($seasonId, $playerId, $setsPlayed, $setsWon, $pointsPlayed, $pointsWon, $roundsPresent)
-    {
+    public function updateSeasonStatistic(
+        $seasonId,
+        $playerId,
+        $setsPlayed,
+        $setsWon,
+        $pointsPlayed,
+        $pointsWon,
+        $roundsPresent,
+        $matchesPlayed
+    ) {
 
         $updatePlayerSeasonStmt = $this->db->prepare("UPDATE PlayerSeasonStatistic
             SET
@@ -265,7 +273,6 @@ class PlayerRepository
                 PointsPlayed= :pointsPlayed,
                 PointsWon = :pointsWon,
                 MatchesPlayed = :matchesPlayed,
-                MatchesWon = :matchesWon,
                 RoundsPresent = :roundsPresent
 
             WHERE PlayerId = :playerId AND SeasonId = :seasonId");
@@ -275,7 +282,6 @@ class PlayerRepository
         $updatePlayerSeasonStmt->bindParam(':pointsPlayed', $pointsPlayed, PDO::PARAM_INT);
         $updatePlayerSeasonStmt->bindParam(':pointsWon', $pointsWon, PDO::PARAM_INT);
         $updatePlayerSeasonStmt->bindParam(':matchesPlayed', $matchesPlayed, PDO::PARAM_INT);
-        $updatePlayerSeasonStmt->bindParam(':matchesWon', $matchesWon, PDO::PARAM_INT);
         $updatePlayerSeasonStmt->bindParam(':playerId', $playerId, PDO::PARAM_INT);
         $updatePlayerSeasonStmt->bindParam(':seasonId', $seasonId, PDO::PARAM_INT);
         $updatePlayerSeasonStmt->bindParam(':roundsPresent', $roundsPresent, PDO::PARAM_INT);
@@ -298,7 +304,9 @@ class PlayerRepository
             SET
                 Average = :average,
                 PlayerId = :playerId,
-                RoundId = :roundId
+                RoundId = :roundId,
+                Present = 0,
+                DrawnOut = 0
             ON DUPLICATE KEY UPDATE
                 Average = :average");
 

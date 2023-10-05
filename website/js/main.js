@@ -10,10 +10,13 @@ let roundId = 0;
 const addResultModalHtml = document.getElementById('addResultModal');
 const addResultModal = new mdb.Modal(addResultModalHtml);
 
+
 loadData();
 
 document.getElementById('generateMatchesButton').addEventListener('click', generateMatches);
 document.getElementById('togglePlayerListButton').addEventListener('click', togglePlayerList);
+document.getElementById('calculateRankingButton').addEventListener('click', calculateRanking);
+
 
 function loadData() {
     const requestFetchAllPlayers = fetch('api/index.php/players');
@@ -285,6 +288,7 @@ function displayMatches(matches) {
     // show toggle button
     document.getElementById('togglePlayerListButton').style.display = '';
     document.getElementById('togglePlayerListButton').textContent = 'Toon spelerslijst';
+    document.getElementById('calculateRankingButton').style.display = '';
 }
 
 function generateMatchesHtml(matches) {
@@ -472,5 +476,14 @@ function togglePlayerList() {
         document.getElementById('togglePlayerListButton').textContent = 'Toon spelerslijst';
         document.getElementById('matchList').style.display = '';
     }
+}
+
+function calculateRanking() {
+    api.calculateRanking(onSuccessGenerateRanking);
+}
+
+function onSuccessGenerateRanking() {
+    //show success in infoModal
+    helpers.showInfoModal('De ranking is berekend!');
 }
 

@@ -31,9 +31,8 @@ if ($_SERVER['SERVER_NAME'] == "www.bclandegem.be") {
  * Check toegangsrechten
  * Joomla - laden framework & checken user
  */
-function checkAccessRights()
+function checkAccessRights(Response $response): bool
 {
-
     if ($_SERVER['SERVER_NAME'] == "www.bclandegem.be") {
 
         $joomla_app = JFactory::getApplication('site');
@@ -42,9 +41,10 @@ function checkAccessRights()
         $authorisedViewLevels = $user->getAuthorisedViewLevels();
         //5 = id intrclub access level
         if (!in_array(5, $authorisedViewLevels)) {
-            die("Onvoldoende rechten !");
+            return false;
         }
     }
+    return true;
 }
 
 return function (App $app) {
@@ -52,7 +52,9 @@ return function (App $app) {
     /* Creatie speler
      */
     $app->post('/players', function (Request $request, Response $response, array $args) {
-        //checkAccessRights();
+        if (!checkAccessRights($response)) {
+            return $response->withStatus(401);
+        }
         $playerManager = new PlayerManager($this->db);
         $playerValidator = new PlayerValidator($this->db);
 
@@ -93,8 +95,9 @@ return function (App $app) {
     }
     */
     $app->post('/seasons', function (Request $request, Response $response, array $args) {
-        //checkAccessRights();
-        $seasonManager = new SeasonManager($this->db);
+        if (!checkAccessRights($response)) {
+            return $response->withStatus(401);
+        }$seasonManager = new SeasonManager($this->db);
         $seasonValidator = new SeasonValidator($this->db);
 
         $postArr = $request->getParsedBody();
@@ -113,8 +116,9 @@ return function (App $app) {
     }
     */
     $app->post('/rounds', function (Request $request, Response $response, array $args) {
-        //checkAccessRights();
-        $roundManager = new RoundManager($this->db);
+        if (!checkAccessRights($response)) {
+            return $response->withStatus(401);
+        }$roundManager = new RoundManager($this->db);
         $roundValidator = new RoundValidator($this->db);
 
         $postArr = $request->getParsedBody();
@@ -251,7 +255,9 @@ return function (App $app) {
 
     //Bereken tussenstand van huidig seizoen
     $app->post('/seasons/calculate', function (Request $request, Response $response, array $args) {
-        checkAccessRights();
+        if (!checkAccessRights($response)) {
+            return $response->withStatus(401);
+        }
         $seasonManager = new SeasonManager($this->db);
         $seasonManager->calculateCurrentSeason();
         return $response;
@@ -268,7 +274,7 @@ return function (App $app) {
     }
     */
     $app->post('/players/{id}', function (Request $request, Response $response, array $args) {
-        checkAccessRights();
+        checkAccessRights($response);
         $id = $args['id'];
 
         $playerManager = new PlayerManager($this->db);

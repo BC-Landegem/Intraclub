@@ -67,6 +67,9 @@
         <button type="button" id="togglePlayerListButton" class="btn btn-tertiary me-3" style="display: none;">
           Toon spelerslijst
         </button>
+        <button type="button" id="calculateRankingButton" class="btn btn-tertiary me-3" style="display: none;">
+          Genereer tussenstand
+        </button>
       </div>
     </div>
     <!-- Container wrapper -->
@@ -83,6 +86,22 @@
       <div class="modal-content">
         <div class="modal-header">
           <h5 class="modal-title" id="errorModalLabel">Foutmelding</h5>
+          <button type="button" class="btn-close" data-mdb-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body"></div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-mdb-dismiss="modal">Sluit</button>
+        </div>
+      </div>
+    </div>
+  </div>
+  <!-- Info Modal -->
+  <div class="modal fade" id="infoModal" tabindex="-1" aria-labelledby="infoModalLabel" aria-hidden="true"
+    style="z-index: 9000;">
+    <div class="modal-dialog">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title" id="infoModalLabel">Info</h5>
           <button type="button" class="btn-close" data-mdb-dismiss="modal" aria-label="Close"></button>
         </div>
         <div class="modal-body"></div>
@@ -169,7 +188,7 @@
     </div>
     <!-- MDB -->
     <script type="text/javascript" src="js/mdb.min.js"></script>
-    <script type="module" src="js/main.js?v=20230928"></script>
+    <script type="module" src="js/main.js?v=20231005"></script>
     <!-- Custom scripts -->
     <script type="text/javascript">
       window.onunload = window.onbeforeunload = function () {

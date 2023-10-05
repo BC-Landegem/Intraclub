@@ -164,25 +164,38 @@ class Utilities
         }
 
         //Bereken totaal aantal punten
-        $totalPlayer1 = Utilities::trimSets($set1Home, $set1Away)
+        $totalPlayer1 = $set1Home + $set2Home + $set3Home;
+        $totalPlayer2 = $set1Home + $set2Away + $set3Away;
+        $totalPlayer3 = $set1Away + $set2Home + $set3Away;
+        $totalPlayer4 = $set1Away + $set2Away + $set3Home;
+
+        $totalTrimmedPlayer1 = Utilities::trimSets($set1Home, $set1Away)
             + Utilities::trimSets($set2Home, $set2Away) + Utilities::trimSets($set3Home, $set3Away);
-        $totalPlayer2 = Utilities::trimSets($set1Home, $set1Away)
+        $totalTrimmedPlayer2 = Utilities::trimSets($set1Home, $set1Away)
             + Utilities::trimSets($set2Away, $set2Home) + Utilities::trimSets($set3Away, $set3Home);
-        $totalPlayer3 = Utilities::trimSets($set1Away, $set1Home)
+        $totalTrimmedPlayer3 = Utilities::trimSets($set1Away, $set1Home)
             + Utilities::trimSets($set2Home, $set2Away) + Utilities::trimSets($set3Away, $set3Home);
-        $totalPlayer4 = Utilities::trimSets($set1Away, $set1Home)
+        $totalTrimmedPlayer4 = Utilities::trimSets($set1Away, $set1Home)
             + Utilities::trimSets($set2Away, $set2Home) + Utilities::trimSets($set3Home, $set3Away);
+
+        $totalPoints = $set1Home + $set1Away + $set2Home + $set2Away + $set3Home + $set3Away;
+
 
         return array(
             "setsWonPlayer1" => $setsWonPlayer1,
             "setsWonPlayer2" => $setsWonPlayer2,
             "setsWonPlayer3" => $setsWonPlayer3,
             "setsWonPlayer4" => $setsWonPlayer4,
-            "averagePlayer1" => $totalPlayer1 / 3,
-            "averagePlayer2" => $totalPlayer2 / 3,
-            "averagePlayer3" => $totalPlayer3 / 3,
-            "averagePlayer4" => $totalPlayer4 / 3,
-            "averageLosing" => $pointsLosingTeam / 3
+            "averagePlayer1" => $totalTrimmedPlayer1 / 3,
+            "averagePlayer2" => $totalTrimmedPlayer2 / 3,
+            "averagePlayer3" => $totalTrimmedPlayer3 / 3,
+            "averagePlayer4" => $totalTrimmedPlayer4 / 3,
+            "averageLosing" => $pointsLosingTeam / 3,
+            "pointsWonPlayer1" => $totalPlayer1,
+            "pointsWonPlayer2" => $totalPlayer2,
+            "pointsWonPlayer3" => $totalPlayer3,
+            "pointsWonPlayer4" => $totalPlayer4,
+            "totalPoints" => $totalPoints
         );
     }
 

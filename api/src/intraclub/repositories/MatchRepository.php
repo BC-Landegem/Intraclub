@@ -79,7 +79,7 @@ class MatchRepository
                     PL3.Id as player3Id, PL3.FirstName AS player3FirstName, PL3.Name AS player3Name,
                     PL4.Id as player4Id, PL4.FirstName AS player4FirstName, PL4.Name AS player4Name,
                     RND.Id as roundId, RND.Number AS roundNumber
-                    FROM Match MT 
+                    FROM `Match` MT 
                     INNER JOIN Round RND ON RND.id = MT.RoundId
                     INNER JOIN Player PL1 ON PL1.id =  MT.player1Id
                     INNER JOIN Player PL2 ON PL2.id =  MT.player2Id

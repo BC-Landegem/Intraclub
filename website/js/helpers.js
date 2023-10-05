@@ -68,11 +68,21 @@ const helpers = {
         errors.forEach(error => {
             //create p element and add error message
             const p = document.createElement('p');
-            p.textContent = error;
+            p.innerHTML = error;
             //add p element to modal
             errorModalHtml.querySelector('.modal-body').appendChild(p);
         });
         errorModal.show();
+    },
+    showInfoModal: function (message) {
+        const infoModalHtml = document.getElementById('infoModal');
+        const infoModal = new mdb.Modal(infoModalHtml);
+        infoModalHtml.querySelector('.modal-body').innerHTML = '';
+        const p = document.createElement('p');
+        p.textContent = message;
+        //add p element to modal
+        infoModalHtml.querySelector('.modal-body').appendChild(p);
+        infoModal.show();
     },
     getScoreInputValue: function (inputId) {
         const scoreValue = document.getElementById(inputId).value;
