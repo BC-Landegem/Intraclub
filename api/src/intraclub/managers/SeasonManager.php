@@ -161,7 +161,6 @@ class SeasonManager
         $allPlayers = $this->playerRepository->getAllWithSeasonInfo($currentSeasonId, true);
 
         foreach ($allPlayers as $player) {
-
             $resultArray = array();
             // basispunt als beginwaarde zetten
             $resultArray[0] = $player['basePoints'];

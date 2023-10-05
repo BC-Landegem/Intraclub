@@ -133,7 +133,7 @@ class Utilities
 
         $pointsLosingTeam = 0;
         //Bepaal wie welke set wint
-        if ($set1Home > $set2Away) {
+        if ($set1Home > $set1Away) {
             $setsWonPlayer1++;
             $setsWonPlayer2++;
             $pointsLosingTeam += Utilities::trimSets($set1Away, $set1Home);

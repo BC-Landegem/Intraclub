@@ -112,5 +112,30 @@ class RoundManager
 
         return $round;
     }
+    /**
+     * Haal laatste BEREKENDE ronde op van seizoen
+     *
+     * @param  mixed $seasonId
+     * @return ?array speeldag
+     */
+    public function getLastCalculated($seasonId = null)
+    {
+        if (empty($seasonId)) {
+            $seasonId = $this->seasonRepository->getCurrentSeasonId();
+        }
+        $round = $this->roundRepository->getLastCalculated($seasonId);
+        if (empty($round)) {
+            return null;
+        }
+        $matches = $this->matchRepository->getAllByRoundId($round["id"]);
+        $round["matches"] = array();
+        foreach ($matches as $match) {
+            $convertedMatch = Utilities::mapToMatchObject($match);
+            $round["matches"][] = $convertedMatch;
+        }
+        $round["availabilityData"] = $this->roundRepository->getAvailabilityData($round["id"]);
+
+        return $round;
+    }
 
 }

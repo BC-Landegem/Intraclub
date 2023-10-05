@@ -329,6 +329,11 @@ return function (App $app) {
         $data = $roundManager->getLast();
         return $response->withJson($data);
     });
+    $app->get('/rounds/latestCalculated', function (Request $request, Response $response) {
+        $roundManager = new RoundManager($this->db);
+        $data = $roundManager->getLastCalculated();
+        return $response->withJson($data);
+    });
     $app->get('/rounds', function (Request $request, Response $response) {
         $roundManager = new RoundManager($this->db);
         $queryParams = $request->getQueryParams();
