@@ -116,7 +116,7 @@ function loadData() {
                 pointsElement.appendChild(button);
                 const label = document.createElement('span');
                 label.classList.add('badge', isPresent ? 'badge-success' : 'badge-primary');
-                label.textContent = isPresent ? 'Is hier!' : 'Nog niet gezien';
+                label.textContent = isPresent ? 'Aangemeld!' : 'Nog niet aangemeld';
                 pointsElement.appendChild(label);
 
                 document.querySelector('.grid-container').appendChild(rankElement);
@@ -143,7 +143,7 @@ function addPlayerPresent(id) {
 
 function updatePresentButton(button, id) {
     var span = button.nextSibling;
-    span.textContent = 'Is hier!';
+    span.textContent = 'Aangemeld!';
     span.classList.remove('badge-primary');
     span.classList.add('badge-success');
 
@@ -163,7 +163,7 @@ function updatePresentButton(button, id) {
 }
 function updateAbsentButton(button, id) {
     var span = button.nextSibling;
-    span.textContent = 'Nog niet gezien';
+    span.textContent = 'Nog niet aangemeld';
     span.classList.remove('badge-success');
     span.classList.add('badge-primary');
     button.classList.remove('btn-success');
