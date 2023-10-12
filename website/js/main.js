@@ -1,5 +1,5 @@
-import { helpers } from './helpers.js';
-import { api } from './api.js';
+import { helpers } from './helpers.js?v=20231012';
+import { api } from './api.js?v=20231012';
 
 let presentPlayers = [];
 let rankingData = [];

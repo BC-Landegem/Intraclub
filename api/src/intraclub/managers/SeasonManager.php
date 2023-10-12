@@ -167,6 +167,7 @@ class SeasonManager
             $roundNumber = 1;
 
             $seasonStats = array(
+                "setsPlayed" => 0,
                 "setsWon" => 0,
                 "roundsPresent" => 0,
                 "matchesPlayed" => 0,
@@ -207,6 +208,7 @@ class SeasonManager
                     $seasonStats["roundsPresent"]++;
                     $seasonStats["matchesPlayed"]++;
                     $seasonStats["pointsPlayed"] += $matchStatistics["totalPoints"];
+                    $seasonStats["setsPlayed"] += 3;
                     switch ($player["id"]) {
                         case $matchCurrentPlayer["player1Id"]:
                             $resultArray[$roundNumber] = $matchStatistics["averagePlayer1"];
@@ -264,7 +266,7 @@ class SeasonManager
             $this->playerRepository->updateSeasonStatistic(
                 $currentSeasonId,
                 $player["id"],
-                3,
+                $seasonStats["setsPlayed"],
                 $seasonStats["setsWon"],
                 $seasonStats["pointsPlayed"],
                 $seasonStats["pointsWon"],

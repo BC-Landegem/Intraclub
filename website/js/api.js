@@ -1,4 +1,4 @@
-import { helpers } from "./helpers.js";
+import { helpers } from "./helpers.js?v=20231012";
 const api = {
     updateAvailabilityApi: function (roundId, playerId, present, drawnOut = false) {
         var url = "api/index.php/rounds/" + roundId + "/players/" + playerId;
