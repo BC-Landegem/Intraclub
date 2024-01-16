@@ -189,10 +189,10 @@ function removePlayerPresent(id) {
 function generateMatches() {
     // Sort presentPlayers by rank
     presentPlayers.sort((a, b) => (a.rank > b.rank) ? 1 : -1);
-    // Create two groups, which consist of 75% of the players
-    // Overlap between those two groups is 50%
-    const firstGroup = presentPlayers.slice(0, Math.floor(presentPlayers.length * 0.75));
-    const secondGroup = presentPlayers.slice(Math.floor(presentPlayers.length * 0.25), presentPlayers.length);
+    // Create two groups, which consist of 60% of the players
+    // Overlap between those two groups is 20%
+    const firstGroup = presentPlayers.slice(0, Math.floor(presentPlayers.length * 0.60));
+    const secondGroup = presentPlayers.slice(Math.floor(presentPlayers.length * 0.40), presentPlayers.length);
     // Create matches
     matches = [];
 
