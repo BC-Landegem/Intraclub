@@ -56,7 +56,6 @@ class SeasonManager
         $this->roundRepository = new RoundRepository($this->db);
         $this->matchRepository = new MatchRepository($this->db);
         $this->playerRepository = new PlayerRepository($this->db);
-
     }
 
     /**
@@ -100,7 +99,7 @@ class SeasonManager
         $reversedRanking = array_reverse($ranking["general"]);
         $basePoints = 19.000;
         foreach ($reversedRanking as $rankedPlayer) {
-            $this->playerRepository->createSeasonStatistic($newSeasonId, $rankedPlayer["Id"], $basePoints);
+            $this->playerRepository->createSeasonStatistic($newSeasonId, $rankedPlayer["id"], $basePoints);
             $basePoints += 0.0001;
         }
     }
@@ -261,7 +260,6 @@ class SeasonManager
                     $player["id"],
                     $averageRound
                 );
-
             }
             $this->playerRepository->updateSeasonStatistic(
                 $currentSeasonId,
@@ -274,8 +272,5 @@ class SeasonManager
                 $seasonStats["matchesPlayed"]
             );
         }
-
-
     }
-
 }

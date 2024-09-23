@@ -1,4 +1,5 @@
 <?php
+
 namespace intraclub\repositories;
 
 use PDO;
@@ -234,7 +235,7 @@ class PlayerRepository
                 SetsWon = 0,
                 PointsPlayed = 0,
                 PointsWon = 0,
-                MatchesPlayed = 0,
+                MatchesPlayed = 0
                 ";
         $insertPlayerSeasonStmt = $this->db->prepare($insertPlayerSeasonQuery);
         $insertPlayerSeasonStmt->bindParam(':basePoints', $basePoints, PDO::PARAM_STR);
@@ -338,5 +339,4 @@ class PlayerRepository
         $updatePlayerSeasonStmt->bindParam(':roundId', $roundId, PDO::PARAM_INT);
         $updatePlayerSeasonStmt->execute();
     }
-
 }
