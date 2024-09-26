@@ -28,14 +28,16 @@ const helpers = {
         if (player.playsCompetition == 0) {
             bonus += 5;
         }
-        if (player.doubleRanking > 10) {
-            bonus += 4;
-        } else if (player.doubleRanking > 8) {
-            bonus += 3;
-        } else if (player.doubleRanking > 6) {
-            bonus += 2;
-        } else if (player.doubleRanking > 4) {
-            bonus += 1;
+        else {
+            if (player.doubleRanking > 10) {
+                bonus += 4;
+            } else if (player.doubleRanking > 8) {
+                bonus += 3;
+            } else if (player.doubleRanking > 6) {
+                bonus += 2;
+            } else if (player.doubleRanking > 4) {
+                bonus += 1;
+            }
         }
         return bonus;
     },
