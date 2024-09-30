@@ -10,13 +10,29 @@ let roundId = 0;
 const addResultModalHtml = document.getElementById('addResultModal');
 const addResultModal = new mdb.Modal(addResultModalHtml);
 
+const addPlayerModalHtml = document.getElementById('addPlayerModal');
+const addPlayerModal = new mdb.Modal(addPlayerModalHtml);
 
 loadData();
+
+document.getElementById('addPlayerModal').addEventListener('show.bs.modal', function () {
+    // clear input fields
+    document.getElementById('addPlayer_playerFirstName').value = '';
+    document.getElementById('addPlayer_playerName').value = '';
+    document.getElementById('addPlayer_playerBirthdate').value = '';
+    document.getElementById('addPlayer_genderMale').checked = true;
+    document.getElementById('addPlayer_genderFemale').checked = false;
+    document.getElementById('addPlayer_playerCompetitor').checked = false;
+    document.getElementById('addPlayer_doubleRankingDiv').style.display = 'none';
+    document.getElementById('addPlayer_doubleRanking').value = '';
+});
 
 document.getElementById('generateMatchesButton').addEventListener('click', generateMatches);
 document.getElementById('togglePlayerListButton').addEventListener('click', togglePlayerList);
 document.getElementById('calculateRankingButton').addEventListener('click', calculateRanking);
+document.getElementById('addPlayerButton').addEventListener('click', createPlayer);
 
+document.getElementById('addPlayer_playerCompetitor').addEventListener('click', toggleRankingInput);
 
 function loadData() {
     const requestFetchAllPlayers = fetch('api/index.php/players');
@@ -85,7 +101,7 @@ function loadData() {
 
                 const rankElement = document.createElement('div');
                 rankElement.classList.add('grid-item');
-                rankElement.textContent = item.rank;
+                rankElement.textContent = "Ranking: " + item.rank;
 
                 const nameElement = document.createElement('div');
                 nameElement.classList.add('grid-item');
@@ -462,6 +478,16 @@ function displayPlayerDropdown(match, container, index) {
     container.appendChild(dropdownElement);
 }
 
+function toggleRankingInput() {
+    const rankingInput = document.getElementById('addPlayer_doubleRankingDiv');
+    const isCompetitor = document.getElementById('addPlayer_playerCompetitor').checked;
+    if (rankingInput.style.display === 'none' && isCompetitor) {
+        rankingInput.style.display = '';
+        //change button text
+    } else if (!isCompetitor) {
+        rankingInput.style.display = 'none';
+    }
+}
 
 function togglePlayerList() {
     const playerList = document.getElementById('playerList');
@@ -487,3 +513,20 @@ function onSuccessGenerateRanking() {
     helpers.showInfoModal('De ranking is berekend!');
 }
 
+function createPlayer() {
+    const firstName = document.getElementById('addPlayer_playerFirstName').value;
+    const name = document.getElementById('addPlayer_playerName').value;
+    const birthDate = document.getElementById('addPlayer_playerBirthdate').value;
+    const gender = document.getElementById('addPlayer_genderMale').checked ? "Man" : "Woman";
+    const playsCompetition = document.getElementById('addPlayer_playerCompetitor').checked;
+    const doubleRanking = playsCompetition ? document.getElementById('addPlayer_doubleRanking').value : 0;
+    const basePoints = 19;
+    api.createPlayer(firstName, name, gender, birthDate, doubleRanking, playsCompetition, basePoints, onSuccessAddPlayer);
+
+}
+
+function onSuccessAddPlayer() {
+    addPlayerModal.hide();
+    //show success in infoModal
+    helpers.showInfoModal('Speler toegevoegd! Herlaad de pagina om de speler te zien.');
+}

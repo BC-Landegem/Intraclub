@@ -96,6 +96,35 @@ const api = {
                 helpers.showErrorModal([error.message]);
             });
     },
+    createPlayer: function (firstName, name, gender, birthDate, doubleRanking, playsCompetition, basePoints, onSuccess) {
+        // create Player
+        var url = "api/index.php/players";
+        fetch(url, {
+            method: 'POST',
+            body: JSON.stringify({
+                firstName: firstName,
+                name: name,
+                gender: gender,
+                birthDate: birthDate,
+                doubleRanking: doubleRanking,
+                playsCompetition: playsCompetition,
+                basePoints: basePoints
+            }),
+            headers: {
+                'Content-Type': 'application/json',
+            }
+        })
+
+            .then(api.handleErrorResponse)
+            .then(data => {
+                onSuccess();
+            })
+            .catch((error) => {
+                //show popup
+                helpers.showErrorModal([error.message]);
+            });
+
+    },
     handleErrorResponse: function (response) {
         if (response.status === 500) {
             // Handle the error response

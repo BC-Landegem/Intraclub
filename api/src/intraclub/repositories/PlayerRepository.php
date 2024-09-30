@@ -160,7 +160,7 @@ class PlayerRepository
         $stmt = $this->db->prepare("INSERT INTO Player
             SET 
             FirstName = :firstName,
-            [Name] = :lastName,
+            `Name` = :lastName,
             Gender = :gender,
             BirthDate = :birthDate,
             DoubleRanking = :doubleRanking,
@@ -170,7 +170,7 @@ class PlayerRepository
         $stmt->bindParam(':firstName', $firstName, PDO::PARAM_STR);
         $stmt->bindParam(':lastName', $name, PDO::PARAM_STR);
         $stmt->bindParam(':gender', $gender, PDO::PARAM_STR);
-        $stmt->bindParam(':birthDate', $birthDate, PDO::PARAM_INT);
+        $stmt->bindParam(':birthDate', $birthDate, PDO::PARAM_STR);
         $stmt->bindParam(':doubleRanking', $doubleRanking, PDO::PARAM_STR);
         $stmt->bindParam(':playsCompetition', $playsCompetitionInteger, PDO::PARAM_INT);
 

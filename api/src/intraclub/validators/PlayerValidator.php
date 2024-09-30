@@ -1,4 +1,5 @@
 <?php
+
 namespace intraclub\validators;
 
 use DateTime;
@@ -33,7 +34,6 @@ class PlayerValidator
         $this->db = $db;
         $this->playerRepository = new PlayerRepository($db);
         $this->roundRepository = new RoundRepository($db);
-
     }
 
     /**
@@ -117,10 +117,10 @@ class PlayerValidator
     private function validatePlayer($firstName, $name, $gender, $birthDate, $doubleRanking, $playsCompetition, $errors)
     {
         if (!isset($firstName) || trim($firstName) === '') {
-            $errors[] = "Voornaam moet ingevuld zijn.";
+            $errors[] = "Voornaam moet ingevuld zijn";
         }
         if (!isset($name) || trim($name) === '') {
-            $errors[] = "Naam moet ingevuld zijn.";
+            $errors[] = "Naam moet ingevuld zijn";
         }
         if (!in_array($gender, $this->playerRepository->getPossibleGenders())) {
             $errors[] = "Onbekend geslacht";
