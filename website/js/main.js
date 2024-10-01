@@ -1,5 +1,5 @@
-import { helpers } from './helpers.js?v=20231012';
-import { api } from './api.js?v=20231012';
+import { helpers } from './helpers.js?v=20241001';
+import { api } from './api.js?v=20241001';
 
 let presentPlayers = [];
 let rankingData = [];
@@ -66,6 +66,7 @@ function loadData() {
             if (roundData.calculated == 1) {
                 //TODO: Show new round popup
             }
+            helpers.updateRoundSpan(roundData.number);
             if (roundData.availabilityData) {
                 roundData.availabilityData.forEach((playerPresentData) => {
                     if (playerPresentData.present == 1) {
@@ -396,8 +397,7 @@ function generateUpdateMatchHtml(button, match) {
     // set id of p to matchId
     p.id = 'match-' + match.id;
     if (match["set1Home"]) {
-        p.textContent = match["set1Home"] + '-' + match["set1Away"] + ' ' + match["set2Home"] + '-' + match["set2Away"] + ' '
-            + match["set3Home"] + '-' + match["set3Away"];
+        helpers.showMatchResult(p, match);
     }
     button.parentNode.insertBefore(p, button.nextSibling);
     //clear classList
@@ -437,7 +437,7 @@ function onSuccessUpdateMatch(set1Home, set1Away, set2Home, set2Away, set3Home, 
     match["set3Away"] = set3Away;
     // display result
     const p = document.getElementById('match-' + match["id"]);
-    p.textContent = set1Home + '-' + set1Away + ' ' + set2Home + '-' + set2Away + ' ' + set3Home + '-' + set3Away;
+    helpers.showMatchResult(p, match);
 }
 
 function displayPlayer(player, container) {

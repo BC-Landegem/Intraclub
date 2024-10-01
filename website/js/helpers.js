@@ -20,6 +20,16 @@ const helpers = {
         playerElement3.textContent = player.firstName + ' ' + player.name;
 
     },
+    showMatchResult(p, match) {
+        p.innerHTML = match["players"][0].firstName + ' & ' + match["players"][1].firstName + ' vs '
+            + match["players"][2].firstName + ' & ' + match["players"][3].firstName + ': ' + match["set1Home"] + '-' + match["set1Away"] + "<br/>"
+
+            + match["players"][0].firstName + ' & ' + match["players"][2].firstName + ' vs '
+            + match["players"][1].firstName + ' & ' + match["players"][3].firstName + ': ' + match["set2Home"] + '-' + match["set2Away"] + "<br/>"
+
+            + match["players"][0].firstName + ' & ' + match["players"][3].firstName + ' vs '
+            + match["players"][1].firstName + ' & ' + match["players"][2].firstName + ': ' + match["set3Home"] + '-' + match["set3Away"];
+    },
     calculateBonusPoints: function (player) {
         var bonus = 0;
         if (player.gender === 'Woman') {
@@ -61,6 +71,11 @@ const helpers = {
     updateAmountPlayersSpan: function (amountPlayers) {
         const span = document.getElementById('playersPresent');
         span.textContent = "Aantal spelers: " + amountPlayers;
+    },
+
+    updateRoundSpan: function (round) {
+        const span = document.getElementById('currentRound');
+        span.textContent = "Speeldag: " + round;
     },
 
     showErrorModal: function (errors) {
