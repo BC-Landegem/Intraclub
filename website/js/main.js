@@ -1,5 +1,5 @@
-import { helpers } from './helpers.js?v=20241001';
-import { api } from './api.js?v=20241001';
+import { helpers } from './helpers.js?v=20250206';
+import { api } from './api.js?v=20250206';
 
 let presentPlayers = [];
 let rankingData = [];
@@ -367,7 +367,7 @@ function generateMatchesHtml(matches) {
                 }, 0);
 
                 if (countNonEmptySpots < 4) {
-                    showErrorModal(['Gelieve alle spelers in te vullen.']);
+                    helpers.showErrorModal(['Gelieve alle spelers in te vullen.']);
                     return;
                 }
                 //if any of those players are in drawnOutPlayers, call api.updateAvailabilityApi with drawnOut = true

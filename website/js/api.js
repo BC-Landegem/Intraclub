@@ -1,4 +1,4 @@
-import { helpers } from "./helpers.js?v=20241001";
+import { helpers } from "./helpers.js?v=20250206";
 const api = {
     updateAvailabilityApi: function (roundId, playerId, present, drawnOut = false) {
         var url = "api/index.php/rounds/" + roundId + "/players/" + playerId;
@@ -12,7 +12,7 @@ const api = {
             .then(response => console.log('Success:', response))
             .catch((error) => {
                 //show popup
-                showErrorModal(['Er is iets misgelopen bij het updaten van de aanwezigheid van een speler.']);
+                helpers.showErrorModal(['Er is iets misgelopen. Controleer je internetverbinding en probeer opnieuw (best pagina herladen).']);
             });
     },
 
