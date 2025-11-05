@@ -1,0 +1,92 @@
+<style>
+    .input-small{
+        max-width: 75px;
+    }
+    #speeldag-toevoegen{
+        margin-bottom: 200px;
+    }
+</style>
+<form id="speeldag-toevoegen" method="post">
+    <div id="success" class="alert alert-success" style="display: none;"></div>
+    <div id="errors" class="alert alert-danger" style="display: none;"></div>
+    <legend>Voer gegevens in voor volgende speeldag</legend>
+    <p>
+        <label id="speeldag"> Speeldag: </label>
+        <div style="display: flex; justify-content: left;">
+            <input class="input input-small" type="number" size="2" maxlength="2" id="dag" value="">/
+            <input class="input input-small" type="number" size="2" maxlength="2" id="maand" value="">/ 
+            <input class="input input-small" type="number" size="4" maxlength="4" id="jaar" value="">
+        </div>
+
+    </p>
+    <input class="btn btn-danger" type="submit" value="Voeg speeldag toe"  id="VoegSpeeldagToe" />
+        
+</form>
+<script type="text/javascript">
+    var d = new Date();
+    document.getElementById("dag").value = d.getDate();
+    document.getElementById("maand").value = d.getMonth() +1;
+    document.getElementById("jaar").value = d.getFullYear();
+    fillRoundInfo();
+    jQuery("#VoegSpeeldagToe").click(function(e){
+        e.preventDefault();
+        jQuery.ajax({
+            type: "POST",
+            url: "/intraclub-api/index.php/rounds",
+            data: { 
+                date: document.getElementById("jaar").value + "-" + document.getElementById("maand").value + "-" + document.getElementById("dag").value
+            },
+            success: function(result) {
+                document.getElementById("errors").innerHTML = "";
+                document.getElementById("errors").style.display = "none"; 
+                document.getElementById("speeldag-toevoegen").reset();
+                fillRoundInfo();
+                document.getElementById("success").innerText = "Nieuwe speeldag werd aangemaakt!";
+                document.getElementById("success").style.display = "block"; 
+            },
+            error: function(result) {
+                document.getElementById("errors").innerHTML = "";
+                var list = document.createElement('ul');
+                for(var i=0; i < result.responseJSON.length; i++){
+                    var li = document.createElement('li');
+                    li.textContent = result.responseJSON[i];
+                    list.appendChild(li);
+                }
+                document.getElementById("errors").appendChild(list);
+                document.getElementById("errors").style.display = "block"; 
+            }
+        });
+        
+    });
+
+    function fillRoundInfo(){
+        var requestRounds = new XMLHttpRequest();
+        requestRounds.open("GET", "/intraclub-api/index.php/rounds/latest", true);
+    
+        requestRounds.onload = function () {
+        if (this.status >= 200 && this.status < 400) {
+            // Success!
+            var data = JSON.parse(this.response);
+            if(data === false){
+                data = 0;
+            }
+            else{
+                data = parseInt(data.roundNumber);
+            }
+            var newNumber = data + 1;
+            document.getElementById("speeldag").innerText = "Speeldag " + newNumber;
+        } else {
+            // We reached our target server, but it returned an error
+            document.getElementById("errors").innerText = "Ronde kon niet opgehaald worden";
+            document.getElementById("errors").style.display = "block"; 
+        }
+        };
+    
+        requestRounds.onerror = function () {
+        // There was a connection error of some sort
+            document.getElementById("errors").innerText = "Ronde kon niet opgehaald worden";
+            document.getElementById("errors").style.display = "block"; 
+        };
+        requestRounds.send();
+    } 
+</script>

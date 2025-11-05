@@ -1,0 +1,362 @@
+<style type="text/css">
+  .highlighted {
+    background-color: #ebebeb;
+  }
+  #speler-intro {
+    display: flex;
+    justify-content: space-between;
+    color: #666;
+    padding-bottom: 25px;
+  }
+  #speler-naam {
+    font-size: 20px;
+  }
+  #speler-voornaam,
+  #huidigeRanking {
+    font-size: 30px;
+  }
+
+  #wedstrijdenSpeler tr {
+    border-bottom: 1px solid #eb0000;
+  }
+  #wedstrijdenSpeler tr:last-child {
+    border-bottom: 0px;
+  }
+
+  #wedstrijdenSpeler td {
+    padding: 0.75rem;
+    vertical-align: top;
+  }
+  .match-thuis {
+    text-align: right;
+  }
+  .match-uit {
+    text-align: left;
+  }
+  #wedstrijdenTitel {
+    display: none;
+    justify-content: center;
+    color: #666;
+    font-size: 32px;
+  }
+  #wedstrijdenSpelerDiv {
+    display: none;
+    justify-content: center;
+    overflow-x: auto;
+  }
+</style>
+<div id="spelerInformatie" style="margin: 5px 5px;">
+  <div id="speler-intro">
+    <div class="speler-hero-naam">
+      <div id="speler-voornaam"></div>
+      <div id="speler-naam"></div>
+    </div>
+    <div>
+      <div id="huidigeRanking"></div>
+      <div id="hoogsteRankingOoit"></div>
+    </div>
+  </div>
+
+  <div id="chartsRow" style="display: flex; flex-wrap: wrap; justify-content: space-evenly;">
+    <div id="chartAanwezig" style="max-width: 300px;"></div>
+    <div id="chartMatchen" style="max-width: 300px;"></div>
+    <div id="chartSets" style="max-width: 300px;"></div>
+  </div>
+  <div id="rankingHistory"></div>
+  <div id="wedstrijdenTitel">Wedstrijden</div>
+  <div id="wedstrijdenSpelerDiv">
+    <table id="wedstrijdenSpeler">
+      <thead>
+        <tr>
+          <th>Speeldag</th>
+          <th></th>
+          <th></th>
+          <th></th>
+        </tr>
+      </thead>
+    </table>
+  </div>
+</div>
+<script src="https://cdn.jsdelivr.net/npm/apexcharts"></script>
+<script>
+  const urlParams = new URLSearchParams(window.location.search);
+  const spelerId = urlParams.get("spelerId");
+  var request = new XMLHttpRequest();
+  request.open("GET", "/intraclub-api/index.php/players/" + spelerId, true);
+
+  request.onload = function () {
+    if (this.status >= 200 && this.status < 400) {
+      // Success!
+      var data = JSON.parse(this.response);
+      if (data.id) {
+        document.getElementById("speler-voornaam").innerText = data.firstName;
+        document.getElementById("speler-naam").innerText = data.name;
+        document.title = "BC Landegem - " + data.firstName + " " + data.name;
+        const [huidigeRanking] = data.statistics.rankingHistory.slice(-1);
+        if (huidigeRanking) {
+          document.getElementById("huidigeRanking").innerText = "Ranking: " + huidigeRanking.rank;
+          const hoogsteRankschikking = Math.min.apply(
+            Math,
+            data.statistics.rankingHistory.map(function (o) {
+              return o.rank;
+            })
+          );
+          const laatsteSpeeldagMetHoogsteRankschikking = data.statistics.rankingHistory
+            .slice()
+            .reverse()
+            .find((rankHis) => rankHis.rank === hoogsteRankschikking);
+          document.getElementById("hoogsteRankingOoit").innerText =
+            "Beste : " +
+            hoogsteRankschikking +
+            " (op speeldag " +
+            laatsteSpeeldagMetHoogsteRankschikking.number +
+            ")";
+        }
+
+        const aanwezigPercentage = berekenPercentage(
+          data.statistics.rounds.present,
+          data.statistics.rankingHistory.length
+        );
+        var chartAanwezig = basicChart;
+        chartAanwezig.series = [aanwezigPercentage];
+        chartAanwezig.labels = ["Aanwezig"];
+        new ApexCharts(document.querySelector("#chartAanwezig"), chartAanwezig).render();
+        const winstmatchPercentage = berekenPercentage(
+          data.statistics.matches.won,
+          data.statistics.matches.total
+        );
+
+        var chartMatchen = basicChart;
+        chartMatchen.series = [winstmatchPercentage];
+        chartMatchen.labels = ["Gewonnen"];
+        new ApexCharts(document.querySelector("#chartMatchen"), chartMatchen).render();
+
+        const winstsetPercentage = berekenPercentage(
+          data.statistics.sets.won,
+          data.statistics.sets.total
+        );
+        var chartSets = basicChart;
+        chartSets.series = [winstsetPercentage];
+        chartSets.labels = ["Sets"];
+        new ApexCharts(document.querySelector("#chartSets"), chartSets).render();
+        rankingHistory.series[0].data = data.statistics.rankingHistory.map((rh) => rh.rank);
+        rankingHistory.xaxis.categories = data.statistics.rankingHistory.map((rh) =>
+          rh.number.toString()
+        );
+        new ApexCharts(document.querySelector("#rankingHistory"), rankingHistory).render();
+        document.getElementById("wedstrijdenTitel").style.display = "flex";
+        document.getElementById("wedstrijdenSpelerDiv").style.display = "flex";
+        genereerMatchTabel(
+          document.querySelector("#wedstrijdenSpeler"),
+          data.matches,
+          data.statistics.rankingHistory,
+          data.id
+        );
+      } else {
+        // We reached our target server, but it returned an error
+        document.getElementById("spelerInformatie").innerText = "Woeps, er ging iets mis!";
+      }
+    }
+  };
+
+  request.onerror = function () {
+    // There was a connection error of some sort
+    document.getElementById("spelerInformatie").innerText =
+      "De tussenstand kon niet geladen worden";
+  };
+  request.send();
+  var basicChart = {
+    colors: ["#eb0000"],
+    chart: {
+      type: "radialBar",
+      offsetY: -20,
+      sparkline: {
+        enabled: true,
+      },
+    },
+    plotOptions: {
+      radialBar: {
+        startAngle: -90,
+        endAngle: 90,
+        track: {
+          background: "#e7e7e7",
+          strokeWidth: "97%",
+          margin: 5, // margin is in pixels
+          dropShadow: {
+            enabled: true,
+            top: 2,
+            left: 0,
+            opacity: 1,
+            blur: 2,
+          },
+        },
+        dataLabels: {
+          name: {
+            offsetY: -25,
+            show: true,
+          },
+          value: {
+            offsetY: -16,
+            fontSize: "22px",
+          },
+        },
+      },
+    },
+    grid: {
+      padding: {
+        top: -10,
+        bottom: 20,
+      },
+    },
+    fill: {
+      type: "gradient",
+      gradient: {
+        shade: "dark",
+        type: "horizontal",
+        gradientToColors: ["yellow"],
+        stops: [0, 100],
+      },
+    },
+  };
+  var rankingHistory = {
+    series: [
+      {
+        name: "Ranking",
+        data: [],
+      },
+    ],
+    colors: ["#eb0000"],
+    chart: {
+      height: 350,
+      type: "line",
+      zoom: {
+        enabled: false,
+      },
+      toolbar: {
+        show: false,
+      },
+    },
+    markers: {
+      size: 4,
+    },
+    dataLabels: {
+      enabled: false,
+    },
+    stroke: {
+      curve: "straight",
+    },
+    title: {
+      text: "Klassement geschiedenis",
+      align: "left",
+      style: {
+        fontSize: "16px",
+        color: "#666",
+      },
+    },
+    grid: {
+      row: {
+        colors: ["#f3f3f3", "transparent"], // takes an array which will be repeated on columns
+        opacity: 0.5,
+      },
+    },
+    xaxis: {
+      categories: [],
+      title: {
+        text: "Speeldag",
+        style: {
+          fontSize: "16px",
+          color: "#666",
+        },
+      },
+    },
+    yaxis: {
+      reversed: true,
+      labels: {
+        formatter: function (val, index) {
+          return val.toFixed(0);
+        },
+      },
+    },
+    tooltip: {
+      x: {
+        show: true,
+        formatter: function (val) {
+          return "Speeldag " + val;
+        },
+      },
+    },
+  };
+
+  function genereerMatchTabel(table, data, rankingHistory, playerId) {
+    for (let element of data) {
+      let row = table.insertRow();
+      insertCell(row, element.round.number, "speeldag");
+      insertCell(
+        row,
+        bouwVolledigeNaam(element.home.firstPlayer, playerId).concat(
+          bouwVolledigeNaam(element.home.secondPlayer, playerId)
+        ),
+        "match-thuis"
+      );
+      insertCell(
+        row,
+        bouwVolledigeNaam(element.away.firstPlayer, playerId) +
+          bouwVolledigeNaam(element.away.secondPlayer, playerId),
+        "match-uit"
+      );
+
+      var setRow =
+        "<span class='score'> <span>" +
+        bouwSet(element.firstSet) +
+        "</span> <span>" +
+        bouwSet(element.secondSet) +
+        "</span>";
+      if (element.thirdSet.played) {
+        setRow = setRow + " <span>" + bouwSet(element.thirdSet) + "</span>";
+      }
+      setRow = setRow + "</span>";
+      insertCell(row, setRow, "set");
+      var overeenkomstigeRankingHistory = haalRankingGeschiedenisOp(
+        element.round.id,
+        rankingHistory
+      );
+      //insertCell(row, overeenkomstigeRankingHistory.rank, "rank");
+    }
+  }
+  function haalRankingGeschiedenisOp(rondeId, rankingHistory) {
+    return rankingHistory.find((rh) => rh.id == rondeId);
+  }
+  function bouwVolledigeNaam(player, huidigePlayerId) {
+    var spelerLink = "<div";
+    if (player.id == huidigePlayerId) {
+      spelerLink = spelerLink + " class='highlighted'";
+    }
+    spelerLink =
+      spelerLink +
+      "><a href='/intraclub/speler?spelerId=" +
+      player.id +
+      "'>" +
+      player.firstName +
+      " " +
+      player.name +
+      "</a></div>";
+    return spelerLink;
+  }
+  function bouwSet(set) {
+    return set.home + "-" + set.away;
+  }
+  function insertCell(row, cellText, className) {
+    let cell = row.insertCell();
+    cell.className = className;
+    cell.innerHTML = cellText;
+  }
+  function berekenPercentage(amount, total) {
+    if (isNaN(amount) || isNaN(total)) {
+      return 0;
+    } else if (total == 0) {
+      return 0;
+    } else {
+      return ((amount / total) * 100).toFixed(0);
+    }
+  }
+</script>

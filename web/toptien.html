@@ -1,0 +1,73 @@
+<style type="text/css">
+  .fullName a {
+    text-decoration: none;
+  }
+  .fullName a:hover,
+  .fullName a:focus {
+    text-decoration: underline;
+  }
+</style>
+
+<table id="intratop10">
+  &nbsp;
+</table>
+<div style="margin-top: 10px;" class="right-bottomlink">
+  <em class="fa fa-arrow-right fa-lg" style="margin-right: 10px;"></em
+  ><a href="/intraclub">Volledige standen en uitslagen</a>
+</div>
+
+<script type="text/javascript">
+  var request = new XMLHttpRequest();
+  request.open("GET", "/intraclub-api/index.php/rankings/general?$top=10", true);
+
+  request.onload = function () {
+    if (this.status >= 200 && this.status < 400) {
+      // Success!
+      var data = JSON.parse(this.response);
+      var table = document.getElementById("intratop10");
+      generateTable(table, data.general);
+    } else {
+      // We reached our target server, but it returned an error
+      document.getElementById("intratop10").innerText = "De tussenstand kon niet geladen worden";
+    }
+  };
+
+  request.onerror = function () {
+    // There was a connection error of some sort
+    document.getElementById("intratop10").innerText = "De tussenstand kon niet geladen worden";
+  };
+  request.send();
+  function generateTable(table, data) {
+    for (let element of data) {
+      let row = table.insertRow();
+      insertCell(row, element.rank, "rank");
+      insertCell(row, formatDifference(element.difference), "difference");
+      insertCell(
+        row,
+        "<a href='/intraclub/speler?spelerId=" +
+          element.id +
+          "'>" +
+          element.firstName +
+          " " +
+          element.name +
+          "</a>",
+        "fullName"
+      );
+      insertCell(row, element.average, "average");
+    }
+  }
+  function insertCell(row, cellText, className) {
+    let cell = row.insertCell();
+    cell.className = className;
+    cell.innerHTML = cellText;
+  }
+  function formatDifference(difference) {
+    if (difference > 0) {
+      return "+" + difference;
+    } else if (difference === 0) {
+      return "-";
+    } else {
+      return "- " + Math.abs(difference);
+    }
+  }
+</script>

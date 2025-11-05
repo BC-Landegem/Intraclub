@@ -1,0 +1,56 @@
+<style>
+    .input-small{
+        max-width: 75px;
+    }
+    #seizoen-toevoegen{
+        margin-bottom: 200px;
+    }
+</style>
+<form id="seizoen-toevoegen" method="post">
+    <div id="success" class="alert alert-success" style="display: none;"></div>
+    <div id="errors" class="alert alert-danger" style="display: none;"></div>
+    <legend>Voer gegevens in voor het volgende seizoen</legend>
+    <p>
+        <label class='field'> Seizoen: </label>
+        <div style="display: flex; justify-content: left;">
+            <input class="input-small" type="text" id="seizoen1" name="seizoen1" maxlength="4" size="4"/> - 
+            <input class="input-small"type="text" id="seizoen2" name="seizoen2" maxlength="4" size="4"/>
+        </div>
+
+    </p>
+    <input class="btn btn-danger" type="submit" value="Start nieuw seizoen!"  id="VoegSeizoenToe" />
+        
+</form>
+<script type="text/javascript">
+    jQuery("#VoegSeizoenToe").click(function(e){
+        e.preventDefault();
+        var r = confirm('Bent u zeker dat u het seizoen ' + document.getElementById('seizoen1').value + '-' + document.getElementById('seizoen2').value + ' wilt toevoegen?');
+        if (r == true) {
+            jQuery.ajax({
+                type: "POST",
+                url: "/intraclub-api/index.php/seasons",
+                data: { 
+                    period: document.getElementById('seizoen1').value + ' - ' + document.getElementById('seizoen2').value
+                },
+                success: function(result) {
+                    document.getElementById("errors").innerHTML = "";
+                    document.getElementById("errors").style.display = "none"; 
+                    document.getElementById("seizoen-toevoegen").reset();
+                    document.getElementById("success").innerText = "Nieuw seizoen werd aangemaakt!";
+                    document.getElementById("success").style.display = "block"; 
+                },
+                error: function(result) {
+                    document.getElementById("errors").innerHTML = "";
+                    var list = document.createElement('ul');
+                    for(var i=0; i < result.responseJSON.length; i++){
+                        var li = document.createElement('li');
+                        li.textContent = result.responseJSON[i];
+                        list.appendChild(li);
+                    }
+                    document.getElementById("errors").appendChild(list);
+                    document.getElementById("errors").style.display = "block"; 
+                }
+            });
+        }
+    });
+</script>

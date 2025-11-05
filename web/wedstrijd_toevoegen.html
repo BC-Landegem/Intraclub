@@ -1,0 +1,313 @@
+<style type="text/css">
+    .ronde-container {
+        max-width: 250px;
+        padding: 2px 0 2px 5px;
+    }
+    .speler-container {
+        padding: 2px 0 2px 5px;
+    }
+    .speler-separator {
+        text-align: center;
+        width: 30px;
+    }
+    .set-separator {
+        padding-left: 25px;
+    }
+    #VoegWedstrijdToe{
+        margin: 10px 0 2px 5px; 
+    }
+    #wedstrijdenSpeeldagDiv {
+        display: none;
+        justify-content: center;
+        overflow-x: auto;
+
+    }
+    #wedstrijdenTitel {
+        display: none;
+        justify-content: center;
+        color: #666;
+        font-size: 32px;
+    }
+    #wedstrijdenSpeeldag tr {
+        border-bottom: 1px solid #eb0000;
+    }
+    #wedstrijdenSpeeldag tr:last-child {
+        border-bottom: 0px;
+    }
+
+    #wedstrijdenSpeeldag td {
+        padding: 0.75rem;
+        vertical-align: top;
+    }
+    .match-thuis {
+        text-align: right;
+    }
+    .match-uit {
+        text-align: left;
+    }
+</style>
+<h3 class="display-4" style="text-align: center;">Wedstrijd toevoegen</h3>
+<div class="wedstrijd-container">
+    <form id="wedstrijd-toevoegen" method="post">
+        <div id="errors" class="alert alert-danger" style="display: none;"></div>
+        <div class="ronde-container">
+            <select id="ronde"></select>
+        </div>
+
+        <table class=''>
+            <tr>
+                <td>
+                    <div class="speler-container">
+                        <select id="speler1"></select>
+                    </div>
+                    <div class="speler-container">
+                        <select id="speler2"></select>
+                    </div>
+                </td>
+                <td class="speler-separator">-</td>
+                <td>
+                    <div class="speler-container">
+                        <select id="speler3"></select>
+                    </div>
+                    <div class="speler-container">
+                        <select id="speler4"></select>
+                    </div>
+                </td>
+                <td class="set-separator">
+                    <input type='number' min='0' max='30' size='1' id="set1Home">
+                </td>
+                <td>-</td>
+                <td>
+                    <input type='number' min='0' max='30' size='1' id="set1Away" >
+                </td>
+                <td class="set-separator">
+                    <input type='number' min='0' max='30' size='1' id="set2Home">
+                </td>
+                <td>-</td>
+                <td>
+                    <input type='number' min='0' max='30' size='1' id="set2Away" >
+                </td>
+                <td class="set-separator">
+                    <input type='number' min='0' max='30' size='1' id="set3Home">
+                </td>
+                <td>-</td>
+                <td>
+                    <input type='number' min='0' max='30' size='1' id="set3Away" >
+                </td>
+            </tr>
+        </table>
+        <input class="btn btn-primary" type="submit" value="Voeg toe" id="VoegWedstrijdToe" name="VoegWedstrijdToe">
+    </form>
+</div>
+
+<div id="wedstrijdenTitel">Wedstrijden huidige speeldag</div>
+<div id="wedstrijdenSpeeldagDiv">
+  <table id="wedstrijdenSpeeldag">
+    <tr>
+      <th></th>
+      <th></th>
+      <th></th>
+    </tr>
+  </table>
+</div>
+
+<script type="text/javascript">
+    window.onload = function() {
+        document.getElementsByClassName("article-details")[0].style.display = "none";
+        document.getElementById("speler1").focus(); 
+    }
+    jQuery("#VoegWedstrijdToe").click(function(e) {
+        e.preventDefault();
+        jQuery.ajax({
+            type: "POST",
+            url: "/intraclub-api/index.php/matches",
+            data: { 
+                roundId: document.getElementById("ronde").value,
+                playerId1: document.getElementById("speler1").value,
+                playerId2: document.getElementById("speler2").value,
+                playerId3: document.getElementById("speler3").value,
+                playerId4: document.getElementById("speler4").value,
+                set1Home: document.getElementById("set1Home").value,
+                set1Away: document.getElementById("set1Away").value,
+                set2Home: document.getElementById("set2Home").value,
+                set2Away: document.getElementById("set2Away").value,
+                set3Home: document.getElementById("set3Home").value === "" ? 0 : document.getElementById("set3Home").value,
+                set3Away: document.getElementById("set3Away").value === "" ? 0 : document.getElementById("set3Away").value,
+            },
+            success: function(result) {
+                document.getElementById("errors").innerHTML = "";
+                document.getElementById("errors").style.display = "none"; 
+                document.getElementById("wedstrijd-toevoegen").reset();
+                document.getElementById("speler1").focus(); 
+                getMatches();
+            },
+            error: function(result) {
+                document.getElementById("errors").innerHTML = "";
+                var list = document.createElement('ul');
+                for(var i=0; i < result.responseJSON.length; i++){
+                    var li = document.createElement('li');
+                    li.textContent = result.responseJSON[i];
+                    list.appendChild(li);
+                }
+                document.getElementById("errors").appendChild(list);
+                document.getElementById("errors").style.display = "block"; 
+            }
+        });
+    });
+
+    jQuery( "#ronde" ).change(function() {
+        getMatches();
+    });
+    fillPlayerLists();
+    fillRoundList();    
+
+    function fillRoundList(){
+        var requestRounds = new XMLHttpRequest();
+        requestRounds.open("GET", "/intraclub-api/index.php/rounds", true);
+    
+        requestRounds.onload = function () {
+        if (this.status >= 200 && this.status < 400) {
+            // Success!
+            var data = JSON.parse(this.response);
+            var select1 = document.getElementById("ronde");
+
+            generateRoundList(select1, data.reverse());
+            getMatches();
+        } else {
+            // We reached our target server, but it returned an error
+            document.getElementById("errors").innerText = "Rondes konden niet opgehaald worden";
+            document.getElementById("errors").style.display = "block"; 
+        }
+        };
+    
+        requestRounds.onerror = function () {
+        // There was a connection error of some sort
+            document.getElementById("errors").innerText = "Rondes konden niet opgehaald worden";
+            document.getElementById("errors").style.display = "block"; 
+        };
+        requestRounds.send();
+    } 
+    function fillPlayerLists(){
+        var requestPlayers = new XMLHttpRequest();
+        requestPlayers.open("GET", "/intraclub-api/index.php/players", true);
+    
+        requestPlayers.onload = function () {
+        if (this.status >= 200 && this.status < 400) {
+            // Success!
+            var data = JSON.parse(this.response);
+            var select1 = document.getElementById("speler1");
+            var select2 = document.getElementById("speler2");
+            var select3 = document.getElementById("speler3");
+            var select4 = document.getElementById("speler4");
+
+            generateSelectListOfPlayers(select1, data);
+            generateSelectListOfPlayers(select2, data);
+            generateSelectListOfPlayers(select3, data);
+            generateSelectListOfPlayers(select4, data);
+        } else {
+            // We reached our target server, but it returned an error
+            document.getElementById("errors").innerText = "Spelers konden niet opgehaald worden";
+            document.getElementById("errors").style.display = "block"; 
+        }
+        };
+    
+        requestPlayers.onerror = function () {
+        // There was a connection error of some sort
+        document.getElementById("errors").innerText = "Spelers konden niet opgehaald worden";
+        document.getElementById("errors").style.display = "block"; 
+        };
+        requestPlayers.send();
+    }
+    function generateRoundList(selectElement, data){
+        for(var i = 0; i < data.length; i++){
+            var opt = document.createElement("option");
+            opt.appendChild( document.createTextNode("Speeldag " + data[i].roundNumber + " - " + data[i].date));
+            opt.value = data[i].id; 
+            selectElement.appendChild(opt); 
+        }
+        selectElement.value = data[0].id;
+    }
+    function generateSelectListOfPlayers(selectElement, data){
+        for(var i = 0; i < data.length; i++){
+            var opt = document.createElement("option");
+            opt.appendChild( document.createTextNode(data[i].firstname + " " + data[i].name));
+            opt.value = data[i].id; 
+            selectElement.appendChild(opt); 
+        }
+    }
+
+    function getMatches(){
+        var request = new XMLHttpRequest();
+        request.open("GET", "/intraclub-api/index.php/rounds/" + document.getElementById("ronde").value, true);
+
+        request.onload = function () {
+            if (this.status >= 200 && this.status < 400) {
+                // Success!
+                var data = JSON.parse(this.response);
+                if (data.id) {
+                    document.getElementById("wedstrijdenTitel").style.display = "flex";
+                    document.getElementById("wedstrijdenSpeeldagDiv").style.display = "flex";
+                    document.querySelector("#wedstrijdenSpeeldag").innerHTML = "";
+                    genereerMatchTabel(document.querySelector("#wedstrijdenSpeeldag"), data.matches.reverse());
+                } 
+            }
+        };
+
+        request.onerror = function () {
+            // There was a connection error of some sort
+            document.getElementById("speeldag-informatie").innerText = "De info kon niet geladen worden";
+        };
+        request.send();
+    }
+  function genereerMatchTabel(table, data) {
+    for (let element of data) {
+      let row = table.insertRow();
+      insertCell(
+        row,
+        bouwVolledigeNaam(element.home.firstPlayer).concat(
+          bouwVolledigeNaam(element.home.secondPlayer)
+        ),
+        "match-thuis"
+      );
+      insertCell(
+        row,
+        bouwVolledigeNaam(element.away.firstPlayer) + bouwVolledigeNaam(element.away.secondPlayer),
+        "match-uit"
+      );
+
+      var setRow =
+        "<span class='score'> <span>" +
+        bouwSet(element.firstSet) +
+        "</span> <span>" +
+        bouwSet(element.secondSet) +
+        "</span>";
+      if (element.thirdSet.played) {
+        setRow = setRow + " <span>" + bouwSet(element.thirdSet) + "</span>";
+      }
+      setRow = setRow + "</span>";
+      insertCell(row, setRow, "set");
+    }
+  }
+  function bouwVolledigeNaam(player) {
+    var spelerLink = "<div";
+    spelerLink =
+      spelerLink +
+      "><a href='/intraclub/speler?spelerId=" +
+      player.id +
+      "'>" +
+      player.firstName +
+      " " +
+      player.name +
+      "</a></div>";
+    return spelerLink;
+  }
+  function bouwSet(set) {
+    return set.home + "-" + set.away;
+  }
+  function insertCell(row, cellText, className) {
+    let cell = row.insertCell();
+    cell.className = className;
+    cell.innerHTML = cellText;
+  }
+
+</script>
