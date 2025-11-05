@@ -13,7 +13,10 @@ const addResultModal = new mdb.Modal(addResultModalHtml);
 const addPlayerModalHtml = document.getElementById('addPlayerModal');
 const addPlayerModal = new mdb.Modal(addPlayerModalHtml);
 
-loadData();
+
+document.addEventListener('DOMContentLoaded', function() {
+    loadData();    
+});
 
 document.getElementById('addPlayerModal').addEventListener('show.bs.modal', function () {
     // clear input fields
