@@ -386,4 +386,9 @@ return function (App $app) {
         $data = $rankingManager->get($items, false, false, false, true);
         return $response->withJson($data);
     });
+    $app->get('/seasons/latest/statistics', function (Request $request, Response $response, array $args) {
+        $seasonManager = new SeasonManager($this->db);
+        $data = $seasonManager->getStatistics();
+        return $response->withJson($data);
+    });
 };

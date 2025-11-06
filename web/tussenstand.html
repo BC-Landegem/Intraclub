@@ -144,67 +144,75 @@
           <th></th>
           <th class="clickable" onclick="sortTable(1)">Naam</th>
           <th class="clickable" onclick="sortTable(2)"># Aanwezig</th>
-          <th class="clickable" onclick="sortTable(3)">Winst</th>
+          <th class="clickable" onclick="sortTable(3)">Gewonnen sets</th>
         </tr>
       </thead>
     </table>
   </div>
 </div>
 <script type="text/javascript">
-  jQuery.getJSON("/intra-app/api/index.php/rounds/latestCalculated", function (data) {
-    if (data != false) {
-      document.getElementById("speeldag-info").innerHTML =
-        "<a href='/intraclub/speeldag?speeldagId=" +
-        data.id +
-        "'>" +
-        "Stand na speeldag " +
-        data.number +
-        " op " +
-        formatDate(data.date) +
-        "</a>";
-      document.getElementById("speeldag-info").style.display = "block";
-    }
-  });
-
-  jQuery.getJSON("/intra-app/api/index.php/rankings", function (data) {
-    generateRanking(data.general, data.seasonId, "tab-1");
-    generateRanking(data.women, data.seasonId, "tab-2");
-    generateRanking(data.recreants, data.seasonId, "tab-3");
-    generateRanking(data.veterans, data.seasonId, "tab-4");
-  });
-  jQuery.getJSON("/intra-app/api/index.php/rounds", function (data) {
-    trHtml = "";
-    jQuery.each(data.reverse(), function (i, item) {
-      trHtml +=
-        "<tr><td><a href='/intraclub/speeldag?speeldagId=" +
-        item.id +
-        "'>" +
-        item.number +
-        "</a></td><td><a href='/intraclub/speeldag?speeldagId=" +
-        item.id +
-        "'>" +
-        formatDate(item.date) +
-        "</a></td><td><a href='/intraclub/speeldag?speeldagId=" +
-        item.id +
-        "'>" +
-        parseInt(item.matches) * 4 +
-        "</a></td><td style='width: 15em;'><a href='/intraclub/speeldag?speeldagId=" +
-        item.id +
-        "'>" +
-        item.averageAbsent +
-        "</a></td></tr>";
+  fetch("/intra-app/api/index.php/rounds/latestCalculated")
+    .then(response => response.json())
+    .then(data => {
+      if (data != false) {
+        document.getElementById("speeldag-info").innerHTML =
+          "<a href='/intraclub/speeldag?speeldagId=" +
+          data.id +
+          "'>" +
+          "Stand na speeldag " +
+          data.number +
+          " op " +
+          formatDate(data.date) +
+          "</a>";
+        document.getElementById("speeldag-info").style.display = "block";
+      }
     });
-    jQuery("#tab-5 table").append(trHtml);
-  });
-  jQuery.getJSON("/intra-app/api/index.php/seasons/latest/statistics", function (data) {
+
+  fetch("/intra-app/api/index.php/rankings")
+    .then(response => response.json())
+    .then(data => {
+      generateRanking(data.general, data.seasonId, "tab-1");
+      generateRanking(data.women, data.seasonId, "tab-2");
+      generateRanking(data.recreants, data.seasonId, "tab-3");
+      generateRanking(data.veterans, data.seasonId, "tab-4");
+    });
+  fetch("/intra-app/api/index.php/rounds")
+    .then(response => response.json())
+    .then(data => {
+      let trHtml = "";
+      data.reverse().forEach((item, i) => {
+        trHtml +=
+          "<tr><td><a href='/intraclub/speeldag?speeldagId=" +
+          item.id +
+          "'>" +
+          item.number +
+          "</a></td><td><a href='/intraclub/speeldag?speeldagId=" +
+          item.id +
+          "'>" +
+          formatDate(item.date) +
+          "</a></td><td><a href='/intraclub/speeldag?speeldagId=" +
+          item.id +
+          "'>" +
+          parseInt(item.matches) * 4 +
+          "</a></td><td style='width: 15em;'><a href='/intraclub/speeldag?speeldagId=" +
+          item.id +
+          "'>" +
+          item.averageAbsent +
+          "</a></td></tr>";
+      });
+      document.querySelector("#tab-5 table").insertAdjacentHTML('beforeend', trHtml);
+    });
+  fetch("/intra-app/api/index.php/seasons/latest/statistics")
+    .then(response => response.json())
+    .then(data => {
     var sortedPresence = data.sort(function (a, b) {
       if (a.statistics.rounds.present === b.statistics.rounds.present) {
-        return b.statistics.matches.won - a.statistics.matches.won;
+        return b.statistics.sets.won - a.statistics.sets.won;
       }
       return b.statistics.rounds.present - a.statistics.rounds.present;
     });
-    trHtml = "";
-    jQuery.each(sortedPresence, function (i, item) {
+    let trHtml = "";
+    sortedPresence.forEach((item, i) => {
       trHtml +=
         "<tr><td>" +
         (i + 1) +
@@ -217,21 +225,21 @@
         "</a></td><td>" +
         item.statistics.rounds.present +
         "</td><td>" +
-        item.statistics.matches.won +
+        item.statistics.sets.won +
         "</td></tr>";
     });
-    jQuery("#tab-6 table").append(trHtml);
+    document.querySelector("#tab-6 table").insertAdjacentHTML('beforeend', trHtml);
   });
   if (location.hash && document.querySelector("[data-tab='" + location.hash.substr(1) + "']")) {
-    jQuery("ul.tabs li").removeClass("current");
-    jQuery(".tab-content").removeClass("current");
+    document.querySelectorAll("ul.tabs li").forEach(li => li.classList.remove("current"));
+    document.querySelectorAll(".tab-content").forEach(content => content.classList.remove("current"));
     document.querySelector("[data-tab='" + location.hash.substr(1) + "']").classList.add("current");
-    jQuery(location.hash).addClass("current");
+    document.querySelector(location.hash).classList.add("current");
   }
 
   function generateRanking(data, seasonId, tabId) {
-    trHtml = "";
-    jQuery.each(data, function (i, item) {
+    let trHtml = "";
+    data.forEach((item, i) => {
       trHtml +=
         "<tr><td>" +
         item.rank +
@@ -247,7 +255,7 @@
         item.average +
         "</td></tr>";
     });
-    jQuery("#" + tabId + " table").append(trHtml);
+    document.querySelector("#" + tabId + " table").insertAdjacentHTML('beforeend', trHtml);
   }
 
   function formatDifferenceCell(difference) {
@@ -271,13 +279,15 @@
     );
   }
 
-  jQuery("ul.tabs li").click(function () {
-    var tab_id = jQuery(this).attr("data-tab");
-    jQuery("ul.tabs li").removeClass("current");
-    jQuery(".tab-content").removeClass("current");
-    jQuery(this).addClass("current");
-    jQuery("#" + tab_id).addClass("current");
-    history.pushState(null, null, "#" + tab_id);
+  document.querySelectorAll("ul.tabs li").forEach(tab => {
+    tab.addEventListener("click", function() {
+      var tab_id = this.getAttribute("data-tab");
+      document.querySelectorAll("ul.tabs li").forEach(li => li.classList.remove("current"));
+      document.querySelectorAll(".tab-content").forEach(content => content.classList.remove("current"));
+      this.classList.add("current");
+      document.getElementById(tab_id).classList.add("current");
+      history.pushState(null, null, "#" + tab_id);
+    });
   });
   function sortTable(n) {
     var table,
@@ -357,18 +367,4 @@
       }
     }
   }
-  // document.addEventListener(
-  //   "click",
-  //   function (event) {
-  //     // If the clicked element doesn't have the right selector, bail
-  //     if (!event.target.matches("ul.tabs li")) return;
-  //     debugger;
-  //     // Don't follow the link
-  //     //event.preventDefault();
-
-  //     // Log the clicked element in the console
-  //     console.log(event.target);
-  //   },
-  //   false
-  // );
 </script>

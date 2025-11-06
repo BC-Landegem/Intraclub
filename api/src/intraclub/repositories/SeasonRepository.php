@@ -48,14 +48,14 @@ class SeasonRepository
      */
     public function getStatistics($seasonId)
     {
-        $query = "SELECT IPLAYER.id, IPLAYER.voornaam AS firstname, IPLAYER.naam AS name, 
-                ISPS.gespeelde_sets AS setsPlayed, ISPS.gewonnen_sets AS setsWon, ISPS.gespeelde_punten AS pointsPlayed,
-                ISPS.gewonnen_punten AS pointsWon, ISPS.gespeelde_matchen as matchesPlayed, ISPS.gewonnen_matchen AS matchesWon,
-                ISPS.speeldagen_aanwezig AS roundsPresent
-            FROM intra_spelers IPLAYER
-            INNER JOIN intra_spelerperseizoen ISPS ON ISPS.speler_id = IPLAYER.Id
-            WHERE ISPS.seizoen_id = ? AND IPLAYER.is_lid = 1
-            ORDER BY ISPS.speeldagen_aanwezig desc, ISPS.gewonnen_matchen desc, ISPS.basispunten desc";
+        $query = "SELECT IPLAYER.id, IPLAYER.firstName, IPLAYER.name, 
+                ISPS.setsPlayed, ISPS.setsWon, ISPS.pointsPlayed,
+                ISPS.pointsWon, ISPS.matchesPlayed,
+                ISPS.roundsPresent
+            FROM Player IPLAYER
+            INNER JOIN PlayerSeasonStatistic ISPS ON ISPS.PlayerId = IPLAYER.Id
+            WHERE ISPS.SeasonId = ? AND IPLAYER.Member = 1
+            ORDER BY ISPS.roundsPresent desc, ISPS.setsWon desc, ISPS.basePoints desc;";
         $stmt = $this->db->prepare($query);
         $stmt->execute([$seasonId]);
         return $stmt->fetchAll();
