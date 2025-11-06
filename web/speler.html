@@ -16,6 +16,13 @@
     font-size: 30px;
   }
 
+  #wedstrijdenSpeler {
+    border-collapse: collapse;
+    width: 100%;
+    margin: 0 auto;
+    table-layout: fixed;
+  }
+
   #wedstrijdenSpeler tr {
     border-bottom: 1px solid #eb0000;
   }
@@ -26,12 +33,78 @@
   #wedstrijdenSpeler td {
     padding: 0.75rem;
     vertical-align: top;
+    word-wrap: break-word;
   }
-  .match-thuis {
+
+  #wedstrijdenSpeler th:first-child,
+  #wedstrijdenSpeler td:first-child {
+    width: 10%;
+  }
+
+  #wedstrijdenSpeler th:nth-child(2),
+  #wedstrijdenSpeler td:nth-child(2) {
+    width: 25%;
+  }
+
+  #wedstrijdenSpeler th:last-child,
+  #wedstrijdenSpeler td:last-child {
+    width: 65%;
+  }
+
+  .match-players {
+    text-align: center;
+    font-weight: bold;
+    background-color: #f5f5f5;
+  }
+  .sets-column {
+    width: 100%;
+  }
+  .set-details {
+    padding: 8px 0;
+    border-bottom: 1px solid #ddd;
+  }
+  .set-details:last-child {
+    border-bottom: none;
+  }
+  .set-header {
+    font-weight: bold;
+    color: #333;
+    margin-bottom: 5px;
+    font-size: 14px;
+  }
+  .set-pairing {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin: 3px 0;
+    flex-wrap: wrap;
+  }
+  .team-left,
+  .team-right {
+    flex: 1;
+    font-size: 16px;
+    min-width: 0;
+  }
+  .team-left {
     text-align: right;
+    padding-right: 10px;
   }
-  .match-uit {
+  .team-right {
     text-align: left;
+    padding-left: 10px;
+  }
+  .vs {
+    font-weight: bold;
+    color: #eb0000;
+    padding: 0 10px;
+    font-size: 14px;
+    flex-shrink: 0;
+  }
+  .score {
+    font-weight: bold;
+    color: #333;
+    text-align: center;
+    margin-top: 3px;
   }
   #wedstrijdenTitel {
     display: none;
@@ -41,8 +114,58 @@
   }
   #wedstrijdenSpelerDiv {
     display: none;
-    justify-content: center;
     overflow-x: auto;
+    width: 100%;
+  }
+
+  /* Mobile responsive styles */
+  @media (max-width: 768px) {
+    #wedstrijdenSpeler td {
+      padding: 0.5rem;
+    }
+
+    .team-left,
+    .team-right {
+      font-size: 14px;
+    }
+
+    .vs {
+      font-size: 12px;
+      padding: 0 5px;
+    }
+
+    .set-header {
+      font-size: 12px;
+    }
+  }
+
+  @media (max-width: 480px) {
+    .set-pairing {
+      flex-direction: column;
+      align-items: stretch;
+      gap: 5px;
+    }
+
+    .team-left,
+    .team-right {
+      text-align: center;
+      padding: 0;
+      font-size: 13px;
+    }
+
+    .vs {
+      text-align: center;
+      padding: 5px 0;
+    }
+
+    #wedstrijdenSpeler td {
+      padding: 0.4rem;
+    }
+
+    .match-players div {
+      font-size: 14px;
+      line-height: 1.4;
+    }
   }
 </style>
 <div id="spelerInformatie" style="margin: 5px 5px;">
@@ -59,21 +182,21 @@
 
   <div id="chartsRow" style="display: flex; flex-wrap: wrap; justify-content: space-evenly;">
     <div id="chartAanwezig" style="max-width: 300px;"></div>
-    <div id="chartMatchen" style="max-width: 300px;"></div>
     <div id="chartSets" style="max-width: 300px;"></div>
+    <div id="chartPunten" style="max-width: 300px;"></div>
+
   </div>
   <div id="rankingHistory"></div>
   <div id="wedstrijdenTitel">Wedstrijden</div>
   <div id="wedstrijdenSpelerDiv">
     <table id="wedstrijdenSpeler">
-      <thead>
+      <tbody>
         <tr>
-          <th>Speeldag</th>
-          <th></th>
-          <th></th>
-          <th></th>
+          <th>#</th>
+          <th>Spelers</th>
+          <th>Sets</th>
         </tr>
-      </thead>
+      </tbody>
     </table>
   </div>
 </div>
@@ -82,7 +205,7 @@
   const urlParams = new URLSearchParams(window.location.search);
   const spelerId = urlParams.get("spelerId");
   var request = new XMLHttpRequest();
-  request.open("GET", "/intraclub-api/index.php/players/" + spelerId, true);
+  request.open("GET", "/intra-app/api/index.php/players/" + spelerId, true);
 
   request.onload = function () {
     if (this.status >= 200 && this.status < 400) {
@@ -117,28 +240,30 @@
           data.statistics.rounds.present,
           data.statistics.rankingHistory.length
         );
-        var chartAanwezig = basicChart;
-        chartAanwezig.series = [aanwezigPercentage];
-        chartAanwezig.labels = ["Aanwezig"];
-        new ApexCharts(document.querySelector("#chartAanwezig"), chartAanwezig).render();
-        const winstmatchPercentage = berekenPercentage(
-          data.statistics.matches.won,
-          data.statistics.matches.total
+        const winstPuntenPercentage = berekenPercentage(
+          data.statistics.points.won,
+          data.statistics.points.total
         );
-
-        var chartMatchen = basicChart;
-        chartMatchen.series = [winstmatchPercentage];
-        chartMatchen.labels = ["Gewonnen"];
-        new ApexCharts(document.querySelector("#chartMatchen"), chartMatchen).render();
-
         const winstsetPercentage = berekenPercentage(
           data.statistics.sets.won,
           data.statistics.sets.total
         );
+
+        var chartAanwezig = basicChart;
+        chartAanwezig.series = [aanwezigPercentage];
+        chartAanwezig.labels = ["Aanwezig"];
+        new ApexCharts(document.querySelector("#chartAanwezig"), chartAanwezig).render();
+
         var chartSets = basicChart;
         chartSets.series = [winstsetPercentage];
         chartSets.labels = ["Sets"];
         new ApexCharts(document.querySelector("#chartSets"), chartSets).render();
+
+        var chartPunten = basicChart;
+        chartPunten.series = [winstPuntenPercentage];
+        chartPunten.labels = ["Punten"];
+        new ApexCharts(document.querySelector("#chartPunten"), chartPunten).render();
+
         rankingHistory.series[0].data = data.statistics.rankingHistory.map((rh) => rh.rank);
         rankingHistory.xaxis.categories = data.statistics.rankingHistory.map((rh) =>
           rh.number.toString()
@@ -290,41 +415,78 @@
   function genereerMatchTabel(table, data, rankingHistory, playerId) {
     for (let element of data) {
       let row = table.insertRow();
-      insertCell(row, element.round.number, "speeldag");
-      insertCell(
-        row,
-        bouwVolledigeNaam(element.home.firstPlayer, playerId).concat(
-          bouwVolledigeNaam(element.home.secondPlayer, playerId)
-        ),
-        "match-thuis"
-      );
-      insertCell(
-        row,
-        bouwVolledigeNaam(element.away.firstPlayer, playerId) +
-          bouwVolledigeNaam(element.away.secondPlayer, playerId),
-        "match-uit"
-      );
 
-      var setRow =
-        "<span class='score'> <span>" +
-        bouwSet(element.firstSet) +
-        "</span> <span>" +
-        bouwSet(element.secondSet) +
-        "</span>";
-      if (element.thirdSet.played) {
-        setRow = setRow + " <span>" + bouwSet(element.thirdSet) + "</span>";
-      }
-      setRow = setRow + "</span>";
-      insertCell(row, setRow, "set");
-      var overeenkomstigeRankingHistory = haalRankingGeschiedenisOp(
-        element.round.id,
-        rankingHistory
-      );
-      //insertCell(row, overeenkomstigeRankingHistory.rank, "rank");
+      // Speeldag number cell
+      insertCell(row, element.round.number, "speeldag");
+
+      // Get player references
+      const player1 = element.firstPlayer;
+      const player2 = element.secondPlayer;
+      const player3 = element.thirdPlayer;
+      const player4 = element.fourthPlayer;
+
+      // Players cell - show all 4 players with highlighting for current player
+      const playersHtml = `
+        <div style="text-align: left;">
+          ${bouwVolledigeNaam(player1, playerId)}<br>
+          ${bouwVolledigeNaam(player2, playerId)}<br>
+          ${bouwVolledigeNaam(player3, playerId)}<br>
+          ${bouwVolledigeNaam(player4, playerId)}
+        </div>      
+      `;
+      insertCell(row, playersHtml, "match-players");
+
+      // Sets details cell
+      let setsHtml = "";
+
+      // Set 1: P1+P2 vs P3+P4
+      setsHtml += `
+        <div class="set-details">
+          <div class="set-header">Set 1</div>
+          <div class="set-pairing">
+            <div class="team-left">${bouwSpelerNaam(player1, playerId)} & ${bouwSpelerNaam(player2, playerId)}</div>
+            <div class="vs">vs</div>
+            <div class="team-right">${bouwSpelerNaam(player3, playerId)} & ${bouwSpelerNaam(player4, playerId)}</div>
+          </div>
+          <div class="score">${bouwSet(element.firstSet)}</div>
+        </div>
+      `;
+
+      // Set 2: P1+P3 vs P2+P4
+      setsHtml += `
+        <div class="set-details">
+          <div class="set-header">Set 2</div>
+          <div class="set-pairing">
+            <div class="team-left">${bouwSpelerNaam(player1, playerId)} & ${bouwSpelerNaam(player3, playerId)}</div>
+            <div class="vs">vs</div>
+            <div class="team-right">${bouwSpelerNaam(player2, playerId)} & ${bouwSpelerNaam(player4, playerId)}</div>
+          </div>
+          <div class="score">${bouwSet(element.secondSet)}</div>
+        </div>
+      `;
+
+      // Set 3: P1+P4 vs P2+P3
+      setsHtml += `
+        <div class="set-details">
+          <div class="set-header">Set 3</div>
+          <div class="set-pairing">
+            <div class="team-left">${bouwSpelerNaam(player1, playerId)} & ${bouwSpelerNaam(player4, playerId)}</div>
+            <div class="vs">vs</div>
+            <div class="team-right">${bouwSpelerNaam(player2, playerId)} & ${bouwSpelerNaam(player3, playerId)}</div>
+          </div>
+          <div class="score">${bouwSet(element.thirdSet)}</div>
+        </div>
+      `;
+
+      insertCell(row, setsHtml, "sets-column");
     }
   }
-  function haalRankingGeschiedenisOp(rondeId, rankingHistory) {
-    return rankingHistory.find((rh) => rh.id == rondeId);
+
+  function bouwSpelerNaam(player, huidigePlayerId) {
+    if (player.id == huidigePlayerId) {
+      return `<span class="highlighted" style="padding: 2px 4px; border-radius: 3px;">${player.firstName} ${player.name}</span>`;
+    }
+    return `${player.firstName} ${player.name}`;
   }
   function bouwVolledigeNaam(player, huidigePlayerId) {
     var spelerLink = "<div";
@@ -356,7 +518,7 @@
     } else if (total == 0) {
       return 0;
     } else {
-      return ((amount / total) * 100).toFixed(0);
+      return Math.round((amount / total) * 100);
     }
   }
 </script>
