@@ -7,18 +7,12 @@
     text-decoration: underline;
   }
 </style>
-
-<table id="intratop10">
-  &nbsp;
-</table>
-<div style="margin-top: 10px;" class="right-bottomlink">
-  <em class="fa fa-arrow-right fa-lg" style="margin-right: 10px;"></em
-  ><a href="/intraclub">Volledige standen en uitslagen</a>
-</div>
-
+&nbsp;
+<table id="intratop10"></table>
+<div class="right-bottomlink" style="margin-top: 10px;"><em class="fa fa-arrow-right fa-lg" style="margin-right: 10px;"></em><a href="/intraclub">Volledige standen en uitslagen</a></div>
 <script type="text/javascript">
   var request = new XMLHttpRequest();
-  request.open("GET", "/intraclub-api/index.php/rankings/general?$top=10", true);
+  request.open("GET", "/intra-app/api/index.php/rankings/general?$top=10", true);
 
   request.onload = function () {
     if (this.status >= 200 && this.status < 400) {
