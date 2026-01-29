@@ -268,6 +268,15 @@
         rankingHistory.xaxis.categories = data.statistics.rankingHistory.map((rh) =>
           rh.number.toString()
         );
+        // Set Y-axis: top should be 1, bottom should be lowest ranking
+        const lowestRanking = Math.max.apply(
+          Math,
+          data.statistics.rankingHistory.map(function (o) {
+            return o.rank;
+          })
+        );
+        rankingHistory.yaxis.min = 1;
+        rankingHistory.yaxis.max = lowestRanking;
         new ApexCharts(document.querySelector("#rankingHistory"), rankingHistory).render();
         document.getElementById("wedstrijdenTitel").style.display = "flex";
         document.getElementById("wedstrijdenSpelerDiv").style.display = "flex";
@@ -413,7 +422,8 @@
   };
 
   function genereerMatchTabel(table, data, rankingHistory, playerId) {
-    for (let element of data) {
+    // Reverse to show most recent matches first
+    for (let element of data.slice().reverse()) {
       let row = table.insertRow();
 
       // Speeldag number cell
