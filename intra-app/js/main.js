@@ -1,5 +1,5 @@
-import { helpers } from './helpers.js?v=20250206';
-import { api } from './api.js?v=20250206';
+import { helpers } from './helpers.js?v=20260405';
+import { api } from './api.js?v=20260405';
 
 let presentPlayers = [];
 let rankingData = [];
@@ -211,8 +211,8 @@ function generateMatches() {
     presentPlayers.sort((a, b) => (a.rank > b.rank) ? 1 : -1);
     // Create two groups, which consist of 60% of the players
     // Overlap between those two groups is 20%
-    const firstGroup = presentPlayers.slice(0, Math.floor(presentPlayers.length * 0.60));
-    const secondGroup = presentPlayers.slice(Math.floor(presentPlayers.length * 0.40), presentPlayers.length);
+    const firstGroup = presentPlayers.slice(0, Math.floor(presentPlayers.length * 0.6));
+    const secondGroup = presentPlayers.slice(Math.floor(presentPlayers.length * 0.4), presentPlayers.length);
     // Create matches
     matches = [];
 
@@ -403,6 +403,8 @@ function generateUpdateMatchHtml(button, match) {
         helpers.showMatchResult(p, match);
     }
     button.parentNode.insertBefore(p, button.nextSibling);
+    // Update visual indicator for complete match
+    helpers.updateMatchCompleteIndicator(button.parentNode, match);
     //clear classList
     while (button.classList.length > 0) {
         button.classList.remove(button.classList.item(0));
@@ -441,6 +443,8 @@ function onSuccessUpdateMatch(set1Home, set1Away, set2Home, set2Away, set3Home, 
     // display result
     const p = document.getElementById('match-' + match["id"]);
     helpers.showMatchResult(p, match);
+    // Update visual indicator for complete match
+    helpers.updateMatchCompleteIndicator(p.parentNode, match);
 }
 
 function displayPlayer(player, container) {

@@ -30,6 +30,30 @@ const helpers = {
             + match["players"][0].firstName + ' & ' + match["players"][3].firstName + ' vs '
             + match["players"][1].firstName + ' & ' + match["players"][2].firstName + ': ' + match["set3Home"] + '-' + match["set3Away"];
     },
+    isMatchComplete(match) {
+        const scores = [
+            match["set1Home"], match["set1Away"],
+            match["set2Home"], match["set2Away"],
+            match["set3Home"], match["set3Away"]
+        ];
+        return scores.every(score => score !== null && score !== undefined && score !== '');
+    },
+    updateMatchCompleteIndicator(container, match) {
+        if (this.isMatchComplete(match)) {
+            container.classList.add('match-complete');
+            // Add checkmark icon if not already present
+            if (!container.querySelector('.match-complete-icon')) {
+                const icon = document.createElement('i');
+                icon.classList.add('fa', 'fa-check-circle', 'match-complete-icon');
+                icon.title = 'Match volledig ingevuld';
+                container.appendChild(icon);
+            }
+        } else {
+            container.classList.remove('match-complete');
+            const icon = container.querySelector('.match-complete-icon');
+            if (icon) icon.remove();
+        }
+    },
     calculateBonusPoints: function (player) {
         var bonus = 0;
         if (player.gender === 'Woman') {
