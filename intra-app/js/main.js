@@ -1,4 +1,4 @@
-import { helpers } from './helpers.js?v=20260405';
+import { helpers } from './helpers.js?v=20260507';
 import { api } from './api.js?v=20260405';
 
 let presentPlayers = [];
@@ -346,6 +346,7 @@ function generateMatchesHtml(matches) {
         // add results div to match container
         const resultDiv = document.createElement('div');
         resultDiv.classList.add('grid-item');
+        resultDiv.id = 'result-container-' + index;
         //add button to result div
         const button = document.createElement("button");
         resultDiv.appendChild(button);
@@ -444,7 +445,8 @@ function onSuccessUpdateMatch(set1Home, set1Away, set2Home, set2Away, set3Home, 
     const p = document.getElementById('match-' + match["id"]);
     helpers.showMatchResult(p, match);
     // Update visual indicator for complete match
-    helpers.updateMatchCompleteIndicator(p.parentNode, match);
+    const resultContainer = p.parentNode;
+    helpers.updateMatchCompleteIndicator(resultContainer, match);
 }
 
 function displayPlayer(player, container) {

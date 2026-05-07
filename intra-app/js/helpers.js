@@ -31,12 +31,21 @@ const helpers = {
             + match["players"][1].firstName + ' & ' + match["players"][2].firstName + ': ' + match["set3Home"] + '-' + match["set3Away"];
     },
     isMatchComplete(match) {
-        const scores = [
-            match["set1Home"], match["set1Away"],
-            match["set2Home"], match["set2Away"],
-            match["set3Home"], match["set3Away"]
-        ];
-        return scores.every(score => score !== null && score !== undefined && score !== '');
+        // Check that all 6 score fields have been explicitly filled in
+        // A score is considered filled if it's a number (including 0) and the match has been saved
+        const hasSet1 = match["set1Home"] !== null && match["set1Home"] !== undefined && match["set1Home"] !== '' &&
+                        match["set1Away"] !== null && match["set1Away"] !== undefined && match["set1Away"] !== '';
+        const hasSet2 = match["set2Home"] !== null && match["set2Home"] !== undefined && match["set2Home"] !== '' &&
+                        match["set2Away"] !== null && match["set2Away"] !== undefined && match["set2Away"] !== '';
+        const hasSet3 = match["set3Home"] !== null && match["set3Home"] !== undefined && match["set3Home"] !== '' &&
+                        match["set3Away"] !== null && match["set3Away"] !== undefined && match["set3Away"] !== '';
+        
+        // Each set must have at least one non-zero score (a 0-0 set is not valid in badminton)
+        const set1Valid = hasSet1 && (match["set1Home"] > 0 || match["set1Away"] > 0);
+        const set2Valid = hasSet2 && (match["set2Home"] > 0 || match["set2Away"] > 0);
+        const set3Valid = hasSet3 && (match["set3Home"] > 0 || match["set3Away"] > 0);
+        
+        return set1Valid && set2Valid && set3Valid;
     },
     updateMatchCompleteIndicator(container, match) {
         if (this.isMatchComplete(match)) {
