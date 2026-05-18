@@ -7,6 +7,9 @@ let allPlayers = [];
 let drawnOutPlayers = [];
 let matches = [];
 let roundId = 0;
+
+/** 'two' = 2 groups of 60% (20% overlap); 'three' = 3 groups of 40% (~10% overlap between neighbours) */
+const MATCH_GROUP_MODE = 'three';
 const addResultModalHtml = document.getElementById('addResultModal');
 const addResultModal = new mdb.Modal(addResultModalHtml);
 
@@ -206,76 +209,80 @@ function removePlayerPresent(id) {
 }
 
 
+function buildMatchGroups(sortedPlayers, mode) {
+    const n = sortedPlayers.length;
+    if (mode === 'three') {
+        return [
+            sortedPlayers.slice(0, Math.floor(n * 0.4)),
+            sortedPlayers.slice(Math.floor(n * 0.3), Math.floor(n * 0.7)),
+            sortedPlayers.slice(Math.floor(n * 0.6), n),
+        ];
+    }
+    return [
+        sortedPlayers.slice(0, Math.floor(n * 0.6)),
+        sortedPlayers.slice(Math.floor(n * 0.4), n),
+    ];
+}
+
+function removePlayersFromOtherGroups(groups, players, sourceGroupIndex) {
+    players.forEach(player => {
+        groups.forEach((group, index) => {
+            if (index === sourceGroupIndex) {
+                return;
+            }
+            const playerIndex = group.indexOf(player);
+            if (playerIndex > -1) {
+                group.splice(playerIndex, 1);
+            }
+        });
+    });
+}
+
+function pickRandomFourFromGroup(group) {
+    const match = [];
+    match["players"] = [];
+    for (let i = 0; i < 4; i++) {
+        const randomIndex = Math.floor(Math.random() * group.length);
+        match["players"].push(group[randomIndex]);
+        group.splice(randomIndex, 1);
+    }
+    return match;
+}
+
+function mergeGroupsWithoutDuplicates(groups) {
+    return groups.reduce((acc, group) => {
+        group.forEach(player => {
+            if (!acc.find(item => item.id === player.id)) {
+                acc.push(player);
+            }
+        });
+        return acc;
+    }, []);
+}
+
 function generateMatches() {
-    // Sort presentPlayers by rank
     presentPlayers.sort((a, b) => (a.rank > b.rank) ? 1 : -1);
-    // Create two groups, which consist of 60% of the players
-    // Overlap between those two groups is 20%
-    const firstGroup = presentPlayers.slice(0, Math.floor(presentPlayers.length * 0.6));
-    const secondGroup = presentPlayers.slice(Math.floor(presentPlayers.length * 0.4), presentPlayers.length);
-    // Create matches
+    const groups = buildMatchGroups(presentPlayers, MATCH_GROUP_MODE);
     matches = [];
 
-    // Create match with 4 random players from first group
-    // Then match with 4 random players from second group
-    // Repeat until all players are matched (or less than 4 players left)
-    // Don't forget to remove matched players from the groups
-
-    while (firstGroup.length >= 4 || secondGroup.length >= 4) {
-        if (firstGroup.length >= 4) {
-            const match = [];
-            match["players"] = [];
-            for (let i = 0; i < 4; i++) {
-                const randomIndex = Math.floor(Math.random() * firstGroup.length);
-                match["players"].push(firstGroup[randomIndex]);
-                firstGroup.splice(randomIndex, 1);
+    while (groups.some(group => group.length >= 4)) {
+        for (let groupIndex = 0; groupIndex < groups.length; groupIndex++) {
+            const group = groups[groupIndex];
+            if (group.length < 4) {
+                continue;
             }
+            const match = pickRandomFourFromGroup(group);
             matches.push(match);
-            // remove matched players from second group
-            match["players"].forEach(player => {
-                const index = secondGroup.indexOf(player);
-                if (index > -1) {
-                    secondGroup.splice(index, 1);
-                }
-            });
-        }
-        if (secondGroup.length >= 4) {
-            const match2 = [];
-            match2["players"] = [];
-            for (let i = 0; i < 4; i++) {
-                const randomIndex = Math.floor(Math.random() * secondGroup.length);
-                match2["players"].push(secondGroup[randomIndex]);
-                secondGroup.splice(randomIndex, 1);
-            }
-            matches.push(match2);
-            // remove matched players from first group
-            match2["players"].forEach(player => {
-                const index = firstGroup.indexOf(player);
-                if (index > -1) {
-                    firstGroup.splice(index, 1);
-                }
-            });
+            removePlayersFromOtherGroups(groups, match["players"], groupIndex);
         }
     }
 
-    // If there are still players left, create a match with them
-    if (firstGroup.length > 0 || secondGroup.length > 0) {
-        // combine the two groups, but don't add the same player twice
-        const remainingPlayers = firstGroup.concat(secondGroup).reduce((acc, current) => {
-            const x = acc.find(item => item.id === current.id);
-            if (!x) {
-                return acc.concat([current]);
-            } else {
-                return acc;
-            }
-        }, []);
+    if (groups.some(group => group.length > 0)) {
+        const remainingPlayers = mergeGroupsWithoutDuplicates(groups);
 
-        // If there are more than 4 players left, pick 4 random players
-        // Else pick all remaining players
         if (remainingPlayers.length >= 4) {
             const remainingPlayersMatch = [];
             remainingPlayersMatch["players"] = [];
-            // Pick 4 random players from the remaining players
             for (let i = 0; i < 4; i++) {
                 const randomIndex = Math.floor(Math.random() * remainingPlayers.length);
                 remainingPlayersMatch["players"].push(remainingPlayers[randomIndex]);
@@ -284,7 +291,6 @@ function generateMatches() {
             matches.push(remainingPlayersMatch);
         }
         if (remainingPlayers.length > 0) {
-            // put all remaining players in the match
             const drawnOutMatch = [];
             drawnOutMatch["players"] = [];
             remainingPlayers.forEach(player => {
