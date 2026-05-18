@@ -97,7 +97,7 @@ class SeasonManager
 
         //3. Insert playerPerSeason Record for every player & Based on ranking -> Add some points 
         $reversedRanking = array_reverse($ranking["general"]);
-        $basePoints = 19.000;
+        $basePoints = 14.000;
         foreach ($reversedRanking as $rankedPlayer) {
             $this->playerRepository->createSeasonStatistic($newSeasonId, $rankedPlayer["id"], $basePoints);
             $basePoints += 0.0001;

@@ -61,7 +61,7 @@ class PlayerValidator
         $errors = $this->validatePlayer($firstName, $name, $gender, $birthDate, $doubleRanking, $playsCompetition, $errors);
         if (Utilities::isInt($basePoints) === false) {
             $errors[] = "Ongeldige basispunten";
-        } else if ($basePoints < 0 || $basePoints > 21) {
+        } else if ($basePoints < 0 || $basePoints > 15) {
             $errors[] = "Basispunten ongeldig";
         }
         return $errors;

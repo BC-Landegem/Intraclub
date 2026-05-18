@@ -219,8 +219,8 @@ class MatchValidator
     /**
      * Controle of set klopt
      * 
-     * 30-29 of 29-30
-     * 21+ - x waarbij x steeds = 21+ -2
+     * 15-14 of 14-15
+     * 15+ - x waarbij x steeds = 15+ -2
      *
      * @param  int $homeScore
      * @param  int $awayScore
@@ -230,27 +230,27 @@ class MatchValidator
      */
     private function checkSet($homeScore, $awayScore, $message, $errors)
     {
-        //Uitzondering: 30-29
+        //Uitzondering: 21-20
         if (
-            ($homeScore === 30 && $awayScore === 29) ||
-            ($awayScore === 30 && $homeScore === 29)
+            ($homeScore === 21 && $awayScore === 20) ||
+            ($awayScore === 21 && $homeScore === 20)
         ) {
             return $errors;
         }
         //Verlengingen
-        //if score is larger than 21, but smaller or equal to 30, then the other score must be exact minus 2
+        //if score is larger than 15, but smaller or equal to 21, then the other score must be exact minus 2
         if (
-            ($homeScore > 21 && $homeScore <= 30 && $homeScore > $awayScore && $awayScore != $homeScore - 2) ||
-            ($awayScore > 21 && $awayScore <= 30 && $awayScore > $homeScore && $homeScore != $awayScore - 2)
+            ($homeScore > 15 && $homeScore <= 21 && $homeScore > $awayScore && $awayScore != $homeScore - 2) ||
+            ($awayScore > 15 && $awayScore <= 21 && $awayScore > $homeScore && $homeScore != $awayScore - 2)
         ) {
             $errors[] = "Foutieve score voor " . $message;
         }
 
         //Normale sets
-        // if one score is exact 21, the other score must be smaller than 20
+        // if one score is exact 15, the other score must be smaller than 14
         if (
-            ($homeScore === 21 && $homeScore > $awayScore && $awayScore >= 20) ||
-            ($awayScore === 21 && $awayScore > $homeScore && $homeScore >= 20)
+            ($homeScore === 15 && $homeScore > $awayScore && $awayScore >= 14) ||
+            ($awayScore === 15 && $awayScore > $homeScore && $homeScore >= 14)
         ) {
             $errors[] = "Foutieve score voor " . $message;
         }
@@ -271,7 +271,7 @@ class MatchValidator
     {
         if (Utilities::isInt($setScore) === false) {
             $errors[] = $message . "  is ongeldig";
-        } else if ($setScore < 0 || $setScore > 30) {
+        } else if ($setScore < 0 || $setScore > 21) {
             $errors[] = $message . "  is een ongeldig getal";
         }
         return $errors;
