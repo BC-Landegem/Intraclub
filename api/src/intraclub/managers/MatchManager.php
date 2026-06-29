@@ -1,34 +1,21 @@
 <?php
+
+declare(strict_types=1);
+
 namespace intraclub\managers;
 
 use intraclub\repositories\SeasonRepository;
 use intraclub\repositories\MatchRepository;
 use intraclub\common\Utilities;
+use PDO;
 
 class MatchManager
 {
-    /**
-     * Database connection
-     *
-     * @var \PDO
-     */
-    protected $db;
-    /**
-     * seasonRepository
-     *
-     * @var SeasonRepository
-     */
-    protected $seasonRepository;
-    /**
-     * matchRepository
-     *
-     * @var MatchRepository
-     */
-    protected $matchRepository;
+    protected SeasonRepository $seasonRepository;
+    protected MatchRepository $matchRepository;
 
-    public function __construct($db)
+    public function __construct(protected PDO $db)
     {
-        $this->db = $db;
         $this->seasonRepository = new SeasonRepository($db);
         $this->matchRepository = new MatchRepository($db);
     }
@@ -39,13 +26,12 @@ class MatchManager
      * @param  int $roundId
      * @return array of matches
      */
-    public function getAllByRoundId($roundId)
+    public function getAllByRoundId($roundId): array
     {
         $matchesFromDB = $this->matchRepository->getAllByRoundId($roundId);
-        $matches = array();
-        for ($index = 0; $index < count($matchesFromDB); $index++) {
-            $match = Utilities::mapToMatchObject($matchesFromDB[$index]);
-            $matches[] = $match;
+        $matches = [];
+        foreach ($matchesFromDB as $matchFromDB) {
+            $matches[] = Utilities::mapToMatchObject($matchFromDB);
         }
         return $matches;
     }
@@ -67,7 +53,6 @@ class MatchManager
         $playerId3,
         $playerId4
     ) {
-
         return $this->matchRepository->create(
             $roundId,
             $playerId1,
@@ -97,8 +82,7 @@ class MatchManager
         $set2Away,
         $set3Home,
         $set3Away
-    ) {
-
+    ): bool {
         return $this->matchRepository->update(
             $id,
             $set1Home,

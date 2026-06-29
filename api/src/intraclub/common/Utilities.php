@@ -1,92 +1,95 @@
 <?php
 
+declare(strict_types=1);
+
 namespace intraclub\common;
 
 use DateTime;
 
 class Utilities
 {
-
     /**
      * Map spelerstatistieken naar array
      *
      * @param  array $playerStats
      * @return array speler&statistiek object
      */
-    public static function mapToPlayerStatisticsObject($playerStats)
+    public static function mapToPlayerStatisticsObject($playerStats): array
     {
-        return array(
+        return [
             "id" => $playerStats["id"],
             "firstName" => $playerStats["firstName"],
             "name" => $playerStats["name"],
-            "statistics" => array(
-                "points" => array(
+            "statistics" => [
+                "points" => [
                     "won" => intval($playerStats["pointsWon"]),
                     "lost" => $playerStats["pointsPlayed"] - $playerStats["pointsWon"],
-                    "total" => intval($playerStats["pointsPlayed"])
-                ),
-                "sets" => array(
+                    "total" => intval($playerStats["pointsPlayed"]),
+                ],
+                "sets" => [
                     "won" => intval($playerStats["setsWon"]),
                     "lost" => $playerStats["setsPlayed"] - $playerStats["setsWon"],
-                    "total" => intval($playerStats["setsPlayed"])
-                ),
-                "matches" => array(
-                    "total" => intval($playerStats["matchesPlayed"])
-                ),
-                "rounds" => array(
-                    "present" => intval($playerStats["roundsPresent"])
-                )
-            )
-        );
+                    "total" => intval($playerStats["setsPlayed"]),
+                ],
+                "matches" => [
+                    "total" => intval($playerStats["matchesPlayed"]),
+                ],
+                "rounds" => [
+                    "present" => intval($playerStats["roundsPresent"]),
+                ],
+            ],
+        ];
     }
+
     /**
      * Map naar wedstrijd array
      *
      * @param  mixed $match
      * @return array wedstrijd
      */
-    public static function mapToMatchObject($match)
+    public static function mapToMatchObject($match): array
     {
-        return array(
+        return [
             "id" => $match["id"],
-            "firstPlayer" => array(
+            "firstPlayer" => [
                 "id" => $match["player1Id"],
                 "firstName" => $match["player1FirstName"],
-                "name" => $match["player1Name"]
-            ),
-            "secondPlayer" => array(
+                "name" => $match["player1Name"],
+            ],
+            "secondPlayer" => [
                 "id" => $match["player2Id"],
                 "firstName" => $match["player2FirstName"],
-                "name" => $match["player2Name"]
-            ),
-            "thirdPlayer" => array(
+                "name" => $match["player2Name"],
+            ],
+            "thirdPlayer" => [
                 "id" => $match["player3Id"],
                 "firstName" => $match["player3FirstName"],
-                "name" => $match["player3Name"]
-            ),
-            "fourthPlayer" => array(
+                "name" => $match["player3Name"],
+            ],
+            "fourthPlayer" => [
                 "id" => $match["player4Id"],
                 "firstName" => $match["player4FirstName"],
-                "name" => $match["player4Name"]
-            ),
-            "firstSet" => array(
+                "name" => $match["player4Name"],
+            ],
+            "firstSet" => [
                 "home" => intval($match["set1Home"]),
-                "away" => intval($match["set1Away"])
-            ),
-            "secondSet" => array(
+                "away" => intval($match["set1Away"]),
+            ],
+            "secondSet" => [
                 "home" => intval($match["set2Home"]),
-                "away" => intval($match["set2Away"])
-            ),
-            "thirdSet" => array(
+                "away" => intval($match["set2Away"]),
+            ],
+            "thirdSet" => [
                 "home" => intval($match["set3Home"]),
                 "away" => intval($match["set3Away"]),
-            ),
-            "round" => array(
+            ],
+            "round" => [
                 "id" => intval($match["roundId"]),
-                "number" => intval($match["roundNumber"])
-            ),
-        );
+                "number" => intval($match["roundNumber"]),
+            ],
+        ];
     }
+
     /**
      * Trim setscore, zodanig dat firstscore maximaal 21 is.
      *
@@ -125,7 +128,7 @@ class Utilities
         $set2Away,
         $set3Home,
         $set3Away
-    ) {
+    ): array {
         $setsWonPlayer1 = 0;
         $setsWonPlayer2 = 0;
         $setsWonPlayer3 = 0;
@@ -136,29 +139,29 @@ class Utilities
         if ($set1Home > $set1Away) {
             $setsWonPlayer1++;
             $setsWonPlayer2++;
-            $pointsLosingTeam += Utilities::trimSets($set1Away, $set1Home);
+            $pointsLosingTeam += self::trimSets($set1Away, $set1Home);
         } else {
             $setsWonPlayer3++;
             $setsWonPlayer4++;
-            $pointsLosingTeam += Utilities::trimSets($set1Home, $set1Away);
+            $pointsLosingTeam += self::trimSets($set1Home, $set1Away);
         }
         if ($set2Home > $set2Away) {
             $setsWonPlayer1++;
             $setsWonPlayer3++;
-            $pointsLosingTeam += Utilities::trimSets($set2Away, $set2Home);
+            $pointsLosingTeam += self::trimSets($set2Away, $set2Home);
         } else {
             $setsWonPlayer2++;
             $setsWonPlayer4++;
-            $pointsLosingTeam += Utilities::trimSets($set2Home, $set2Away);
+            $pointsLosingTeam += self::trimSets($set2Home, $set2Away);
         }
         if ($set3Home > $set3Away) {
             $setsWonPlayer1++;
             $setsWonPlayer4++;
-            $pointsLosingTeam += Utilities::trimSets($set3Away, $set3Home);
+            $pointsLosingTeam += self::trimSets($set3Away, $set3Home);
         } else {
             $setsWonPlayer2++;
             $setsWonPlayer3++;
-            $pointsLosingTeam += Utilities::trimSets($set3Home, $set3Away);
+            $pointsLosingTeam += self::trimSets($set3Home, $set3Away);
         }
 
         //Bereken totaal aantal punten
@@ -167,19 +170,18 @@ class Utilities
         $totalPlayer3 = $set1Away + $set2Home + $set3Away;
         $totalPlayer4 = $set1Away + $set2Away + $set3Home;
 
-        $totalTrimmedPlayer1 = Utilities::trimSets($set1Home, $set1Away)
-            + Utilities::trimSets($set2Home, $set2Away) + Utilities::trimSets($set3Home, $set3Away);
-        $totalTrimmedPlayer2 = Utilities::trimSets($set1Home, $set1Away)
-            + Utilities::trimSets($set2Away, $set2Home) + Utilities::trimSets($set3Away, $set3Home);
-        $totalTrimmedPlayer3 = Utilities::trimSets($set1Away, $set1Home)
-            + Utilities::trimSets($set2Home, $set2Away) + Utilities::trimSets($set3Away, $set3Home);
-        $totalTrimmedPlayer4 = Utilities::trimSets($set1Away, $set1Home)
-            + Utilities::trimSets($set2Away, $set2Home) + Utilities::trimSets($set3Home, $set3Away);
+        $totalTrimmedPlayer1 = self::trimSets($set1Home, $set1Away)
+            + self::trimSets($set2Home, $set2Away) + self::trimSets($set3Home, $set3Away);
+        $totalTrimmedPlayer2 = self::trimSets($set1Home, $set1Away)
+            + self::trimSets($set2Away, $set2Home) + self::trimSets($set3Away, $set3Home);
+        $totalTrimmedPlayer3 = self::trimSets($set1Away, $set1Home)
+            + self::trimSets($set2Home, $set2Away) + self::trimSets($set3Away, $set3Home);
+        $totalTrimmedPlayer4 = self::trimSets($set1Away, $set1Home)
+            + self::trimSets($set2Away, $set2Home) + self::trimSets($set3Home, $set3Away);
 
         $totalPoints = $set1Home + $set1Away + $set2Home + $set2Away + $set3Home + $set3Away;
 
-
-        return array(
+        return [
             "setsWonPlayer1" => $setsWonPlayer1,
             "setsWonPlayer2" => $setsWonPlayer2,
             "setsWonPlayer3" => $setsWonPlayer3,
@@ -193,15 +195,15 @@ class Utilities
             "pointsWonPlayer2" => $totalPlayer2,
             "pointsWonPlayer3" => $totalPlayer3,
             "pointsWonPlayer4" => $totalPlayer4,
-            "totalPoints" => $totalPoints
-        );
+            "totalPoints" => $totalPoints,
+        ];
     }
 
     /**
      * Controle of waarde een getal is
      *
      * @param  mixed $value
-     * @return void
+     * @return int|false
      */
     public static function isInt($value)
     {
@@ -214,15 +216,16 @@ class Utilities
      * @param  string $date
      * @return boolean
      */
-    public static function isDate($date, $format = 'Y-m-d')
+    public static function isDate($date, $format = 'Y-m-d'): bool
     {
         $d = DateTime::createFromFormat($format, $date);
-        // The Y ( 4 digits year ) returns TRUE for any integer 
-        // with any number of digits so changing the comparison 
+        // The Y ( 4 digits year ) returns TRUE for any integer
+        // with any number of digits so changing the comparison
         // from == to === fixes the issue.
         return $d && $d->format($format) === $date;
     }
-    public static function isDateInFuture($date, $format = 'Y-m-d')
+
+    public static function isDateInFuture($date, $format = 'Y-m-d'): bool
     {
         $d = DateTime::createFromFormat($format, $date);
         return $d > new DateTime();

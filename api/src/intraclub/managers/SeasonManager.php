@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace intraclub\managers;
 
 use intraclub\common\Utilities;
@@ -7,50 +9,18 @@ use intraclub\repositories\SeasonRepository;
 use intraclub\repositories\RoundRepository;
 use intraclub\repositories\MatchRepository;
 use intraclub\repositories\PlayerRepository;
-
+use PDO;
 
 class SeasonManager
 {
-    /**
-     * Database connection
-     *
-     * @var \PDO
-     */
-    protected $db;
-    /**
-     * rankingManager
-     *
-     * @var RankingManager
-     */
-    protected $rankingManager;
-    /**
-     * seasonRepository
-     *
-     * @var SeasonRepository
-     */
-    protected $seasonRepository;
-    /**
-     * roundRepository
-     *
-     * @var RoundRepository
-     */
-    protected $roundRepository;
-    /**
-     * matchRepository
-     *
-     * @var MatchRepository
-     */
-    protected $matchRepository;
-    /**
-     * playerRepository
-     *
-     * @var PlayerRepository
-     */
-    protected $playerRepository;
+    protected RankingManager $rankingManager;
+    protected SeasonRepository $seasonRepository;
+    protected RoundRepository $roundRepository;
+    protected MatchRepository $matchRepository;
+    protected PlayerRepository $playerRepository;
 
-    public function __construct($db)
+    public function __construct(protected PDO $db)
     {
-        $this->db = $db;
         $this->rankingManager = new RankingManager($this->db);
         $this->seasonRepository = new SeasonRepository($this->db);
         $this->roundRepository = new RoundRepository($this->db);
@@ -64,38 +34,34 @@ class SeasonManager
      * @param  int $seasonId
      * @return array seizoensstatistieken
      */
-    public function getStatistics($seasonId = null)
+    public function getStatistics($seasonId = null): array
     {
         if (empty($seasonId)) {
             $seasonId = $this->seasonRepository->getCurrentSeasonId();
         }
         $statisticsInfo = $this->seasonRepository->getStatistics($seasonId);
-        $response = array();
-        if (!empty($statisticsInfo)) {
-            for ($index = 0; $index < count($statisticsInfo); $index++) {
-                $playerStats = $statisticsInfo[$index];
-                $playerStatistics = Utilities::mapToPlayerStatisticsObject($playerStats);
-                $response[] = $playerStatistics;
-            }
+        $response = [];
+        foreach ($statisticsInfo as $playerStats) {
+            $response[] = Utilities::mapToPlayerStatisticsObject($playerStats);
         }
         return $response;
     }
+
     /**
      * Creatie nieuw seizoen, inclusief lege seizoensstatistieken
      *
      * @param  string $period
      * @return void
      */
-    public function create($period)
+    public function create($period): void
     {
-
         //1. Get current ranking
         $ranking = $this->rankingManager->get(null, true);
 
         //2. Insert new season
         $newSeasonId = $this->seasonRepository->create($period);
 
-        //3. Insert playerPerSeason Record for every player & Based on ranking -> Add some points 
+        //3. Insert playerPerSeason Record for every player & Based on ranking -> Add some points
         $reversedRanking = array_reverse($ranking["general"]);
         $basePoints = 19.000;
         foreach ($reversedRanking as $rankedPlayer) {
@@ -109,12 +75,12 @@ class SeasonManager
      *
      * @return void
      */
-    public function calculateCurrentSeason()
+    public function calculateCurrentSeason(): void
     {
         $currentSeasonId = $this->seasonRepository->getCurrentSeasonId();
         $roundsOfCurrentSeason = $this->roundRepository->getAll($currentSeasonId);
 
-        $averageLosersArray = array();
+        $averageLosersArray = [];
         $roundNumber = 1;
 
         /*
@@ -160,19 +126,19 @@ class SeasonManager
         $allPlayers = $this->playerRepository->getAllWithSeasonInfo($currentSeasonId, true);
 
         foreach ($allPlayers as $player) {
-            $resultArray = array();
+            $resultArray = [];
             // basispunt als beginwaarde zetten
             $resultArray[0] = $player['basePoints'];
             $roundNumber = 1;
 
-            $seasonStats = array(
+            $seasonStats = [
                 "setsPlayed" => 0,
                 "setsWon" => 0,
                 "roundsPresent" => 0,
                 "matchesPlayed" => 0,
                 "pointsPlayed" => 0,
-                "pointsWon" => 0
-            );
+                "pointsWon" => 0,
+            ];
 
             /*
              * Overloop de wedstrijden van de speler
@@ -188,9 +154,7 @@ class SeasonManager
                 // meerdere spelletjes gespeeld, OVERSLAAN
                 if ($roundNumber > $matchCurrentPlayer["roundNumber"]) {
                     //Meermaals aanwezig op huidige speeldag
-                } //We zitten goed!
-                else if ($roundNumber == $matchCurrentPlayer["roundNumber"]) {
-
+                } elseif ($roundNumber == $matchCurrentPlayer["roundNumber"]) { //We zitten goed!
                     $matchStatistics = Utilities::calculateMatchStatistics(
                         $matchCurrentPlayer["player1Id"],
                         $matchCurrentPlayer["player2Id"],

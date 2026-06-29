@@ -1,29 +1,18 @@
 <?php
+
+declare(strict_types=1);
+
 namespace intraclub\validators;
 
-use \Datetime;
-use intraclub\common\Utilities;
 use intraclub\repositories\SeasonRepository;
+use PDO;
 
 class SeasonValidator
 {
+    protected SeasonRepository $seasonRepository;
 
-    /**
-     * Database connection
-     *
-     * @var \PDO
-     */
-    protected $db;
-    /**
-     * seasonRepository
-     *
-     * @var SeasonRepository
-     */
-    protected $seasonRepository;
-
-    public function __construct($db)
+    public function __construct(protected PDO $db)
     {
-        $this->db = $db;
         $this->seasonRepository = new SeasonRepository($db);
     }
 
@@ -33,9 +22,9 @@ class SeasonValidator
      * @param  string $name
      * @return array(string) errors
      */
-    public function validateCreateSeason($name)
+    public function validateCreateSeason($name): array
     {
-        $errors = array();
+        $errors = [];
         if (!isset($name) || trim($name) === '') {
             $errors[] = "Periode moet ingevuld zijn.";
         }

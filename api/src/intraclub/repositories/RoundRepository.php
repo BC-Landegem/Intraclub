@@ -1,4 +1,7 @@
 <?php
+
+declare(strict_types=1);
+
 namespace intraclub\repositories;
 
 use PDO;
@@ -6,24 +9,14 @@ use PDO;
 class RoundRepository
 {
     /**
-     * Database connection
-     *
-     * @var PDO
-     */
-    protected $db;
-
-    /**
      * Speeldag query: basisinfo én aantal gespeelde matchen
-     *
-     * @var string
      */
-    protected $roundQuery = "SELECT RND.id, RND.number, ROUND(RND.AverageAbsent,2) AS averageAbsent, 
+    protected string $roundQuery = "SELECT RND.id, RND.number, ROUND(RND.AverageAbsent,2) AS averageAbsent,
     RND.date, RND.calculated, (SELECT COUNT(MT.id) FROM `Match` MT where MT.RoundId = RND.Id) as matches
     FROM Round RND";
 
-    public function __construct($db)
+    public function __construct(protected PDO $db)
     {
-        $this->db = $db;
     }
 
     /**
@@ -32,7 +25,7 @@ class RoundRepository
      * @param  int $seasonId
      * @return ?array speeldagen
      */
-    public function getAll($seasonId = null)
+    public function getAll($seasonId = null): ?array
     {
         if (empty($seasonId)) {
             return null;
@@ -51,11 +44,10 @@ class RoundRepository
      * @param  int $roundNumber
      * @return void
      */
-    public function create($seasonId, $date, $roundNumber)
+    public function create($seasonId, $date, $roundNumber): void
     {
-
         $stmt = $this->db->prepare("INSERT INTO Round (SeasonId, Date,
-             Number, AverageAbsent, Calculated, DrawClosed) 
+             Number, AverageAbsent, Calculated, DrawClosed)
              VALUES (:seasonId, :date, :roundNumber, 0, 0, 0)");
         $stmt->bindParam(':seasonId', $seasonId, PDO::PARAM_INT);
         $stmt->bindParam(':date', $date, PDO::PARAM_STR);
@@ -71,9 +63,8 @@ class RoundRepository
      * @param  int $averageAbsent
      * @return void
      */
-    public function updateAverageAbsent($id, $averageAbsent)
+    public function updateAverageAbsent($id, $averageAbsent): void
     {
-
         $updateRoundstmt = $this->db->prepare("UPDATE `Round`
         SET
             AverageAbsent = ?,
@@ -84,32 +75,35 @@ class RoundRepository
         $updateRoundstmt->bindParam(2, $id, PDO::PARAM_INT);
         $updateRoundstmt->execute();
     }
+
     /**
      * Controle of er een speeldag bestaat op datum
      *
      * @param  string $date
      * @return bool true indien speeldag bestaat
      */
-    public function existsWithDate($date)
+    public function existsWithDate($date): bool
     {
         $stmt = $this->db->prepare("SELECT COUNT(*) as num FROM Round WHERE `Date` = ? ");
         $stmt->execute([$date]);
         $row = $stmt->fetch();
         return $row["num"] > 0;
     }
+
     /**
      * Controle of speeldag bestaat
      *
      * @param  int $id
      * @return bool true indien speeldag bestaat
      */
-    public function exists($id)
+    public function exists($id): bool
     {
         $stmt = $this->db->prepare("SELECT COUNT(*) as num FROM Round WHERE id = ? ");
         $stmt->execute([$id]);
         $row = $stmt->fetch();
         return $row["num"] > 0;
     }
+
     /**
      * Haal ronde op
      *
@@ -122,6 +116,7 @@ class RoundRepository
         $stmt->execute([$id]);
         return $stmt->fetch();
     }
+
     /**
      * Ronde op basis van nummer en seizoen
      *
@@ -132,7 +127,7 @@ class RoundRepository
     public function getBySeasonAndNumber($seasonId, $number)
     {
         $stmt = $this->db->prepare($this->roundQuery . " WHERE RND.seasonId = :seasonId and RND.number = :roundNumber;");
-        $stmt->execute(array(':seasonId' => $seasonId, ':roundNumber' => $number));
+        $stmt->execute([':seasonId' => $seasonId, ':roundNumber' => $number]);
         return $stmt->fetch();
     }
 
@@ -158,7 +153,7 @@ class RoundRepository
     public function getLastCalculated($seasonId)
     {
         $stmt = $this->db->prepare($this->roundQuery .
-            " WHERE RND.SeasonId=? AND RND.Calculated = 1 
+            " WHERE RND.SeasonId=? AND RND.Calculated = 1
                 ORDER BY RND.Number DESC LIMIT 1;");
         $stmt->execute([$seasonId]);
         return $stmt->fetch();
@@ -170,12 +165,12 @@ class RoundRepository
      * @param  int $id
      * @return ?array speeldag met wedstrijden
      */
-    public function getWithMatches($id)
+    public function getWithMatches($id): ?array
     {
         if (empty($id)) {
             return null;
         }
-        $stmt = $this->db->prepare("SELECT RND.id, RND.number, ROUND(RND.averageAbsent,2) AS averageAbsent, 
+        $stmt = $this->db->prepare("SELECT RND.id, RND.number, ROUND(RND.averageAbsent,2) AS averageAbsent,
             RND.date, RND.calculated, set1Home,set1Away, set2Home, set2Away, set3Home, set3Away,
             PL1H.Id as player1Id, PL1H.firstName AS player1FirstName, PL1H.name AS player1Name,
             PL2H.Id as player2Id, PL2H.firstName AS player2FirstName, PL2H.name AS player2Name,
@@ -193,7 +188,7 @@ class RoundRepository
         return $stmt->fetchAll();
     }
 
-    public function getAvailabilityData($id)
+    public function getAvailabilityData($id): array
     {
         $stmt = $this->db->prepare("SELECT playerId, present, drawnOut, average
             FROM `PlayerRoundStatistic`

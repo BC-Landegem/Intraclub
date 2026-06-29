@@ -1,45 +1,23 @@
 <?php
 
+declare(strict_types=1);
+
 namespace intraclub\validators;
 
 use intraclub\repositories\MatchRepository;
 use intraclub\repositories\RoundRepository;
 use intraclub\repositories\PlayerRepository;
-
 use intraclub\common\Utilities;
+use PDO;
 
 class MatchValidator
 {
+    protected MatchRepository $matchRepository;
+    protected RoundRepository $roundRepository;
+    protected PlayerRepository $playerRepository;
 
-    /**
-     * Database connection
-     *
-     * @var \PDO
-     */
-    protected $db;
-    /**
-     * matchRepository
-     *
-     * @var MatchRepository
-     */
-    protected $matchRepository;
-    /**
-     * roundRepository
-     *
-     * @var RoundRepository
-     */
-    protected $roundRepository;
-
-    /**
-     * playerRepository
-     *
-     * @var PlayerRepository
-     */
-    protected $playerRepository;
-
-    public function __construct($db)
+    public function __construct(protected PDO $db)
     {
-        $this->db = $db;
         $this->matchRepository = new MatchRepository($db);
         $this->roundRepository = new RoundRepository($db);
         $this->playerRepository = new PlayerRepository($db);
@@ -61,9 +39,8 @@ class MatchValidator
         $playerId2,
         $playerId3,
         $playerId4
-    ) {
-
-        $errors = array();
+    ): array {
+        $errors = [];
 
         //Controleer of ronde bestaat
         if (!$this->roundRepository->exists($roundId)) {
@@ -101,9 +78,8 @@ class MatchValidator
         $set2Away,
         $set3Home,
         $set3Away
-    ) {
-
-        $errors = array();
+    ): array {
+        $errors = [];
 
         //Controleer of match bestaat
         if (!$this->matchRepository->exists($id)) {
@@ -124,7 +100,7 @@ class MatchValidator
 
     /**
      * Valideer team
-     * 
+     *
      * Spelers moeten lid zijn
      *
      * @param  int $playerId1
@@ -139,7 +115,7 @@ class MatchValidator
         $playerId3,
         $playerId4,
         $errors
-    ) {
+    ): array {
         //Controleer of spelers bestaan én moeten lid zijn
         if (!$this->playerRepository->existsAndIsMember($playerId1)) {
             $errors[] = "Eerste thuisspeler is geen lid.";
@@ -158,7 +134,7 @@ class MatchValidator
 
     /**
      * Valideer westrijd
-     * 
+     *
      * Setstanden moeten kloppen
      *
      * @param  int $set1Home
@@ -177,9 +153,7 @@ class MatchValidator
         $set3Home,
         $set3Away,
         $errors
-    ) {
-
-
+    ): array {
         //Basisvalidatie
         //SET 1
         $errors = $this->checkIfValidNumber($set1Home, "Thuisscore eerste set", $errors);
@@ -215,10 +189,9 @@ class MatchValidator
         return $errors;
     }
 
-
     /**
      * Controle of set klopt
-     * 
+     *
      * 30-29 of 29-30
      * 21+ - x waarbij x steeds = 21+ -2
      *
@@ -228,7 +201,7 @@ class MatchValidator
      * @param  array(string) $errors
      * @return array(string) errors
      */
-    private function checkSet($homeScore, $awayScore, $message, $errors)
+    private function checkSet($homeScore, $awayScore, $message, $errors): array
     {
         //Uitzondering: 30-29
         if (
@@ -255,7 +228,6 @@ class MatchValidator
             $errors[] = "Foutieve score voor " . $message;
         }
 
-
         return $errors;
     }
 
@@ -267,11 +239,11 @@ class MatchValidator
      * @param  array(string) $errors
      * @return array(string) errors
      */
-    private function checkIfValidNumber($setScore, $message, $errors)
+    private function checkIfValidNumber($setScore, $message, $errors): array
     {
         if (Utilities::isInt($setScore) === false) {
             $errors[] = $message . "  is ongeldig";
-        } else if ($setScore < 0 || $setScore > 30) {
+        } elseif ($setScore < 0 || $setScore > 30) {
             $errors[] = $message . "  is een ongeldig getal";
         }
         return $errors;

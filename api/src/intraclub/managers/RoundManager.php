@@ -1,32 +1,22 @@
 <?php
+
+declare(strict_types=1);
+
 namespace intraclub\managers;
 
 use intraclub\repositories\MatchRepository;
 use intraclub\repositories\RoundRepository;
 use intraclub\repositories\SeasonRepository;
 use intraclub\common\Utilities;
+use PDO;
 
 class RoundManager
 {
-    /**
-     * Repo Layer
-     *
-     * @var RoundRepository
-     */
-    protected $roundRepository;
-    /**
-     * seasonRepository
-     *
-     * @var SeasonRepository
-     */
-    protected $seasonRepository;
-    /**
-     * matchRepository
-     *
-     * @var MatchRepository
-     */
-    protected $matchRepository;
-    public function __construct($db)
+    protected RoundRepository $roundRepository;
+    protected SeasonRepository $seasonRepository;
+    protected MatchRepository $matchRepository;
+
+    public function __construct(PDO $db)
     {
         $this->roundRepository = new RoundRepository($db);
         $this->matchRepository = new MatchRepository($db);
@@ -39,7 +29,7 @@ class RoundManager
      * @param  string $date
      * @return void
      */
-    public function create($date)
+    public function create($date): void
     {
         $currentSeasonId = $this->seasonRepository->getCurrentSeasonId();
         $roundNumber = 1;
@@ -50,27 +40,27 @@ class RoundManager
 
         $this->roundRepository->create($currentSeasonId, $date, $roundNumber);
     }
+
     /**
      * Haal speeldag op met matchen
      *
      * @param  int $id
      * @return array wedstrijden
      */
-    public function getByIdWithMatches($id)
+    public function getByIdWithMatches($id): array
     {
         $roundInformation = $this->roundRepository->getWithMatches($id);
-        $response = array();
+        $response = [];
         if (!empty($roundInformation)) {
-            $response = array(
+            $response = [
                 "id" => $roundInformation[0]["id"],
                 "number" => $roundInformation[0]["number"],
                 "averageAbsent" => $roundInformation[0]["averageAbsent"],
-                "date" => $roundInformation[0]["date"]
-            );
-            $response["matches"] = array();
-            for ($index = 0; $index < count($roundInformation); $index++) {
-                $match = Utilities::mapToMatchObject($roundInformation[$index]);
-                $response["matches"][] = $match;
+                "date" => $roundInformation[0]["date"],
+            ];
+            $response["matches"] = [];
+            foreach ($roundInformation as $roundMatch) {
+                $response["matches"][] = Utilities::mapToMatchObject($roundMatch);
             }
         }
         return $response;
@@ -80,9 +70,9 @@ class RoundManager
      * Haal alle speeldagen op
      *
      * @param  int $seasonId
-     * @return array speeldagen
+     * @return ?array speeldagen
      */
-    public function getAll($seasonId = null)
+    public function getAll($seasonId = null): ?array
     {
         if (empty($seasonId)) {
             $seasonId = $this->seasonRepository->getCurrentSeasonId();
@@ -103,22 +93,22 @@ class RoundManager
         }
         $round = $this->roundRepository->getLast($seasonId);
         $matches = $this->matchRepository->getAllByRoundId($round["id"]);
-        $round["matches"] = array();
+        $round["matches"] = [];
         foreach ($matches as $match) {
-            $convertedMatch = Utilities::mapToMatchObject($match);
-            $round["matches"][] = $convertedMatch;
+            $round["matches"][] = Utilities::mapToMatchObject($match);
         }
         $round["availabilityData"] = $this->roundRepository->getAvailabilityData($round["id"]);
 
         return $round;
     }
+
     /**
      * Haal laatste BEREKENDE ronde op van seizoen
      *
      * @param  mixed $seasonId
      * @return ?array speeldag
      */
-    public function getLastCalculated($seasonId = null)
+    public function getLastCalculated($seasonId = null): ?array
     {
         if (empty($seasonId)) {
             $seasonId = $this->seasonRepository->getCurrentSeasonId();
@@ -128,14 +118,12 @@ class RoundManager
             return null;
         }
         $matches = $this->matchRepository->getAllByRoundId($round["id"]);
-        $round["matches"] = array();
+        $round["matches"] = [];
         foreach ($matches as $match) {
-            $convertedMatch = Utilities::mapToMatchObject($match);
-            $round["matches"][] = $convertedMatch;
+            $round["matches"][] = Utilities::mapToMatchObject($match);
         }
         $round["availabilityData"] = $this->roundRepository->getAvailabilityData($round["id"]);
 
         return $round;
     }
-
 }

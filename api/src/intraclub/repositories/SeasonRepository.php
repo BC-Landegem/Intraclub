@@ -1,20 +1,15 @@
 <?php
 
+declare(strict_types=1);
+
 namespace intraclub\repositories;
 
+use PDO;
 
 class SeasonRepository
 {
-    /**
-     * Database connection
-     *
-     * @var \PDO
-     */
-    protected $db;
-
-    public function __construct($db)
+    public function __construct(protected PDO $db)
     {
-        $this->db = $db;
     }
 
     /**
@@ -25,30 +20,32 @@ class SeasonRepository
     public function getCurrentSeasonId(): int
     {
         $currentSeason = $this->db->query("SELECT Id FROM Season ORDER BY Id DESC LIMIT 1;")->fetch();
-        return $currentSeason["Id"];
+        return (int) $currentSeason["Id"];
     }
+
     /**
      * Controle of er een seizoen bestaat met zelfde naam
      *
      * @param  string $name
      * @return bool true indien naam reeds bestaat
      */
-    public function exists($name)
+    public function exists($name): bool
     {
         $stmt = $this->db->prepare("SELECT COUNT(*) as num FROM Season WHERE Name = ? ");
         $stmt->execute([$name]);
         $row = $stmt->fetch();
         return $row["num"] > 0;
     }
+
     /**
      * Haal statistieken op voor gegeven seizoen
      *
      * @param  int $seasonId
      * @return array spelerinfo met seizoenstatistieken
      */
-    public function getStatistics($seasonId)
+    public function getStatistics($seasonId): array
     {
-        $query = "SELECT IPLAYER.id, IPLAYER.firstName, IPLAYER.name, 
+        $query = "SELECT IPLAYER.id, IPLAYER.firstName, IPLAYER.name,
                 ISPS.setsPlayed, ISPS.setsWon, ISPS.pointsPlayed,
                 ISPS.pointsWon, ISPS.matchesPlayed,
                 ISPS.roundsPresent
@@ -74,6 +71,4 @@ class SeasonRepository
         $insertStmt->execute([$period]);
         return $this->db->lastInsertId();
     }
-
-
 }

@@ -1,36 +1,22 @@
 <?php
+
+declare(strict_types=1);
+
 namespace intraclub\managers;
 
 use DateTime;
-use intraclub\common\Utilities;
 use intraclub\repositories\RankingRepository;
 use intraclub\repositories\RoundRepository;
 use intraclub\repositories\SeasonRepository;
+use PDO;
 
 class RankingManager
 {
-    /**
-     * Ranking Repo
-     *
-     * @var RankingRepository
-     */
-    protected $rankingRepository;
+    protected RankingRepository $rankingRepository;
+    protected RoundRepository $roundRepository;
+    protected SeasonRepository $seasonRepository;
 
-    /**
-     * Round Repo
-     *
-     * @var RoundRepository
-     */
-    protected $roundRepository;
-
-    /**
-     * seasonRepository
-     *
-     * @var SeasonRepository
-     */
-    protected $seasonRepository;
-
-    public function __construct($db)
+    public function __construct(PDO $db)
     {
         $this->rankingRepository = new RankingRepository($db);
         $this->roundRepository = new RoundRepository($db);
@@ -49,13 +35,12 @@ class RankingManager
      * @param  int $roundId speeldag id
      * @return array ranking
      */
-    public function get($items = null, $showGeneral = false, $showWomen = false, $showVeterans = false, $showRecreants = false, $seasonId = null, $roundId = null)
+    public function get($items = null, $showGeneral = false, $showWomen = false, $showVeterans = false, $showRecreants = false, $seasonId = null, $roundId = null): array
     {
         // Check if parameters are filled in
         // If not => return latest season, and latest calculated round
         $seasonId = $this->checkSeason($seasonId);
         $round = $this->checkRound($roundId, $seasonId);
-        $ranking = null;
         // If round is still empty => no calculated round for current season
         if (empty($round)) {
             $ranking = $this->rankingRepository->getRankingForNewSeason($seasonId);
@@ -63,7 +48,7 @@ class RankingManager
             $ranking = $this->rankingRepository->getRankingAfterRound($round["id"]);
         }
 
-        $previousRanking = array();
+        $previousRanking = [];
 
         if ($round["number"] > 1) {
             $previousRound = $this->roundRepository->getBySeasonAndNumber($seasonId, $round["number"] - 1);
@@ -71,7 +56,7 @@ class RankingManager
         }
         //Build the rankings
         //Response
-        $response = array("seasonId" => $seasonId);
+        $response = ["seasonId" => $seasonId];
         if ($showGeneral) {
             $response["general"] = $this->buildRanking($ranking, $previousRanking, "filterNothing", $items);
         }
@@ -84,7 +69,6 @@ class RankingManager
         if ($showVeterans) {
             $response["veterans"] = $this->buildRanking($ranking, $previousRanking, "filterVeteran", $items);
         }
-        ;
         return $response;
     }
 
@@ -128,22 +112,21 @@ class RankingManager
      * @param  int $items
      * @return array ranking
      */
-    private function buildRanking($ranking, $previousRanking, $filterfunction, $items)
+    private function buildRanking($ranking, $previousRanking, $filterfunction, $items): array
     {
         // Use array_values to reset keys
-        $specificCurrentRanking = array_values(array_filter($ranking, array($this, $filterfunction)));
-        $specificPreviousRanking = array();
+        $specificCurrentRanking = array_values(array_filter($ranking, [$this, $filterfunction]));
+        $specificPreviousRanking = [];
 
         if (!empty($previousRanking)) {
-            $specificPreviousRanking = array_values(array_filter($previousRanking, array($this, $filterfunction)));
+            $specificPreviousRanking = array_values(array_filter($previousRanking, [$this, $filterfunction]));
         }
-        $specificRanking = array();
+        $specificRanking = [];
         if (empty($items) || $items > $specificCurrentRanking) {
             $items = count($specificCurrentRanking);
         }
         for ($index = 0; $index < $items; $index++) {
-            $player = $this->mapToRankingObject($index, $specificCurrentRanking, $specificPreviousRanking);
-            $specificRanking[] = $player;
+            $specificRanking[] = $this->mapToRankingObject($index, $specificCurrentRanking, $specificPreviousRanking);
         }
         return $specificRanking;
     }
@@ -151,30 +134,33 @@ class RankingManager
     /*
     Filter function to build rankings
      */
-    private function filterNothing($player)
+    private function filterNothing($player): bool
     {
         return true;
     }
+
     /**
      * Filter ranking op vrouwen
      *
      * @param  array $player
      * @return bool
      */
-    private function filterWoman($player)
+    private function filterWoman($player): bool
     {
         return $player["gender"] == "Woman";
     }
+
     /**
      * Filter ranking op recreanten
      *
      * @param  array $player
      * @return bool
      */
-    private function filterRecreant($player)
+    private function filterRecreant($player): bool
     {
         return $player["playsCompetition"] == 0;
     }
+
     /**
      * Filter ranking op veteranen
      * 45 jaar of ouder
@@ -182,13 +168,12 @@ class RankingManager
      * @param  array $player
      * @return bool
      */
-    private function filterVeteran($player)
+    private function filterVeteran($player): bool
     {
         $birthDateString = $player["birthDate"];
         // convert to Date
         $birthDate = DateTime::createFromFormat("Y-m-d", $birthDateString);
         return $birthDate->diff(new DateTime())->y >= 45;
-
     }
 
     /**
@@ -199,20 +184,21 @@ class RankingManager
      * @param  array $previousRanking
      * @return array
      */
-    private function mapToRankingObject($index, $currentRanking, $previousRanking)
+    private function mapToRankingObject($index, $currentRanking, $previousRanking): array
     {
-        return array(
+        return [
             "id" => $currentRanking[$index]["id"],
             "name" => $currentRanking[$index]["name"],
             "firstName" => $currentRanking[$index]["firstName"],
             "average" => round($currentRanking[$index]["average"], 2),
             "rank" => $index + 1,
             "difference" => $this->findPreviousRanking($currentRanking[$index]["id"], $index + 1, $previousRanking),
-        );
+        ];
     }
+
     /**
      * Find difference with previous ranking
-     * 
+     *
      * Returns 0 if no previous ranking available
      *
      * @param  int $playerId
@@ -220,7 +206,7 @@ class RankingManager
      * @param  array $previousRanking
      * @return int difference
      */
-    private function findPreviousRanking($playerId, $currentRank, $previousRanking)
+    private function findPreviousRanking($playerId, $currentRank, $previousRanking): int
     {
         $difference = 0;
         if (!empty($previousRanking)) {

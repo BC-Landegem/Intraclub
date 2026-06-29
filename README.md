@@ -2,7 +2,7 @@
 
 ## API
 ### Installatie
-1. Installeer PHP 7.4. Activeer pdo_mysql in php.ini
+1. Installeer PHP 8.1 of hoger. Activeer pdo_mysql in php.ini
 2. Download en installeer Composer https://getcomposer.org/download/
 3. Download en installeer MariaDB https://mariadb.org/download/. Je kan dit beheren via DbBeaver https://dbeaver.io/download/
 4. Voer de SQL scripts uit in /api/resources/schema

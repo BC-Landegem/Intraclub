@@ -23,4 +23,4 @@ Alle functionaliteit wordt exposed via een REST Api. Zie src/routes.php voor all
     - Voor authenticatie en authorisatie
     - Kan vervangen worden door eigen systeem. Zie src/routes.php -> CheckAccessRights
 - [Slim Framework v3](http://www.slimframework.com/docs/v3/)
-- PHP 7.+
+- PHP 8.1+

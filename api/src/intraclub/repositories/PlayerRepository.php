@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace intraclub\repositories;
 
 use PDO;
@@ -7,28 +9,17 @@ use PDO;
 class PlayerRepository
 {
     /**
-     * Database connection
-     *
-     * @var PDO
-     */
-    protected $db;
-
-    /**
      * Basisinfo speler
-     *
-     * @var string
      */
-    protected $playerQuery = "SELECT IPLAYER.id, IPLAYER.firstName, IPLAYER.name,
+    protected string $playerQuery = "SELECT IPLAYER.id, IPLAYER.firstName, IPLAYER.name,
     IPLAYER.playsCompetition, IPLAYER.member,
     IPLAYER.gender, IPLAYER.doubleRanking
     FROM Player IPLAYER";
 
     /**
      * Spelerinfo mét seizoensgegevens
-     *
-     * @var string
      */
-    protected $playerWithSeasonInfoQuery = "
+    protected string $playerWithSeasonInfoQuery = "
     SELECT IPLAYER.id, IPLAYER.firstName, IPLAYER.name, IPLAYER.member,
         IPLAYER.gender, IPLAYER.doubleRanking,
         ISPS.basePoints, ISPS.setsPlayed, ISPS.setsWon, ISPS.pointsPlayed,
@@ -37,9 +28,8 @@ class PlayerRepository
         INNER JOIN PlayerSeasonStatistic ISPS ON ISPS.playerId = IPLAYER.id
         WHERE ISPS.seasonId = ?";
 
-    public function __construct($db)
+    public function __construct(protected PDO $db)
     {
-        $this->db = $db;
     }
 
     /**
@@ -48,7 +38,7 @@ class PlayerRepository
      * @param  bool $onlyMembers enkel leden of alle spelers
      * @return array met spelers- en seizoeninfo
      */
-    public function getAll($onlyMembers = true)
+    public function getAll(bool $onlyMembers = true): array
     {
         $query = $this->playerQuery;
 
@@ -57,30 +47,30 @@ class PlayerRepository
         }
         $query = $query . " ORDER BY FirstName, Name";
 
-
-        $data = $this->db->query($query)->fetchAll();
-        return $data;
+        return $this->db->query($query)->fetchAll();
     }
+
     /**
      * Controle of speler bestaat
      *
      * @param  int $id
      * @return bool true indien speler bestaat
      */
-    public function exists($id)
+    public function exists($id): bool
     {
         $stmt = $this->db->prepare("SELECT COUNT(*) as num FROM Player WHERE Id = ? ");
         $stmt->execute([$id]);
         $row = $stmt->fetch();
         return $row["num"] > 0;
     }
+
     /**
      * Controle of speler bestaat én lid is
      *
      * @param  int $id
      * @return bool indien speler bestaat en lid is
      */
-    public function existsAndIsMember($id)
+    public function existsAndIsMember($id): bool
     {
         $stmt = $this->db->prepare("SELECT Id, Member FROM Player WHERE Id = ? ");
         $stmt->execute([$id]);
@@ -95,7 +85,7 @@ class PlayerRepository
      * @param  bool $onlyMembers true om enkel leden op te halen
      * @return array met spelers- en seizoeninfo
      */
-    public function getAllWithSeasonInfo($seasonId, $onlyMembers = true)
+    public function getAllWithSeasonInfo($seasonId, bool $onlyMembers = true): array
     {
         $query = $this->playerWithSeasonInfoQuery;
 
@@ -129,9 +119,9 @@ class PlayerRepository
      *
      * @return array<string>
      */
-    public function getPossibleGenders()
+    public function getPossibleGenders(): array
     {
-        $enum = array();
+        $enum = [];
         $stmt = $this->db->prepare('SHOW COLUMNS FROM Player WHERE field=\'gender\'');
         $stmt->execute();
         $row = $stmt->fetch();
@@ -150,7 +140,6 @@ class PlayerRepository
      * @param  string $birthDate
      * @param  int $doubleRanking
      * @param  bool $playsCompetition
-     * @param  int $basePoints
      * @return int id van nieuwe speler
      */
     public function create($firstName, $name, $gender, $birthDate, $doubleRanking, $playsCompetition)
@@ -158,7 +147,7 @@ class PlayerRepository
         $playsCompetitionInteger = $playsCompetition ? 1 : 0;
 
         $stmt = $this->db->prepare("INSERT INTO Player
-            SET 
+            SET
             FirstName = :firstName,
             `Name` = :lastName,
             Gender = :gender,
@@ -177,6 +166,7 @@ class PlayerRepository
         $stmt->execute();
         return $this->db->lastInsertId();
     }
+
     /**
      * Update een bestaande speler
      *
@@ -189,13 +179,13 @@ class PlayerRepository
      * @param  string $ranking
      * @return void
      */
-    public function update($id, $firstName, $name, $gender, $isYouth, $isVeteran, $ranking)
+    public function update($id, $firstName, $name, $gender, $isYouth, $isVeteran, $ranking): void
     {
         $isYouthInteger = $isYouth ? 1 : 0;
         $isVeteranInteger = $isVeteran ? 1 : 0;
 
         $stmt = $this->db->prepare("UPDATE intra_spelers
-            SET 
+            SET
             voornaam = :firstName,
             naam = :lastName,
             geslacht = :gender,
@@ -224,7 +214,7 @@ class PlayerRepository
      * @param  int $basePoints
      * @return void
      */
-    public function createSeasonStatistic($seasonId, $playerId, $basePoints)
+    public function createSeasonStatistic($seasonId, $playerId, $basePoints): void
     {
         $insertPlayerSeasonQuery = "INSERT INTO PlayerSeasonStatistic
             SET
@@ -243,6 +233,7 @@ class PlayerRepository
         $insertPlayerSeasonStmt->bindParam(':playerId', $playerId, PDO::PARAM_INT);
         $insertPlayerSeasonStmt->execute();
     }
+
     /**
      * Update seizoensstatistieken (bereken tussenstand)
      *
@@ -265,8 +256,7 @@ class PlayerRepository
         $pointsWon,
         $roundsPresent,
         $matchesPlayed
-    ) {
-
+    ): void {
         $updatePlayerSeasonStmt = $this->db->prepare("UPDATE PlayerSeasonStatistic
             SET
                 SetsPlayed = :setsPlayed,
@@ -297,9 +287,8 @@ class PlayerRepository
      * @param  int $average
      * @return void
      */
-    public function insertOrUpdateRoundStatistic($roundId, $playerId, $average)
+    public function insertOrUpdateRoundStatistic($roundId, $playerId, $average): void
     {
-
         $updatePlayerSeasonStmt = $this->db->prepare("INSERT INTO
             PlayerRoundStatistic
             SET
@@ -317,7 +306,7 @@ class PlayerRepository
         $updatePlayerSeasonStmt->execute();
     }
 
-    public function insertOrUpdateAttendanceData($playerId, $roundId, $present, $drawnOut)
+    public function insertOrUpdateAttendanceData($playerId, $roundId, $present, $drawnOut): void
     {
         $presentInteger = $present ? 1 : 0;
         $drawnOutInteger = $drawnOut ? 1 : 0;

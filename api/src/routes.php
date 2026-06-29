@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 use intraclub\managers\MatchManager;
 use intraclub\managers\PlayerManager;
 use intraclub\managers\RankingManager;
@@ -97,7 +99,8 @@ return function (App $app) {
     $app->post('/seasons', function (Request $request, Response $response, array $args) {
         if (!checkAccessRights($response)) {
             return $response->withStatus(401);
-        }$seasonManager = new SeasonManager($this->db);
+        }
+        $seasonManager = new SeasonManager($this->db);
         $seasonValidator = new SeasonValidator($this->db);
 
         $postArr = $request->getParsedBody();
@@ -118,7 +121,8 @@ return function (App $app) {
     $app->post('/rounds', function (Request $request, Response $response, array $args) {
         if (!checkAccessRights($response)) {
             return $response->withStatus(401);
-        }$roundManager = new RoundManager($this->db);
+        }
+        $roundManager = new RoundManager($this->db);
         $roundValidator = new RoundValidator($this->db);
 
         $postArr = $request->getParsedBody();
@@ -141,7 +145,7 @@ return function (App $app) {
         $roundId = $args['id'];
         $playerId = $args['playerId'];
         $present = $postArr["present"];
-        $drawnOut = isset($postArr["drawnOut"]) ? $postArr["drawnOut"] : false;
+        $drawnOut = $postArr["drawnOut"] ?? false;
 
         $errors = $playerValidator->validateAttendanceData($playerId, $roundId);
         if (!empty($errors)) {
@@ -197,7 +201,7 @@ return function (App $app) {
             $postArr["player4Id"]
         );
 
-        return $response->withJson(array("id" => $matchId));
+        return $response->withJson(["id" => $matchId]);
     });
 
     /* POST ipv PATCH - werkt niet op server
@@ -319,7 +323,7 @@ return function (App $app) {
         $id = $args['id'];
         $playerManager = new PlayerManager($this->db);
         $queryParams = $request->getQueryParams();
-        $seasonId = $queryParams["seasonId"];
+        $seasonId = $queryParams["seasonId"] ?? null;
         $data = $playerManager->getByIdWithSeasonInfo($id, $seasonId);
         return $response->withJson($data);
     });
@@ -337,7 +341,7 @@ return function (App $app) {
     $app->get('/rounds', function (Request $request, Response $response) {
         $roundManager = new RoundManager($this->db);
         $queryParams = $request->getQueryParams();
-        $seasonId = $queryParams["seasonId"];
+        $seasonId = $queryParams["seasonId"] ?? null;
 
         $data = $roundManager->getAll($seasonId);
         return $response->withJson($data);

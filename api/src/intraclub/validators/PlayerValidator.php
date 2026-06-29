@@ -1,37 +1,21 @@
 <?php
 
+declare(strict_types=1);
+
 namespace intraclub\validators;
 
-use DateTime;
 use intraclub\repositories\PlayerRepository;
 use intraclub\common\Utilities;
 use intraclub\repositories\RoundRepository;
+use PDO;
 
 class PlayerValidator
 {
+    protected PlayerRepository $playerRepository;
+    protected RoundRepository $roundRepository;
 
-    /**
-     * Database connection
-     *
-     * @var \PDO
-     */
-    protected $db;
-    /**
-     * playerRepository
-     *
-     * @var PlayerRepository
-     */
-    protected $playerRepository;
-
-    /**
-     * roundRepository
-     *
-     * @var RoundRepository
-     */
-    protected $roundRepository;
-    public function __construct($db)
+    public function __construct(protected PDO $db)
     {
-        $this->db = $db;
         $this->playerRepository = new PlayerRepository($db);
         $this->roundRepository = new RoundRepository($db);
     }
@@ -56,12 +40,12 @@ class PlayerValidator
         $doubleRanking,
         $playsCompetition,
         $basePoints
-    ) {
-        $errors = array();
+    ): array {
+        $errors = [];
         $errors = $this->validatePlayer($firstName, $name, $gender, $birthDate, $doubleRanking, $playsCompetition, $errors);
         if (Utilities::isInt($basePoints) === false) {
             $errors[] = "Ongeldige basispunten";
-        } else if ($basePoints < 0 || $basePoints > 21) {
+        } elseif ($basePoints < 0 || $basePoints > 21) {
             $errors[] = "Basispunten ongeldig";
         }
         return $errors;
@@ -79,9 +63,9 @@ class PlayerValidator
      * @param  int $playsCompetition
      * @return array(string) errors
      */
-    public function validateExistingPlayer($id, $firstName, $name, $gender, $birthDate, $doubleRanking, $playsCompetition)
+    public function validateExistingPlayer($id, $firstName, $name, $gender, $birthDate, $doubleRanking, $playsCompetition): array
     {
-        $errors = array();
+        $errors = [];
         if (!$this->playerRepository->exists($id)) {
             $errors[] = "Speler met gegeven id bestaat niet!";
         }
@@ -89,9 +73,9 @@ class PlayerValidator
         return $errors;
     }
 
-    public function validateAttendanceData($playerId, $roundId)
+    public function validateAttendanceData($playerId, $roundId): array
     {
-        $errors = array();
+        $errors = [];
         if (!$this->playerRepository->exists($playerId)) {
             $errors[] = "Speler met gegeven id bestaat niet!";
         }
@@ -103,7 +87,6 @@ class PlayerValidator
 
     /**
      * Validatie speler
-     * 
      *
      * @param  string $firstName
      * @param  string $name
@@ -114,7 +97,7 @@ class PlayerValidator
      * @param  array(string) errors
      * @return array(string) errors
      */
-    private function validatePlayer($firstName, $name, $gender, $birthDate, $doubleRanking, $playsCompetition, $errors)
+    private function validatePlayer($firstName, $name, $gender, $birthDate, $doubleRanking, $playsCompetition, $errors): array
     {
         if (!isset($firstName) || trim($firstName) === '') {
             $errors[] = "Voornaam moet ingevuld zijn";
@@ -130,7 +113,7 @@ class PlayerValidator
         }
         if (!Utilities::isDate($birthDate)) {
             $errors[] = "Ongeldige geboortedatum";
-        } else if (Utilities::isDateInFuture($birthDate)) {
+        } elseif (Utilities::isDateInFuture($birthDate)) {
             $errors[] = "Geboortedatum in de toekomst";
         }
         if (!is_bool($playsCompetition)) {

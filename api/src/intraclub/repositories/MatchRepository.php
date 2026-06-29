@@ -1,4 +1,7 @@
 <?php
+
+declare(strict_types=1);
+
 namespace intraclub\repositories;
 
 use PDO;
@@ -6,20 +9,11 @@ use PDO;
 class MatchRepository
 {
     /**
-     * Database connection
-     *
-     * @var PDO
-     */
-    protected $db;
-
-    /**
      * Query om wedstrijden op te halen, inclusief alle spelers
-     *
-     * @var string
      */
-    protected $matchQuery = "
+    protected string $matchQuery = "
     SELECT MT.id, MT.roundId, RND.number as roundNumber,
-        MT.set1Home, MT.set1Away, MT.set2Home, MT.set2Away, 
+        MT.set1Home, MT.set1Away, MT.set2Home, MT.set2Away,
         MT.set3Home, MT.set3Away,
         PL1H.Id as player1Id, PL1H.FirstName AS player1FirstName, PL1H.Name AS player1Name,
         PL2H.Id as player2Id, PL2H.FirstName AS player2FirstName, PL2H.Name AS player2Name,
@@ -33,9 +27,8 @@ class MatchRepository
     INNER JOIN Player PL2A ON PL2A.id =  MT.player4Id
     ";
 
-    public function __construct($db)
+    public function __construct(protected PDO $db)
     {
-        $this->db = $db;
     }
 
     /**
@@ -44,7 +37,7 @@ class MatchRepository
      * @param  int $seasonId
      * @return array of matches
      */
-    public function getAllBySeasonId($seasonId)
+    public function getAllBySeasonId($seasonId): array
     {
         $stmt = $this->db->prepare($this->matchQuery . " WHERE ISEASON.Id=?");
         $stmt->execute([$seasonId]);
@@ -57,7 +50,7 @@ class MatchRepository
      * @param  int $roundId
      * @return array of matches
      */
-    public function getAllByRoundId($roundId)
+    public function getAllByRoundId($roundId): array
     {
         $stmt = $this->db->prepare($this->matchQuery . " WHERE RND.Id=?");
         $stmt->execute([$roundId]);
@@ -71,7 +64,7 @@ class MatchRepository
      * @param  int $playerId
      * @return array of matches
      */
-    public function getAllBySeasonAndPlayerId($seasonId, $playerId)
+    public function getAllBySeasonAndPlayerId($seasonId, $playerId): array
     {
         $query = "SELECT MT.id, set1Home, set1Away, set2Home, set2Away, set3Home, set3Away,
                     PL1.Id as player1Id, PL1.FirstName AS player1FirstName, PL1.Name AS player1Name,
@@ -79,7 +72,7 @@ class MatchRepository
                     PL3.Id as player3Id, PL3.FirstName AS player3FirstName, PL3.Name AS player3Name,
                     PL4.Id as player4Id, PL4.FirstName AS player4FirstName, PL4.Name AS player4Name,
                     RND.Id as roundId, RND.Number AS roundNumber
-                    FROM `Match` MT 
+                    FROM `Match` MT
                     INNER JOIN Round RND ON RND.id = MT.RoundId
                     INNER JOIN Player PL1 ON PL1.id =  MT.player1Id
                     INNER JOIN Player PL2 ON PL2.id =  MT.player2Id
@@ -116,9 +109,9 @@ class MatchRepository
         $playerId3,
         $playerId4
     ) {
-        $stmt = $this->db->prepare("INSERT INTO `Match` 
+        $stmt = $this->db->prepare("INSERT INTO `Match`
             (RoundId, Player1Id, Player2Id, Player3Id, Player4Id, Set1Home, Set1Away,
-             Set2Home, Set2Away, Set3Home, Set3Away) 
+             Set2Home, Set2Away, Set3Home, Set3Away)
             VALUES (:roundId, :player1Id, :player2Id, :player3Id, :player4Id,
              0,0,0,0,0,0)");
         $stmt->bindParam(':roundId', $roundId, PDO::PARAM_INT);
@@ -129,7 +122,6 @@ class MatchRepository
 
         $stmt->execute();
         return $this->db->lastInsertId();
-
     }
 
     /**
@@ -144,7 +136,7 @@ class MatchRepository
      * @param  int $set3Away
      * @return bool
      */
-    public function update($id, $set1Home, $set1Away, $set2Home, $set2Away, $set3Home, $set3Away)
+    public function update($id, $set1Home, $set1Away, $set2Home, $set2Away, $set3Home, $set3Away): bool
     {
         $stmt = $this->db->prepare("UPDATE `Match`
         SET
@@ -173,7 +165,7 @@ class MatchRepository
      * @param  mixed $id
      * @return bool
      */
-    public function exists($id)
+    public function exists($id): bool
     {
         $stmt = $this->db->prepare("SELECT COUNT(*) as num FROM `Match` WHERE id = ? ");
         $stmt->execute([$id]);

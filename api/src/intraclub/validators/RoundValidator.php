@@ -1,43 +1,33 @@
 <?php
+
+declare(strict_types=1);
+
 namespace intraclub\validators;
 
-use \Datetime;
 use intraclub\common\Utilities;
 use intraclub\repositories\RoundRepository;
+use PDO;
 
 class RoundValidator
 {
+    protected RoundRepository $roundRepository;
 
-    /**
-     * Database connection
-     *
-     * @var \PDO
-     */
-    protected $db;
-    /**
-     * roundRepository
-     *
-     * @var RoundRepository
-     */
-    protected $roundRepository;
-
-    public function __construct($db)
+    public function __construct(protected PDO $db)
     {
-        $this->db = $db;
         $this->roundRepository = new RoundRepository($db);
     }
 
     /**
      * Validatie creatie speeldag
-     * 
+     *
      * Datum = correct tekstformaat
      *
      * @param  string $date
      * @return array(string) errors
      */
-    public function validateCreateRound($date)
+    public function validateCreateRound($date): array
     {
-        $errors = array();
+        $errors = [];
         if (!Utilities::isDate($date)) {
             $errors[] = "Ongeldige datum voor ronde.";
         }
