@@ -8,12 +8,8 @@
         "nyholm/psr7-server": "^1.0",
         "php-di/php-di": "^6",
         "selective/basepath": "^2.1",
-        "selective/validation": "^2.0",
-        "slim/php-view": "^3.2",
         "slim/slim": "4.*",
-        "symfony/uid": "^5.4",
-        "symfony/validator": "^5.4",
-        "cakephp/validation": "^4.4"
+        "symfony/uid": "^5.4"
     },
     "require-dev": {
         "symfony/console": "^5.4",

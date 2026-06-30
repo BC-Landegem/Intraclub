@@ -13,14 +13,10 @@ use Psr\Http\Message\StreamFactoryInterface;
 use Psr\Http\Message\UploadedFileFactoryInterface;
 use Psr\Http\Message\UriFactoryInterface;
 use Selective\BasePath\BasePathMiddleware;
-use Selective\Validation\Encoder\JsonEncoder;
-use Selective\Validation\Middleware\ValidationExceptionMiddleware;
-use Selective\Validation\Transformer\ErrorDetailsResultTransformer;
 use Slim\App;
 use Slim\Factory\AppFactory;
 use Slim\Interfaces\RouteParserInterface;
 use Slim\Middleware\ErrorMiddleware;
-use Slim\Views\PhpRenderer;
 use Symfony\Component\Console\Application;
 use Symfony\Component\Console\Input\InputOption;
 
@@ -90,14 +86,6 @@ return [
         return $driver->getConnection();
     },
 
-    ValidationExceptionMiddleware::class => function (ContainerInterface $container) {
-        return new ValidationExceptionMiddleware(
-            $container->get(ResponseFactoryInterface::class),
-            new ErrorDetailsResultTransformer(),
-            new JsonEncoder()
-        );
-    },
-
     ErrorMiddleware::class => function (ContainerInterface $container) {
         $settings = $container->get('settings')['error'];
         $app = $container->get(App::class);
@@ -132,9 +120,5 @@ return [
         }
 
         return $application;
-    },
-
-    PhpRenderer::class => function (ContainerInterface $container) {
-        return new PhpRenderer($container->get('settings')['template']);
     },
 ];

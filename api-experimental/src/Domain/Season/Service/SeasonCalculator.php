@@ -48,7 +48,7 @@ final class SeasonCalculator
                 $averageLosers += $score['averageLosing'];
                 $totalMatches++;
             }
-            $avg = $averageLosers / $totalMatches;
+            $avg = $totalMatches > 0 ? $averageLosers / $totalMatches : 0;
             $this->roundRepository->updateAverageAbsent($round->id, (float) $avg);
             $averageLosersArray[$roundNumber] = $avg;
             $roundNumber++;

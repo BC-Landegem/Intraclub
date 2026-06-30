@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace App\Domain\Season\Service;
 
 use App\Domain\Player\Repository\PlayerRepository;
-use App\Domain\Ranking\Data\Rankings;
 use App\Domain\Ranking\Service\RankingReader;
 use App\Domain\Season\Repository\SeasonRepository;
 
@@ -27,7 +26,6 @@ final class SeasonCreator
     {
         $this->validator->validateCreateSeason($period);
 
-        /** @var Rankings $rankings */
         $rankings = $this->rankingReader->get(null, true);
         $newSeasonId = $this->seasonRepository->insertSeason($period);
         $general = $rankings->general ?? [];
