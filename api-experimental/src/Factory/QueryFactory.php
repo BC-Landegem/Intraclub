@@ -5,87 +5,60 @@ declare(strict_types=1);
 namespace App\Factory;
 
 use Cake\Database\Connection;
-use Cake\Database\Query;
-use RuntimeException;
+use Cake\Database\Expression\QueryExpression;
+use Cake\Database\Query\DeleteQuery;
+use Cake\Database\Query\InsertQuery;
+use Cake\Database\Query\SelectQuery;
+use Cake\Database\Query\UpdateQuery;
 
 /**
- * Factory.
+ * Creates CakePHP query-builder queries bound to the application connection.
+ *
+ * Uses the non-deprecated, type-specific query methods (selectQuery / insertQuery /
+ * updateQuery / deleteQuery) introduced in cakephp/database 4.5.
  */
 final class QueryFactory
 {
-    private Connection $connection;
-
-    /**
-     * The constructor.
-     *
-     * @param Connection $connection The database connection
-     */
-    public function __construct(Connection $connection)
+    public function __construct(private Connection $connection)
     {
-        $this->connection = $connection;
+    }
+
+    public function newSelect(string $table): SelectQuery
+    {
+        return $this->connection->selectQuery()->from($table);
     }
 
     /**
-     * Create a new 'select' query for the given table.
-     *
-     * @param string $table The table name
-     *
-     * @throws RuntimeException
-     *
-     * @return Query A new select query
+     * Start a select query without a preset table (use ->from([alias => table])).
      */
-    public function newSelect(string $table): Query
+    public function newSelectQuery(): SelectQuery
     {
-        return $this->newQuery()->from($table);
+        return $this->connection->selectQuery();
     }
 
     /**
-     * Create a new query.
-     *
-     * @return Query The query
+     * @param array<int, string> $columns
      */
-    public function newQuery(): Query
+    public function newInsert(string $table, array $columns): InsertQuery
     {
-        return $this->connection->newQuery();
+        return $this->connection->insertQuery()->insert($columns)->into($table);
+    }
+
+    public function newUpdate(string $table): UpdateQuery
+    {
+        return $this->connection->updateQuery()->update($table);
+    }
+
+    public function newDelete(string $table): DeleteQuery
+    {
+        return $this->connection->deleteQuery()->delete($table);
     }
 
     /**
-     * Create an 'update' statement for the given table.
-     *
-     * @param string $table The table to update rows from
-     * @param array $data The values to be updated
-     *
-     * @return Query The new update query
+     * Create a raw SQL expression, e.g. for window functions.
      */
-    public function newUpdate(string $table, array $data): Query
+    public function expr(string $sql): QueryExpression
     {
-        return $this->newQuery()->update($table)->set($data);
-    }
-
-    /**
-     * Create an 'update' statement for the given table.
-     *
-     * @param string $table The table to update rows from
-     * @param array $data The values to be updated
-     *
-     * @return Query The new insert query
-     */
-    public function newInsert(string $table, array $data): Query
-    {
-        return $this->newQuery()->insert(array_keys($data))
-            ->into($table)
-            ->values($data);
-    }
-
-    /**
-     * Create a 'delete' query for the given table.
-     *
-     * @param string $table The table to delete from
-     *
-     * @return Query A new delete query
-     */
-    public function newDelete(string $table): Query
-    {
-        return $this->newQuery()->delete($table);
+        return $this->connection->selectQuery()->newExpr($sql);
     }
 }

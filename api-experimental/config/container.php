@@ -23,7 +23,6 @@ use Slim\Middleware\ErrorMiddleware;
 use Slim\Views\PhpRenderer;
 use Symfony\Component\Console\Application;
 use Symfony\Component\Console\Input\InputOption;
-use Tuupola\Middleware\HttpBasicAuthentication;
 
 return [
     // Application settings
@@ -137,9 +136,5 @@ return [
 
     PhpRenderer::class => function (ContainerInterface $container) {
         return new PhpRenderer($container->get('settings')['template']);
-    },
-
-    HttpBasicAuthentication::class => function (ContainerInterface $container) {
-        return new HttpBasicAuthentication($container->get('settings')['api_auth']);
     },
 ];

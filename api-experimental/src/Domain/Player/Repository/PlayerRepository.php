@@ -4,111 +4,95 @@ declare(strict_types=1);
 
 namespace App\Domain\Player\Repository;
 
-use PDO;
+use App\Domain\Player\Data\PlayerSummary;
+use App\Factory\QueryFactory;
+use Cake\Database\Query\SelectQuery;
 
 /**
- * Player repository.
- *
- * Uses the shared PDO connection with prepared statements. The SQL is reused
- * from the original API so the behaviour and result shapes stay identical.
+ * Player repository (CakePHP query builder).
  */
 final class PlayerRepository
 {
-    private string $playerQuery = 'SELECT IPLAYER.id, IPLAYER.firstName, IPLAYER.name,
-        IPLAYER.playsCompetition, IPLAYER.member,
-        IPLAYER.gender, IPLAYER.doubleRanking
-        FROM Player IPLAYER';
-
-    private string $playerWithSeasonInfoQuery = '
-        SELECT IPLAYER.id, IPLAYER.firstName, IPLAYER.name, IPLAYER.member,
-            IPLAYER.gender, IPLAYER.doubleRanking,
-            ISPS.basePoints, ISPS.setsPlayed, ISPS.setsWon, ISPS.pointsPlayed,
-            ISPS.pointsWon, ISPS.roundsPresent, ISPS.matchesPlayed
-            FROM `Player` IPLAYER
-            INNER JOIN PlayerSeasonStatistic ISPS ON ISPS.playerId = IPLAYER.id
-            WHERE ISPS.seasonId = ?';
-
-    public function __construct(private PDO $db)
+    public function __construct(private QueryFactory $queryFactory)
     {
     }
 
     /**
-     * @return array<int, array<string, mixed>>
+     * @return array<int, PlayerSummary>
      */
-    public function getAll(bool $onlyMembers = true): array
+    public function findMembers(): array
     {
-        $query = $this->playerQuery;
-        if ($onlyMembers) {
-            $query .= ' WHERE IPLAYER.Member = true';
-        }
-        $query .= ' ORDER BY FirstName, Name';
+        $rows = $this->queryFactory->newSelect('Player')
+            ->select([
+                'id' => 'Id',
+                'firstName' => 'FirstName',
+                'name' => 'Name',
+                'gender' => 'Gender',
+                'doubleRanking' => 'DoubleRanking',
+                'playsCompetition' => 'PlaysCompetition',
+                'member' => 'Member',
+            ])
+            ->where(['Member' => 1])
+            ->order(['FirstName' => 'ASC', 'Name' => 'ASC'])
+            ->execute()
+            ->fetchAll('assoc');
 
-        return $this->db->query($query)->fetchAll();
+        return array_map(static fn (array $row): PlayerSummary => PlayerSummary::fromRow($row), $rows ?: []);
     }
 
     public function exists(int $id): bool
     {
-        $stmt = $this->db->prepare('SELECT COUNT(*) as num FROM Player WHERE Id = ?');
-        $stmt->execute([$id]);
-
-        return $stmt->fetch()['num'] > 0;
+        return $this->countById($id, false) > 0;
     }
 
     public function existsAndIsMember(int $id): bool
     {
-        $stmt = $this->db->prepare('SELECT Id, Member FROM Player WHERE Id = ?');
-        $stmt->execute([$id]);
-        $row = $stmt->fetch();
-
-        return $row && $row['Member'] == 1;
+        return $this->countById($id, true) > 0;
     }
 
-    /**
-     * @return array<int, array<string, mixed>>
-     */
-    public function getAllWithSeasonInfo(int $seasonId, bool $onlyMembers = true): array
+    private function countById(int $id, bool $onlyMember): int
     {
-        $query = $this->playerWithSeasonInfoQuery;
-        if ($onlyMembers) {
-            $query .= ' AND IPLAYER.member = true';
+        $conditions = ['Id' => $id];
+        if ($onlyMember) {
+            $conditions['Member'] = 1;
         }
-        $query .= ' ORDER BY firstName, name';
 
-        $stmt = $this->db->prepare($query);
-        $stmt->execute([$seasonId]);
+        $row = $this->queryFactory->newSelect('Player')
+            ->select(['num' => 'COUNT(*)'])
+            ->where($conditions)
+            ->execute()
+            ->fetch('assoc');
 
-        return $stmt->fetchAll();
+        return (int) ($row['num'] ?? 0);
     }
 
     /**
+     * Player identity + season statistics row, or null when absent.
+     *
      * @return array<string, mixed>|null
      */
-    public function getByIdWithSeasonInfo(int $id, int $seasonId): ?array
+    public function findPlayerWithSeason(int $id, int $seasonId): ?array
     {
-        $stmt = $this->db->prepare($this->playerWithSeasonInfoQuery . ' AND IPLAYER.id = ?');
-        $stmt->execute([$seasonId, $id]);
-        $row = $stmt->fetch();
+        $row = $this->seasonInfoQuery($seasonId)
+            ->where(['Player.Id' => $id])
+            ->execute()
+            ->fetch('assoc');
 
         return $row === false ? null : $row;
     }
 
     /**
-     * Read the possible genders from the Player.gender enum column.
+     * All member rows with season statistics (used by the season calculator).
      *
-     * @return array<int, string>
+     * @return array<int, array<string, mixed>>
      */
-    public function getPossibleGenders(): array
+    public function findAllWithSeason(int $seasonId): array
     {
-        $stmt = $this->db->prepare("SHOW COLUMNS FROM Player WHERE field = 'gender'");
-        $stmt->execute();
-        $row = $stmt->fetch();
-
-        $enum = [];
-        foreach (explode("','", substr((string) $row['Type'], 6, -2)) as $value) {
-            $enum[] = $value;
-        }
-
-        return $enum;
+        return $this->seasonInfoQuery($seasonId)
+            ->where(['Player.Member' => 1])
+            ->order(['Player.FirstName' => 'ASC', 'Player.Name' => 'ASC'])
+            ->execute()
+            ->fetchAll('assoc') ?: [];
     }
 
     public function insertPlayer(
@@ -119,34 +103,21 @@ final class PlayerRepository
         int $doubleRanking,
         bool $playsCompetition
     ): int {
-        $stmt = $this->db->prepare('INSERT INTO Player
-            SET
-                FirstName = :firstName,
-                `Name` = :lastName,
-                Gender = :gender,
-                BirthDate = :birthDate,
-                DoubleRanking = :doubleRanking,
-                PlaysCompetition = :playsCompetition,
-                Member = 1');
-
-        $stmt->execute([
-            'firstName' => $firstName,
-            'lastName' => $name,
-            'gender' => $gender,
-            'birthDate' => $birthDate,
-            'doubleRanking' => $doubleRanking,
-            'playsCompetition' => $playsCompetition ? 1 : 0,
-        ]);
-
-        return (int) $this->db->lastInsertId();
+        return (int) $this->queryFactory
+            ->newInsert('Player', ['FirstName', 'Name', 'Gender', 'BirthDate', 'DoubleRanking', 'PlaysCompetition', 'Member'])
+            ->values([
+                'FirstName' => $firstName,
+                'Name' => $name,
+                'Gender' => $gender,
+                'BirthDate' => $birthDate,
+                'DoubleRanking' => $doubleRanking,
+                'PlaysCompetition' => $playsCompetition ? 1 : 0,
+                'Member' => 1,
+            ])
+            ->execute()
+            ->lastInsertId();
     }
 
-    /**
-     * Update an existing player.
-     *
-     * Note: the original API updated a non-existing `intra_spelers` table with
-     * Dutch column names; this corrected version targets the real Player table.
-     */
     public function updatePlayer(
         int $id,
         string $firstName,
@@ -156,46 +127,38 @@ final class PlayerRepository
         int $doubleRanking,
         bool $playsCompetition
     ): void {
-        $stmt = $this->db->prepare('UPDATE Player
-            SET
-                FirstName = :firstName,
-                `Name` = :lastName,
-                Gender = :gender,
-                BirthDate = :birthDate,
-                DoubleRanking = :doubleRanking,
-                PlaysCompetition = :playsCompetition,
-                Member = 1
-            WHERE Id = :id');
-
-        $stmt->execute([
-            'firstName' => $firstName,
-            'lastName' => $name,
-            'gender' => $gender,
-            'birthDate' => $birthDate,
-            'doubleRanking' => $doubleRanking,
-            'playsCompetition' => $playsCompetition ? 1 : 0,
-            'id' => $id,
-        ]);
+        $this->queryFactory->newUpdate('Player')
+            ->set([
+                'FirstName' => $firstName,
+                'Name' => $name,
+                'Gender' => $gender,
+                'BirthDate' => $birthDate,
+                'DoubleRanking' => $doubleRanking,
+                'PlaysCompetition' => $playsCompetition ? 1 : 0,
+                'Member' => 1,
+            ])
+            ->where(['Id' => $id])
+            ->execute();
     }
 
     public function createSeasonStatistic(int $seasonId, int $playerId, float $basePoints): void
     {
-        $stmt = $this->db->prepare('INSERT INTO PlayerSeasonStatistic
-            SET
-                PlayerId = :playerId,
-                SeasonId = :seasonId,
-                BasePoints = :basePoints,
-                SetsPlayed = 0,
-                SetsWon = 0,
-                PointsPlayed = 0,
-                PointsWon = 0,
-                MatchesPlayed = 0');
-
-        $stmt->execute([
-            'playerId' => $playerId,
-            'seasonId' => $seasonId,
-            'basePoints' => $basePoints,
-        ]);
+        $this->queryFactory
+            ->newInsert('PlayerSeasonStatistic', [
+                'PlayerId', 'SeasonId', 'BasePoints',
+                'SetsPlayed', 'SetsWon', 'PointsPlayed', 'PointsWon', 'MatchesPlayed',
+            ])
+            ->values([
+                'PlayerId' => $playerId,
+                'SeasonId' => $seasonId,
+                'BasePoints' => $basePoints,
+                'SetsPlayed' => 0,
+                'SetsWon' => 0,
+                'PointsPlayed' => 0,
+                'PointsWon' => 0,
+                'MatchesPlayed' => 0,
+            ])
+            ->execute();
     }
 
     public function updateSeasonStatistic(
@@ -208,64 +171,70 @@ final class PlayerRepository
         int $roundsPresent,
         int $matchesPlayed
     ): void {
-        $stmt = $this->db->prepare('UPDATE PlayerSeasonStatistic
-            SET
-                SetsPlayed = :setsPlayed,
-                SetsWon = :setsWon,
-                PointsPlayed = :pointsPlayed,
-                PointsWon = :pointsWon,
-                MatchesPlayed = :matchesPlayed,
-                RoundsPresent = :roundsPresent
-            WHERE PlayerId = :playerId AND SeasonId = :seasonId');
-
-        $stmt->execute([
-            'setsPlayed' => $setsPlayed,
-            'setsWon' => $setsWon,
-            'pointsPlayed' => $pointsPlayed,
-            'pointsWon' => $pointsWon,
-            'matchesPlayed' => $matchesPlayed,
-            'roundsPresent' => $roundsPresent,
-            'playerId' => $playerId,
-            'seasonId' => $seasonId,
-        ]);
+        $this->queryFactory->newUpdate('PlayerSeasonStatistic')
+            ->set([
+                'SetsPlayed' => $setsPlayed,
+                'SetsWon' => $setsWon,
+                'PointsPlayed' => $pointsPlayed,
+                'PointsWon' => $pointsWon,
+                'MatchesPlayed' => $matchesPlayed,
+                'RoundsPresent' => $roundsPresent,
+            ])
+            ->where(['PlayerId' => $playerId, 'SeasonId' => $seasonId])
+            ->execute();
     }
 
-    public function insertOrUpdateRoundStatistic(int $roundId, int $playerId, float $average): void
+    public function upsertRoundStatistic(int $roundId, int $playerId, float $average): void
     {
-        $stmt = $this->db->prepare('INSERT INTO PlayerRoundStatistic
-            SET
-                Average = :average,
-                PlayerId = :playerId,
-                RoundId = :roundId,
-                Present = 0,
-                DrawnOut = 0
-            ON DUPLICATE KEY UPDATE
-                Average = :average');
-
-        $stmt->execute([
-            'average' => $average,
-            'playerId' => $playerId,
-            'roundId' => $roundId,
-        ]);
+        $this->queryFactory
+            ->newInsert('PlayerRoundStatistic', ['Average', 'PlayerId', 'RoundId', 'Present', 'DrawnOut'])
+            ->values([
+                'Average' => $average,
+                'PlayerId' => $playerId,
+                'RoundId' => $roundId,
+                'Present' => 0,
+                'DrawnOut' => 0,
+            ])
+            ->epilog('ON DUPLICATE KEY UPDATE Average = VALUES(Average)')
+            ->execute();
     }
 
-    public function insertOrUpdateAttendanceData(int $playerId, int $roundId, bool $present, bool $drawnOut): void
+    public function upsertAttendance(int $playerId, int $roundId, bool $present, bool $drawnOut): void
     {
-        $stmt = $this->db->prepare('INSERT INTO PlayerRoundStatistic
-            SET
-                Present = :present,
-                DrawnOut = :drawnOut,
-                PlayerId = :playerId,
-                RoundId = :roundId
-            ON DUPLICATE KEY UPDATE
-                Present = :present,
-                DrawnOut = :drawnOut');
+        $this->queryFactory
+            ->newInsert('PlayerRoundStatistic', ['Present', 'DrawnOut', 'PlayerId', 'RoundId'])
+            ->values([
+                'Present' => $present ? 1 : 0,
+                'DrawnOut' => $drawnOut ? 1 : 0,
+                'PlayerId' => $playerId,
+                'RoundId' => $roundId,
+            ])
+            ->epilog('ON DUPLICATE KEY UPDATE Present = VALUES(Present), DrawnOut = VALUES(DrawnOut)')
+            ->execute();
+    }
 
-        $stmt->execute([
-            'present' => $present ? 1 : 0,
-            'drawnOut' => $drawnOut ? 1 : 0,
-            'playerId' => $playerId,
-            'roundId' => $roundId,
-        ]);
+    /**
+     * Shared select for player identity + season statistics.
+     */
+    private function seasonInfoQuery(int $seasonId): SelectQuery
+    {
+        return $this->queryFactory->newSelect('Player')
+            ->select([
+                'id' => 'Player.Id',
+                'firstName' => 'Player.FirstName',
+                'name' => 'Player.Name',
+                'member' => 'Player.Member',
+                'gender' => 'Player.Gender',
+                'doubleRanking' => 'Player.DoubleRanking',
+                'basePoints' => 'ISPS.BasePoints',
+                'setsPlayed' => 'ISPS.SetsPlayed',
+                'setsWon' => 'ISPS.SetsWon',
+                'pointsPlayed' => 'ISPS.PointsPlayed',
+                'pointsWon' => 'ISPS.PointsWon',
+                'roundsPresent' => 'ISPS.RoundsPresent',
+                'matchesPlayed' => 'ISPS.MatchesPlayed',
+            ])
+            ->innerJoin(['ISPS' => 'PlayerSeasonStatistic'], 'ISPS.PlayerId = Player.Id')
+            ->where(['ISPS.SeasonId' => $seasonId]);
     }
 }

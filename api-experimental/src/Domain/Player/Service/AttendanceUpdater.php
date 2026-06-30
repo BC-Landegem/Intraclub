@@ -29,6 +29,6 @@ final class AttendanceUpdater
             throw new DomainException(implode(' ', $errors));
         }
 
-        $this->playerRepository->insertOrUpdateAttendanceData($playerId, $roundId, $present, $drawnOut);
+        $this->playerRepository->upsertAttendance($playerId, $roundId, $present, $drawnOut);
     }
 }

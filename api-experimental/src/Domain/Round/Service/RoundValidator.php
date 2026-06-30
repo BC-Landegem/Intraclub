@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace App\Domain\Round\Service;
 
 use App\Domain\Round\Repository\RoundRepository;
-use DateTime;
+use DateTimeImmutable;
 use DomainException;
 
 /**
@@ -37,7 +37,7 @@ final class RoundValidator
 
     private function isDate(string $date, string $format = 'Y-m-d'): bool
     {
-        $d = DateTime::createFromFormat($format, $date);
+        $d = DateTimeImmutable::createFromFormat($format, $date);
 
         return $d && $d->format($format) === $date;
     }

@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Domain\Season\Service;
 
 use App\Domain\Player\Repository\PlayerRepository;
+use App\Domain\Ranking\Data\Rankings;
 use App\Domain\Ranking\Service\RankingReader;
 use App\Domain\Season\Repository\SeasonRepository;
 
@@ -26,13 +27,15 @@ final class SeasonCreator
     {
         $this->validator->validateCreateSeason($period);
 
-        $ranking = $this->rankingReader->get(null, true);
+        /** @var Rankings $rankings */
+        $rankings = $this->rankingReader->get(null, true);
         $newSeasonId = $this->seasonRepository->insertSeason($period);
-        $reversedRanking = array_reverse($ranking['general']);
+        $general = $rankings->general ?? [];
+        $reversed = array_reverse($general);
 
         $basePoints = 19.000;
-        foreach ($reversedRanking as $rankedPlayer) {
-            $this->playerRepository->createSeasonStatistic($newSeasonId, (int) $rankedPlayer['id'], $basePoints);
+        foreach ($reversed as $entry) {
+            $this->playerRepository->createSeasonStatistic($newSeasonId, $entry->id, $basePoints);
             $basePoints += 0.0001;
         }
     }

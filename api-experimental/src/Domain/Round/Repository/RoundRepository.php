@@ -4,155 +4,162 @@ declare(strict_types=1);
 
 namespace App\Domain\Round\Repository;
 
-use PDO;
+use App\Domain\Round\Data\AvailabilityEntry;
+use App\Domain\Round\Data\RoundSummary;
+use App\Factory\QueryFactory;
+use Cake\Database\Query\SelectQuery;
 
 /**
- * Round (speeldag) repository.
- *
- * Uses the shared PDO connection with prepared statements. The SQL is reused
- * from the original API so the behaviour and result shapes stay identical.
+ * Round (speeldag) repository (CakePHP query builder).
  */
 final class RoundRepository
 {
-    private string $roundQuery = 'SELECT RND.id, RND.number, ROUND(RND.AverageAbsent,2) AS averageAbsent,
-RND.date, RND.calculated, (SELECT COUNT(MT.id) FROM `Match` MT where MT.RoundId = RND.Id) as matches
-FROM Round RND';
-
-    public function __construct(private PDO $db)
+    public function __construct(private QueryFactory $queryFactory)
     {
     }
 
     /**
-     * @return array<int, array<string, mixed>>
+     * @return array<int, RoundSummary>
      */
-    public function getAllBySeason(int $seasonId): array
+    public function findBySeason(int $seasonId): array
     {
-        $stmt = $this->db->prepare($this->roundQuery . ' WHERE RND.seasonId = ? ORDER BY RND.id ASC;');
-        $stmt->execute([$seasonId]);
+        $rows = $this->summaryQuery()
+            ->where(['RND.SeasonId' => $seasonId])
+            ->order(['RND.Id' => 'ASC'])
+            ->execute()
+            ->fetchAll('assoc');
 
-        return $stmt->fetchAll();
+        return array_map(static fn (array $row): RoundSummary => RoundSummary::fromRow($row), $rows ?: []);
+    }
+
+    public function findSummaryById(int $id): ?RoundSummary
+    {
+        $row = $this->summaryQuery()
+            ->where(['RND.Id' => $id])
+            ->execute()
+            ->fetch('assoc');
+
+        return $row === false ? null : RoundSummary::fromRow($row);
+    }
+
+    public function findBySeasonAndNumber(int $seasonId, int $number): ?RoundSummary
+    {
+        $row = $this->summaryQuery()
+            ->where(['RND.SeasonId' => $seasonId, 'RND.Number' => $number])
+            ->execute()
+            ->fetch('assoc');
+
+        return $row === false ? null : RoundSummary::fromRow($row);
+    }
+
+    public function findLast(int $seasonId): ?RoundSummary
+    {
+        $row = $this->summaryQuery()
+            ->where(['RND.SeasonId' => $seasonId])
+            ->order(['RND.Number' => 'DESC'])
+            ->limit(1)
+            ->execute()
+            ->fetch('assoc');
+
+        return $row === false ? null : RoundSummary::fromRow($row);
+    }
+
+    public function findLastCalculated(int $seasonId): ?RoundSummary
+    {
+        $row = $this->summaryQuery()
+            ->where(['RND.SeasonId' => $seasonId, 'RND.Calculated' => 1])
+            ->order(['RND.Number' => 'DESC'])
+            ->limit(1)
+            ->execute()
+            ->fetch('assoc');
+
+        return $row === false ? null : RoundSummary::fromRow($row);
+    }
+
+    /**
+     * @return array<int, AvailabilityEntry>
+     */
+    public function findAvailability(int $roundId): array
+    {
+        $rows = $this->queryFactory->newSelect('PlayerRoundStatistic')
+            ->select([
+                'playerId' => 'PlayerId',
+                'present' => 'Present',
+                'drawnOut' => 'DrawnOut',
+                'average' => 'Average',
+            ])
+            ->where(['RoundId' => $roundId])
+            ->execute()
+            ->fetchAll('assoc');
+
+        return array_map(static fn (array $row): AvailabilityEntry => AvailabilityEntry::fromRow($row), $rows ?: []);
     }
 
     public function insertRound(int $seasonId, string $date, int $roundNumber): void
     {
-        $stmt = $this->db->prepare('INSERT INTO Round (SeasonId, Date, Number, AverageAbsent, Calculated, DrawClosed)
-            VALUES (:seasonId, :date, :roundNumber, 0, 0, 0)');
-
-        $stmt->execute([
-            'seasonId' => $seasonId,
-            'date' => $date,
-            'roundNumber' => $roundNumber,
-        ]);
+        $this->queryFactory->newInsert('Round', [
+            'SeasonId', 'Date', 'Number', 'AverageAbsent', 'Calculated', 'DrawClosed',
+        ])
+            ->values([
+                'SeasonId' => $seasonId,
+                'Date' => $date,
+                'Number' => $roundNumber,
+                'AverageAbsent' => 0,
+                'Calculated' => 0,
+                'DrawClosed' => 0,
+            ])
+            ->execute();
     }
 
     public function updateAverageAbsent(int $id, float $averageAbsent): void
     {
-        $stmt = $this->db->prepare('UPDATE `Round` SET AverageAbsent = ?, Calculated = 1 WHERE Id = ?');
-        $stmt->execute([$averageAbsent, $id]);
+        $this->queryFactory->newUpdate('Round')
+            ->set([
+                'AverageAbsent' => $averageAbsent,
+                'Calculated' => 1,
+            ])
+            ->where(['Id' => $id])
+            ->execute();
     }
 
     public function existsWithDate(string $date): bool
     {
-        $stmt = $this->db->prepare('SELECT COUNT(*) as num FROM Round WHERE `Date` = ?');
-        $stmt->execute([$date]);
+        $row = $this->queryFactory->newSelect('Round')
+            ->select(['num' => 'COUNT(*)'])
+            ->where(['Date' => $date])
+            ->execute()
+            ->fetch('assoc');
 
-        return $stmt->fetch()['num'] > 0;
+        return (int) ($row['num'] ?? 0) > 0;
     }
 
     public function exists(int $id): bool
     {
-        $stmt = $this->db->prepare('SELECT COUNT(*) as num FROM Round WHERE id = ?');
-        $stmt->execute([$id]);
+        $row = $this->queryFactory->newSelect('Round')
+            ->select(['num' => 'COUNT(*)'])
+            ->where(['Id' => $id])
+            ->execute()
+            ->fetch('assoc');
 
-        return $stmt->fetch()['num'] > 0;
+        return (int) ($row['num'] ?? 0) > 0;
     }
 
     /**
-     * @return array<string, mixed>|null
+     * Base summary select aliased RND => Round, including a correlated match count.
      */
-    public function getById(int $id): ?array
+    private function summaryQuery(): SelectQuery
     {
-        $stmt = $this->db->prepare($this->roundQuery . ' WHERE RND.Id=?');
-        $stmt->execute([$id]);
-        $row = $stmt->fetch();
-
-        return $row === false ? null : $row;
-    }
-
-    /**
-     * @return array<string, mixed>|null
-     */
-    public function getBySeasonAndNumber(int $seasonId, int $number): ?array
-    {
-        $stmt = $this->db->prepare($this->roundQuery . ' WHERE RND.seasonId = :seasonId and RND.number = :roundNumber;');
-        $stmt->execute([
-            'seasonId' => $seasonId,
-            'roundNumber' => $number,
-        ]);
-        $row = $stmt->fetch();
-
-        return $row === false ? null : $row;
-    }
-
-    /**
-     * @return array<string, mixed>|null
-     */
-    public function getLast(int $seasonId): ?array
-    {
-        $stmt = $this->db->prepare($this->roundQuery . ' WHERE RND.SeasonId=? ORDER BY RND.Number DESC LIMIT 1;');
-        $stmt->execute([$seasonId]);
-        $row = $stmt->fetch();
-
-        return $row === false ? null : $row;
-    }
-
-    /**
-     * @return array<string, mixed>|null
-     */
-    public function getLastCalculated(int $seasonId): ?array
-    {
-        $stmt = $this->db->prepare(
-            $this->roundQuery . ' WHERE RND.SeasonId=? AND RND.Calculated = 1 ORDER BY RND.Number DESC LIMIT 1;'
-        );
-        $stmt->execute([$seasonId]);
-        $row = $stmt->fetch();
-
-        return $row === false ? null : $row;
-    }
-
-    /**
-     * @return array<int, array<string, mixed>>
-     */
-    public function getWithMatches(int $id): array
-    {
-        $stmt = $this->db->prepare('SELECT RND.id, RND.number, ROUND(RND.averageAbsent,2) AS averageAbsent,
-    RND.date, RND.calculated, set1Home,set1Away, set2Home, set2Away, set3Home, set3Away,
-    PL1H.Id as player1Id, PL1H.firstName AS player1FirstName, PL1H.name AS player1Name,
-    PL2H.Id as player2Id, PL2H.firstName AS player2FirstName, PL2H.name AS player2Name,
-    PL1A.Id as player3Id, PL1A.firstName AS player3FirstName, PL1A.name AS player3Name,
-    PL2A.Id as player4Id, PL2A.firstName AS player4FirstName, PL2A.name AS player4Name
-    FROM `Round` RND
-    INNER JOIN `Match` MT ON MT.roundId = RND.id
-    INNER JOIN Player PL1H ON PL1H.id =  MT.Player1Id
-    INNER JOIN Player PL2H ON PL2H.id =  MT.Player2Id
-    INNER JOIN Player PL1A ON PL1A.id =  MT.Player3Id
-    INNER JOIN Player PL2A ON PL2A.id =  MT.Player4Id WHERE RND.id=?
-    ORDER BY MT.Id ASC;');
-        $stmt->execute([$id]);
-
-        return $stmt->fetchAll();
-    }
-
-    /**
-     * @return array<int, array<string, mixed>>
-     */
-    public function getAvailabilityData(int $id): array
-    {
-        $stmt = $this->db->prepare(
-            'SELECT playerId, present, drawnOut, average FROM `PlayerRoundStatistic` WHERE roundId = ?'
-        );
-        $stmt->execute([$id]);
-
-        return $stmt->fetchAll();
+        return $this->queryFactory->newSelectQuery()
+            ->select([
+                'id' => 'RND.Id',
+                'number' => 'RND.Number',
+                'date' => 'RND.Date',
+                'averageAbsent' => $this->queryFactory->expr('ROUND(RND.AverageAbsent, 2)'),
+                'calculated' => 'RND.Calculated',
+                'matchCount' => $this->queryFactory->expr(
+                    '(SELECT COUNT(*) FROM `Match` WHERE `Match`.`RoundId` = RND.Id)'
+                ),
+            ])
+            ->from(['RND' => 'Round']);
     }
 }

@@ -4,149 +4,139 @@ declare(strict_types=1);
 
 namespace App\Domain\Match\Repository;
 
-use PDO;
+use App\Domain\Match\Data\MatchResult;
+use App\Factory\QueryFactory;
+use Cake\Database\Query\SelectQuery;
 
 /**
- * Match repository.
- *
- * Uses the shared PDO connection with prepared statements. The SQL is reused
- * verbatim from the original API so the behaviour and result shapes stay
- * identical.
+ * Match repository (CakePHP query builder).
  */
 final class MatchRepository
 {
-    private string $matchQuery = 'SELECT MT.id, MT.roundId, RND.number as roundNumber,
-    MT.set1Home, MT.set1Away, MT.set2Home, MT.set2Away,
-    MT.set3Home, MT.set3Away,
-    PL1H.Id as player1Id, PL1H.FirstName AS player1FirstName, PL1H.Name AS player1Name,
-    PL2H.Id as player2Id, PL2H.FirstName AS player2FirstName, PL2H.Name AS player2Name,
-    PL1A.Id as player3Id, PL1A.FirstName AS player3FirstName, PL1A.Name AS player3Name,
-    PL2A.Id as player4Id, PL2A.FirstName AS player4FirstName, PL2A.Name AS player4Name
-FROM `Match` MT
-INNER JOIN `Round` RND ON RND.id = MT.roundId
-INNER JOIN Player PL1H ON PL1H.id =  MT.player1Id
-INNER JOIN Player PL2H ON PL2H.id =  MT.player2Id
-INNER JOIN Player PL1A ON PL1A.id =  MT.player3Id
-INNER JOIN Player PL2A ON PL2A.id =  MT.player4Id';
-
-    public function __construct(private PDO $db)
+    public function __construct(private QueryFactory $queryFactory)
     {
     }
 
     /**
-     * @return array<int, array<string, mixed>>
+     * @return array<int, MatchResult>
      */
-    public function getAllBySeasonId(int $seasonId): array
+    public function findByRound(int $roundId): array
     {
-        $stmt = $this->db->prepare($this->matchQuery . ' WHERE ISEASON.Id=?');
-        $stmt->execute([$seasonId]);
+        $rows = $this->matchQuery()
+            ->where(['MT.RoundId' => $roundId])
+            ->order(['MT.Id' => 'ASC'])
+            ->execute()
+            ->fetchAll('assoc');
 
-        return $stmt->fetchAll();
+        return array_map(static fn (array $row): MatchResult => MatchResult::fromRow($row), $rows ?: []);
     }
 
     /**
-     * @return array<int, array<string, mixed>>
+     * @return array<int, MatchResult>
      */
-    public function getAllByRoundId(int $roundId): array
+    public function findBySeasonAndPlayer(int $seasonId, int $playerId): array
     {
-        $stmt = $this->db->prepare($this->matchQuery . ' WHERE RND.Id=?');
-        $stmt->execute([$roundId]);
+        $rows = $this->matchQuery()
+            ->where(['RND.SeasonId' => $seasonId])
+            ->andWhere([
+                'OR' => [
+                    'PL1H.Id' => $playerId,
+                    'PL2H.Id' => $playerId,
+                    'PL1A.Id' => $playerId,
+                    'PL2A.Id' => $playerId,
+                ],
+            ])
+            ->order(['MT.Id' => 'ASC'])
+            ->execute()
+            ->fetchAll('assoc');
 
-        return $stmt->fetchAll();
+        return array_map(static fn (array $row): MatchResult => MatchResult::fromRow($row), $rows ?: []);
     }
 
-    /**
-     * @return array<int, array<string, mixed>>
-     */
-    public function getAllBySeasonAndPlayerId(int $seasonId, int $playerId): array
+    public function create(int $roundId, int $playerId1, int $playerId2, int $playerId3, int $playerId4): int
     {
-        $query = 'SELECT MT.id, set1Home, set1Away, set2Home, set2Away, set3Home, set3Away,
-    PL1.Id as player1Id, PL1.FirstName AS player1FirstName, PL1.Name AS player1Name,
-    PL2.Id as player2Id, PL2.FirstName AS player2FirstName, PL2.Name AS player2Name,
-    PL3.Id as player3Id, PL3.FirstName AS player3FirstName, PL3.Name AS player3Name,
-    PL4.Id as player4Id, PL4.FirstName AS player4FirstName, PL4.Name AS player4Name,
-    RND.Id as roundId, RND.Number AS roundNumber
-    FROM `Match` MT
-    INNER JOIN Round RND ON RND.id = MT.RoundId
-    INNER JOIN Player PL1 ON PL1.id =  MT.player1Id
-    INNER JOIN Player PL2 ON PL2.id =  MT.player2Id
-    INNER JOIN Player PL3 ON PL3.id =  MT.player3Id
-    INNER JOIN Player PL4 ON PL4.id =  MT.player4Id
-    WHERE (
-            (
-                PL1.Id  = ? OR
-                PL2.Id  = ? OR
-                PL3.Id = ? OR
-                PL4.Id = ?
-            ) AND RND.SeasonId = ?
-        )
-    ORDER BY MT.Id ASC;';
-
-        $stmt = $this->db->prepare($query);
-        $stmt->execute([$playerId, $playerId, $playerId, $playerId, $seasonId]);
-
-        return $stmt->fetchAll();
+        return (int) $this->queryFactory
+            ->newInsert('Match', [
+                'RoundId', 'Player1Id', 'Player2Id', 'Player3Id', 'Player4Id',
+                'Set1Home', 'Set1Away', 'Set2Home', 'Set2Away', 'Set3Home', 'Set3Away',
+            ])
+            ->values([
+                'RoundId' => $roundId,
+                'Player1Id' => $playerId1,
+                'Player2Id' => $playerId2,
+                'Player3Id' => $playerId3,
+                'Player4Id' => $playerId4,
+                'Set1Home' => 0,
+                'Set1Away' => 0,
+                'Set2Home' => 0,
+                'Set2Away' => 0,
+                'Set3Home' => 0,
+                'Set3Away' => 0,
+            ])
+            ->execute()
+            ->lastInsertId();
     }
 
-    public function create(
-        int $roundId,
-        int $playerId1,
-        int $playerId2,
-        int $playerId3,
-        int $playerId4
-    ): int {
-        $stmt = $this->db->prepare('INSERT INTO `Match`
-            (RoundId, Player1Id, Player2Id, Player3Id, Player4Id,
-                Set1Home, Set1Away, Set2Home, Set2Away, Set3Home, Set3Away)
-            VALUES
-            (:roundId, :player1Id, :player2Id, :player3Id, :player4Id, 0, 0, 0, 0, 0, 0)');
-
-        $stmt->execute([
-            'roundId' => $roundId,
-            'player1Id' => $playerId1,
-            'player2Id' => $playerId2,
-            'player3Id' => $playerId3,
-            'player4Id' => $playerId4,
-        ]);
-
-        return (int) $this->db->lastInsertId();
-    }
-
-    public function update(
-        int $id,
-        int $set1Home,
-        int $set1Away,
-        int $set2Home,
-        int $set2Away,
-        int $set3Home,
-        int $set3Away
-    ): bool {
-        $stmt = $this->db->prepare('UPDATE `Match`
-            SET
-                Set1Home = :set1Home,
-                Set1Away = :set1Away,
-                Set2Home = :set2Home,
-                Set2Away = :set2Away,
-                Set3Home = :set3Home,
-                Set3Away = :set3Away
-            WHERE Id = :id');
-
-        return $stmt->execute([
-            'set1Home' => $set1Home,
-            'set1Away' => $set1Away,
-            'set2Home' => $set2Home,
-            'set2Away' => $set2Away,
-            'set3Home' => $set3Home,
-            'set3Away' => $set3Away,
-            'id' => $id,
-        ]);
+    public function update(int $id, int $set1Home, int $set1Away, int $set2Home, int $set2Away, int $set3Home, int $set3Away): void
+    {
+        $this->queryFactory->newUpdate('Match')
+            ->set([
+                'Set1Home' => $set1Home,
+                'Set1Away' => $set1Away,
+                'Set2Home' => $set2Home,
+                'Set2Away' => $set2Away,
+                'Set3Home' => $set3Home,
+                'Set3Away' => $set3Away,
+            ])
+            ->where(['Id' => $id])
+            ->execute();
     }
 
     public function exists(int $id): bool
     {
-        $stmt = $this->db->prepare('SELECT COUNT(*) as num FROM `Match` WHERE id = ?');
-        $stmt->execute([$id]);
+        $row = $this->queryFactory->newSelect('Match')
+            ->select(['num' => 'COUNT(*)'])
+            ->where(['Id' => $id])
+            ->execute()
+            ->fetch('assoc');
 
-        return $stmt->fetch()['num'] > 0;
+        return (int) ($row['num'] ?? 0) > 0;
+    }
+
+    /**
+     * Base select for a match including round number and all four players.
+     */
+    private function matchQuery(): SelectQuery
+    {
+        return $this->queryFactory->newSelectQuery()
+            ->select([
+                'id' => 'MT.Id',
+                'roundId' => 'MT.RoundId',
+                'roundNumber' => 'RND.Number',
+                'set1Home' => 'MT.Set1Home',
+                'set1Away' => 'MT.Set1Away',
+                'set2Home' => 'MT.Set2Home',
+                'set2Away' => 'MT.Set2Away',
+                'set3Home' => 'MT.Set3Home',
+                'set3Away' => 'MT.Set3Away',
+                'player1Id' => 'PL1H.Id',
+                'player1FirstName' => 'PL1H.FirstName',
+                'player1Name' => 'PL1H.Name',
+                'player2Id' => 'PL2H.Id',
+                'player2FirstName' => 'PL2H.FirstName',
+                'player2Name' => 'PL2H.Name',
+                'player3Id' => 'PL1A.Id',
+                'player3FirstName' => 'PL1A.FirstName',
+                'player3Name' => 'PL1A.Name',
+                'player4Id' => 'PL2A.Id',
+                'player4FirstName' => 'PL2A.FirstName',
+                'player4Name' => 'PL2A.Name',
+            ])
+            ->from(['MT' => 'Match'])
+            ->innerJoin(['RND' => 'Round'], 'RND.Id = MT.RoundId')
+            ->innerJoin(['PL1H' => 'Player'], 'PL1H.Id = MT.Player1Id')
+            ->innerJoin(['PL2H' => 'Player'], 'PL2H.Id = MT.Player2Id')
+            ->innerJoin(['PL1A' => 'Player'], 'PL1A.Id = MT.Player3Id')
+            ->innerJoin(['PL2A' => 'Player'], 'PL2A.Id = MT.Player4Id');
     }
 }

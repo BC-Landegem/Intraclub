@@ -4,8 +4,8 @@ declare(strict_types=1);
 
 namespace App\Domain\Season\Service;
 
+use App\Domain\Season\Data\SeasonStanding;
 use App\Domain\Season\Repository\SeasonRepository;
-use App\Support\Transformer;
 
 final class SeasonStatisticsReader
 {
@@ -14,9 +14,9 @@ final class SeasonStatisticsReader
     }
 
     /**
-     * Read the season statistics for the given (or current) season.
+     * Read the season standings for the given (or current) season.
      *
-     * @return array<int, array<string, mixed>>
+     * @return array<int, SeasonStanding>
      */
     public function getStatistics(?int $seasonId = null): array
     {
@@ -24,11 +24,6 @@ final class SeasonStatisticsReader
             $seasonId = $this->seasonRepository->getCurrentSeasonId();
         }
 
-        $response = [];
-        foreach ($this->seasonRepository->getStatistics($seasonId) as $row) {
-            $response[] = Transformer::toPlayerStatistics($row);
-        }
-
-        return $response;
+        return $this->seasonRepository->findStandings($seasonId);
     }
 }

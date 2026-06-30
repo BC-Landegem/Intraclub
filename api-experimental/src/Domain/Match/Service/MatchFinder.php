@@ -4,8 +4,8 @@ declare(strict_types=1);
 
 namespace App\Domain\Match\Service;
 
+use App\Domain\Match\Data\MatchResult;
 use App\Domain\Match\Repository\MatchRepository;
-use App\Support\Transformer;
 
 final class MatchFinder
 {
@@ -14,15 +14,10 @@ final class MatchFinder
     }
 
     /**
-     * @return array<int, array<string, mixed>>
+     * @return array<int, MatchResult>
      */
     public function findByRound(int $roundId): array
     {
-        $matches = [];
-        foreach ($this->matchRepository->getAllByRoundId($roundId) as $row) {
-            $matches[] = Transformer::toMatch($row);
-        }
-
-        return $matches;
+        return $this->matchRepository->findByRound($roundId);
     }
 }

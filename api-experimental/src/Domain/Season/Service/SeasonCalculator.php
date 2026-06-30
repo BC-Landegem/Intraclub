@@ -29,34 +29,33 @@ final class SeasonCalculator
     public function calculateCurrentSeason(): void
     {
         $currentSeasonId = $this->seasonRepository->getCurrentSeasonId();
-        $roundsOfCurrentSeason = $this->roundRepository->getAllBySeason($currentSeasonId);
+        $rounds = $this->roundRepository->findBySeason($currentSeasonId);
         $averageLosersArray = [];
         $roundNumber = 1;
 
-        foreach ($roundsOfCurrentSeason as $round) {
+        foreach ($rounds as $round) {
             $averageLosers = 0;
             $totalMatches = 0;
-            $matches = $this->matchRepository->getAllByRoundId((int) $round['id']);
-            foreach ($matches as $match) {
+            foreach ($this->matchRepository->findByRound($round->id) as $m) {
                 $score = MatchCalculator::calculate(
-                    (int) $match['set1Home'],
-                    (int) $match['set1Away'],
-                    (int) $match['set2Home'],
-                    (int) $match['set2Away'],
-                    (int) $match['set3Home'],
-                    (int) $match['set3Away']
+                    $m->set1->home,
+                    $m->set1->away,
+                    $m->set2->home,
+                    $m->set2->away,
+                    $m->set3->home,
+                    $m->set3->away
                 );
                 $averageLosers += $score['averageLosing'];
                 $totalMatches++;
             }
-            $averageLosingCurrentRound = $averageLosers / $totalMatches;
-            $this->roundRepository->updateAverageAbsent((int) $round['id'], (float) $averageLosingCurrentRound);
-            $averageLosersArray[$roundNumber] = $averageLosingCurrentRound;
+            $avg = $averageLosers / $totalMatches;
+            $this->roundRepository->updateAverageAbsent($round->id, (float) $avg);
+            $averageLosersArray[$roundNumber] = $avg;
             $roundNumber++;
         }
 
         $lastRoundNumber = $roundNumber - 1;
-        $allPlayers = $this->playerRepository->getAllWithSeasonInfo($currentSeasonId, true);
+        $allPlayers = $this->playerRepository->findAllWithSeason($currentSeasonId);
 
         foreach ($allPlayers as $player) {
             $resultArray = [];
@@ -70,51 +69,48 @@ final class SeasonCalculator
                 'pointsPlayed' => 0,
                 'pointsWon' => 0,
             ];
-            $matchesCurrentPlayer = $this->matchRepository->getAllBySeasonAndPlayerId(
-                $currentSeasonId,
-                (int) $player['id']
-            );
+            $playerId = (int) $player['id'];
 
-            foreach ($matchesCurrentPlayer as $matchCurrentPlayer) {
-                while ((int) $matchCurrentPlayer['roundNumber'] > $roundNumber) {
+            foreach ($this->matchRepository->findBySeasonAndPlayer($currentSeasonId, $playerId) as $m) {
+                while ($m->roundNumber > $roundNumber) {
                     $resultArray[$roundNumber] = $averageLosersArray[$roundNumber];
                     $roundNumber++;
                 }
-                if ($roundNumber > (int) $matchCurrentPlayer['roundNumber']) {
+                if ($roundNumber > $m->roundNumber) {
                     // multiple games on same round, skip
-                } elseif ($roundNumber == (int) $matchCurrentPlayer['roundNumber']) {
-                    $matchStatistics = MatchCalculator::calculate(
-                        (int) $matchCurrentPlayer['set1Home'],
-                        (int) $matchCurrentPlayer['set1Away'],
-                        (int) $matchCurrentPlayer['set2Home'],
-                        (int) $matchCurrentPlayer['set2Away'],
-                        (int) $matchCurrentPlayer['set3Home'],
-                        (int) $matchCurrentPlayer['set3Away']
+                } elseif ($roundNumber === $m->roundNumber) {
+                    $st = MatchCalculator::calculate(
+                        $m->set1->home,
+                        $m->set1->away,
+                        $m->set2->home,
+                        $m->set2->away,
+                        $m->set3->home,
+                        $m->set3->away
                     );
                     $seasonStats['roundsPresent']++;
                     $seasonStats['matchesPlayed']++;
-                    $seasonStats['pointsPlayed'] += $matchStatistics['totalPoints'];
+                    $seasonStats['pointsPlayed'] += $st['totalPoints'];
                     $seasonStats['setsPlayed'] += 3;
-                    switch ((int) $player['id']) {
-                        case (int) $matchCurrentPlayer['player1Id']:
-                            $resultArray[$roundNumber] = $matchStatistics['averagePlayer1'];
-                            $seasonStats['setsWon'] += $matchStatistics['setsWonPlayer1'];
-                            $seasonStats['pointsWon'] += $matchStatistics['pointsWonPlayer1'];
+                    switch ($playerId) {
+                        case $m->homePlayer1->id:
+                            $resultArray[$roundNumber] = $st['averagePlayer1'];
+                            $seasonStats['setsWon'] += $st['setsWonPlayer1'];
+                            $seasonStats['pointsWon'] += $st['pointsWonPlayer1'];
                             break;
-                        case (int) $matchCurrentPlayer['player2Id']:
-                            $resultArray[$roundNumber] = $matchStatistics['averagePlayer2'];
-                            $seasonStats['setsWon'] += $matchStatistics['setsWonPlayer2'];
-                            $seasonStats['pointsWon'] += $matchStatistics['pointsWonPlayer2'];
+                        case $m->homePlayer2->id:
+                            $resultArray[$roundNumber] = $st['averagePlayer2'];
+                            $seasonStats['setsWon'] += $st['setsWonPlayer2'];
+                            $seasonStats['pointsWon'] += $st['pointsWonPlayer2'];
                             break;
-                        case (int) $matchCurrentPlayer['player3Id']:
-                            $resultArray[$roundNumber] = $matchStatistics['averagePlayer3'];
-                            $seasonStats['setsWon'] += $matchStatistics['setsWonPlayer3'];
-                            $seasonStats['pointsWon'] += $matchStatistics['pointsWonPlayer3'];
+                        case $m->awayPlayer1->id:
+                            $resultArray[$roundNumber] = $st['averagePlayer3'];
+                            $seasonStats['setsWon'] += $st['setsWonPlayer3'];
+                            $seasonStats['pointsWon'] += $st['pointsWonPlayer3'];
                             break;
-                        case (int) $matchCurrentPlayer['player4Id']:
-                            $resultArray[$roundNumber] = $matchStatistics['averagePlayer4'];
-                            $seasonStats['setsWon'] += $matchStatistics['setsWonPlayer4'];
-                            $seasonStats['pointsWon'] += $matchStatistics['pointsWonPlayer4'];
+                        case $m->awayPlayer2->id:
+                            $resultArray[$roundNumber] = $st['averagePlayer4'];
+                            $seasonStats['setsWon'] += $st['setsWonPlayer4'];
+                            $seasonStats['pointsWon'] += $st['pointsWonPlayer4'];
                             break;
                     }
                     $roundNumber++;
@@ -126,24 +122,20 @@ final class SeasonCalculator
                 $roundNumber++;
             }
 
-            foreach ($roundsOfCurrentSeason as $round) {
-                $sumOfAveragePerRound = 0;
-                $totalRounds = 0;
-                for ($j = 0; $j <= $round['number']; $j++) {
-                    $sumOfAveragePerRound += $resultArray[$j];
-                    $totalRounds++;
+            foreach ($rounds as $round) {
+                $sum = 0;
+                $total = 0;
+                for ($j = 0; $j <= $round->number; $j++) {
+                    $sum += $resultArray[$j];
+                    $total++;
                 }
-                $averageRound = $sumOfAveragePerRound / ($totalRounds);
-                $this->playerRepository->insertOrUpdateRoundStatistic(
-                    (int) $round['id'],
-                    (int) $player['id'],
-                    (float) $averageRound
-                );
+                $averageRound = $sum / $total;
+                $this->playerRepository->upsertRoundStatistic($round->id, $playerId, (float) $averageRound);
             }
 
             $this->playerRepository->updateSeasonStatistic(
                 $currentSeasonId,
-                (int) $player['id'],
+                $playerId,
                 (int) $seasonStats['setsPlayed'],
                 (int) $seasonStats['setsWon'],
                 (int) $seasonStats['pointsPlayed'],

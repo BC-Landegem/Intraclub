@@ -4,8 +4,8 @@ declare(strict_types=1);
 
 namespace App\Domain\Player\Service;
 
-use App\Domain\Player\Repository\PlayerRepository;
-use DateTime;
+use App\Domain\Player\Enum\Gender;
+use DateTimeImmutable;
 use InvalidArgumentException;
 
 /**
@@ -14,10 +14,6 @@ use InvalidArgumentException;
  */
 final class PlayerValidator
 {
-    public function __construct(private PlayerRepository $repository)
-    {
-    }
-
     /**
      * @param array<string, mixed> $data
      */
@@ -27,7 +23,7 @@ final class PlayerValidator
 
         if ($requireBasePoints) {
             $basePoints = $data['basePoints'] ?? null;
-            if (filter_var($basePoints, FILTER_VALIDATE_INT) === false) {
+            if (!is_numeric($basePoints)) {
                 $errors[] = 'Ongeldige basispunten';
             } elseif ($basePoints < 0 || $basePoints > 21) {
                 $errors[] = 'Basispunten ongeldig';
@@ -54,11 +50,11 @@ final class PlayerValidator
         if (trim((string) ($data['name'] ?? '')) === '') {
             $errors[] = 'Naam moet ingevuld zijn';
         }
-        if (!in_array($data['gender'] ?? null, $this->repository->getPossibleGenders(), true)) {
+        if (!is_string($data['gender'] ?? null) || Gender::tryFrom($data['gender']) === null) {
             $errors[] = 'Onbekend geslacht';
         }
         $doubleRanking = $data['doubleRanking'] ?? null;
-        if ($doubleRanking < 0 || $doubleRanking > 12) {
+        if (!is_numeric($doubleRanking) || $doubleRanking < 0 || $doubleRanking > 12) {
             $errors[] = 'Onbekende ranking';
         }
         $birthDate = (string) ($data['birthDate'] ?? '');
@@ -76,15 +72,15 @@ final class PlayerValidator
 
     private function isDate(string $date, string $format = 'Y-m-d'): bool
     {
-        $parsed = DateTime::createFromFormat($format, $date);
+        $parsed = DateTimeImmutable::createFromFormat($format, $date);
 
         return $parsed && $parsed->format($format) === $date;
     }
 
     private function isDateInFuture(string $date, string $format = 'Y-m-d'): bool
     {
-        $parsed = DateTime::createFromFormat($format, $date);
+        $parsed = DateTimeImmutable::createFromFormat($format, $date);
 
-        return $parsed && $parsed > new DateTime();
+        return $parsed && $parsed > new DateTimeImmutable();
     }
 }

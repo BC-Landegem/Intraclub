@@ -28,15 +28,24 @@ public/        Front controller (index.php)
 src/
   Action/      One invokable class per HTTP endpoint (HTTP layer only)
   Domain/      Business logic grouped per domain:
-    <Domain>/Repository   PDO data access (prepared statements)
+    <Domain>/Repository   Data access via the CakePHP query builder
     <Domain>/Service      Use-case services + validators
-  Support/     Shared pure helpers (Transformer, MatchCalculator)
+    <Domain>/Data         Readonly DTOs / value objects (JsonSerializable)
+    <Domain>/Enum         Enums (e.g. Gender)
+  Support/     Shared pure helpers (MatchCalculator)
+  Factory/     QueryFactory (wraps the CakePHP connection)
   Renderer/    JsonRenderer
   Middleware/  Validation/error middleware
   Handler/     DefaultErrorHandler (maps exceptions to JSON + status code)
 resources/     Database schema
 tests/         PHPUnit tests
 ```
+
+Repositories build queries with the **CakePHP query builder** (`QueryFactory`) —
+including window functions for the rankings — and return **typed readonly DTOs**
+that implement `JsonSerializable`, so the JSON output is defined in one place per
+resource. Dates are `DateTimeImmutable` (serialized as `Y-m-d`) and gender is a
+backed `Gender` enum.
 
 Invalid input and "not found" conditions are signalled by throwing
 `DomainException` / `InvalidArgumentException`; `DefaultErrorHandler` renders
@@ -67,8 +76,10 @@ All routes are prefixed with `/api`.
 | GET    | `/rankings`                       | All rankings (`?$top=` to limit)     |
 | GET    | `/rankings/{type}`                | `general` / `women` / `veterans` / `recreants` |
 
-The JSON response shapes match the legacy API so existing frontends keep working
-after switching the base path to `/api`.
+The JSON output is a clean, typed redesign (camelCase keys, enums as strings,
+dates as `Y-m-d`, nested value objects) defined by the DTOs in each domain's
+`Data/` folder — it is **not** byte-compatible with the legacy API and targets
+the new frontend.
 
 ## Tooling
 
@@ -86,6 +97,7 @@ CI runs `test:all` on every push/PR (see `../.github/workflows/ci.yml`).
 ## Not yet migrated
 
 The legacy API gated mutating endpoints behind Joomla authentication
-(`checkAccessRights`). That host-specific check is **not** ported here; add an
-authentication middleware (e.g. `tuupola/slim-basic-auth`, already a dependency)
-before exposing the write endpoints publicly.
+(`checkAccessRights`). That host-specific check is **not** ported here; add a
+PSR-15 authentication middleware (e.g. a small custom middleware, or a maintained
+package such as `middlewares/http-authentication`) before exposing the write
+endpoints publicly.

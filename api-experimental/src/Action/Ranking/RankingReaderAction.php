@@ -13,7 +13,7 @@ final class RankingReaderAction
 {
     public function __construct(
         private RankingReader $rankingReader,
-        private JsonRenderer $renderer
+        private JsonRenderer $renderer,
     ) {
     }
 
@@ -23,28 +23,18 @@ final class RankingReaderAction
     public function __invoke(
         ServerRequestInterface $request,
         ResponseInterface $response,
-        array $args = []
+        array $args = [],
     ): ResponseInterface {
         $items = $request->getQueryParams()['$top'] ?? null;
         $items = $items !== null ? (int) $items : null;
         $type = $args['type'] ?? null;
-        switch ($type) {
-            case 'general':
-                $data = $this->rankingReader->get($items, true);
-                break;
-            case 'women':
-                $data = $this->rankingReader->get($items, false, true);
-                break;
-            case 'veterans':
-                $data = $this->rankingReader->get($items, false, false, true);
-                break;
-            case 'recreants':
-                $data = $this->rankingReader->get($items, false, false, false, true);
-                break;
-            default:
-                $data = $this->rankingReader->get($items, true, true, true, true);
-                break;
-        }
+        $data = match ($type) {
+            'general' => $this->rankingReader->get($items, true),
+            'women' => $this->rankingReader->get($items, false, true),
+            'veterans' => $this->rankingReader->get($items, false, false, true),
+            'recreants' => $this->rankingReader->get($items, false, false, false, true),
+            default => $this->rankingReader->get($items, true, true, true, true),
+        };
 
         return $this->renderer->json($response, $data);
     }

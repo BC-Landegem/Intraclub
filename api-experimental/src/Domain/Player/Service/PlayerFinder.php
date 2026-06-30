@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Domain\Player\Service;
 
+use App\Domain\Player\Data\PlayerSummary;
 use App\Domain\Player\Repository\PlayerRepository;
 
 final class PlayerFinder
@@ -13,10 +14,10 @@ final class PlayerFinder
     }
 
     /**
-     * @return array<int, array<string, mixed>>
+     * @return array<int, PlayerSummary>
      */
-    public function findAll(bool $onlyMembers = true): array
+    public function findAll(): array
     {
-        return $this->repository->getAll($onlyMembers);
+        return $this->repository->findMembers();
     }
 }

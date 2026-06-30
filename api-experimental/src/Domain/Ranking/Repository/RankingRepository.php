@@ -4,74 +4,105 @@ declare(strict_types=1);
 
 namespace App\Domain\Ranking\Repository;
 
-use PDO;
+use App\Domain\Player\Data\RankingHistoryEntry;
+use App\Factory\QueryFactory;
 
 /**
  * Ranking repository.
  *
- * Uses the shared PDO connection with prepared statements. The SQL is reused
- * from the original API so the behaviour and result shapes stay identical.
+ * Uses the CakePHP query builder (via QueryFactory), including window functions,
+ * to reproduce the original ranking SQL.
  */
 final class RankingRepository
 {
-    public function __construct(private PDO $db)
+    public function __construct(private QueryFactory $queryFactory)
     {
     }
 
     /**
      * @return array<int, array<string, mixed>>
      */
-    public function getRankingForNewSeason(int $seasonId): array
+    public function findForNewSeason(int $seasonId): array
     {
-        $stmt = $this->db->prepare(
-            'SELECT ROW_NUMBER() OVER (ORDER BY ISPS.BasePoints DESC) AS rank,
-                IP.id, IP.name, IP.firstName,
-                IP.gender, IP.birthDate, ISPS.BasePoints AS average, IP.doubleRanking, IP.birthDate, IP.playsCompetition
-            FROM  PlayerSeasonStatistic ISPS
-            INNER JOIN Player IP ON IP.id = ISPS.playerId
-            WHERE ISPS.seasonId = ? AND IP.member = 1
-            ORDER BY rank;'
-        );
-        $stmt->execute([$seasonId]);
+        $rows = $this->queryFactory->newSelectQuery()
+            ->select([
+                'rank' => $this->queryFactory->expr('ROW_NUMBER() OVER (ORDER BY ISPS.BasePoints DESC)'),
+                'id' => 'IP.Id',
+                'name' => 'IP.Name',
+                'firstName' => 'IP.FirstName',
+                'gender' => 'IP.Gender',
+                'birthDate' => 'IP.BirthDate',
+                'average' => 'ISPS.BasePoints',
+                'doubleRanking' => 'IP.DoubleRanking',
+                'playsCompetition' => 'IP.PlaysCompetition',
+            ])
+            ->from(['ISPS' => 'PlayerSeasonStatistic'])
+            ->innerJoin(['IP' => 'Player'], 'IP.Id = ISPS.PlayerId')
+            ->where(['ISPS.SeasonId' => $seasonId, 'IP.Member' => 1])
+            ->order(['rank' => 'ASC'])
+            ->execute()
+            ->fetchAll('assoc');
 
-        return $stmt->fetchAll();
+        return $rows ?: [];
     }
 
     /**
      * @return array<int, array<string, mixed>>
      */
-    public function getRankingAfterRound(int $roundId): array
+    public function findAfterRound(int $roundId): array
     {
-        $stmt = $this->db->prepare(
-            'SELECT ROW_NUMBER() OVER (ORDER BY ISPS.average DESC) AS rank, IP.id AS id, IP.name, IP.firstName,
-                IP.gender,  IP.doubleRanking, ISPS.average, IP.birthDate, IP.playsCompetition
-            FROM  PlayerRoundStatistic ISPS
-            INNER JOIN `Player` IP ON IP.id = ISPS.playerId
-            WHERE ISPS.roundId = ? AND IP.member = 1
-            ORDER BY rank;'
-        );
-        $stmt->execute([$roundId]);
+        $rows = $this->queryFactory->newSelectQuery()
+            ->select([
+                'rank' => $this->queryFactory->expr('ROW_NUMBER() OVER (ORDER BY ISPS.Average DESC)'),
+                'id' => 'IP.Id',
+                'name' => 'IP.Name',
+                'firstName' => 'IP.FirstName',
+                'gender' => 'IP.Gender',
+                'doubleRanking' => 'IP.DoubleRanking',
+                'average' => 'ISPS.Average',
+                'birthDate' => 'IP.BirthDate',
+                'playsCompetition' => 'IP.PlaysCompetition',
+            ])
+            ->from(['ISPS' => 'PlayerRoundStatistic'])
+            ->innerJoin(['IP' => 'Player'], 'IP.Id = ISPS.PlayerId')
+            ->where(['ISPS.RoundId' => $roundId, 'IP.Member' => 1])
+            ->order(['rank' => 'ASC'])
+            ->execute()
+            ->fetchAll('assoc');
 
-        return $stmt->fetchAll();
+        return $rows ?: [];
     }
 
     /**
-     * @return array<int, array<string, mixed>>
+     * @return array<int, RankingHistoryEntry>
      */
-    public function getRankingHistoryByPlayerAndSeason(int $playerId, int $seasonId): array
+    public function findHistory(int $playerId, int $seasonId): array
     {
-        $stmt = $this->db->prepare(
-            'SELECT * FROM (
-                SELECT ROW_NUMBER() OVER (PARTITION BY ISPS.roundId ORDER BY ISPS.average DESC) AS rank,
-                ISPS.playerId AS id, ISPS.average, ISPS.roundId, ISPEEL.number, ISPEEL.date
-                FROM `PlayerRoundStatistic` ISPS
-                INNER JOIN `Round` ISPEEL ON ISPEEL.id = ISPS.roundId
-                WHERE ISPEEL.seasonId = ?
-                ORDER BY ISPEEL.Id, rank ) AS FullRanking
-                WHERE id = ?'
-        );
-        $stmt->execute([$seasonId, $playerId]);
+        $inner = $this->queryFactory->newSelectQuery()
+            ->select([
+                'rank' => $this->queryFactory->expr('ROW_NUMBER() OVER (PARTITION BY ISPS.RoundId ORDER BY ISPS.Average DESC)'),
+                'id' => 'ISPS.PlayerId',
+                'average' => 'ISPS.Average',
+                'roundId' => 'ISPS.RoundId',
+                'number' => 'ISPEEL.Number',
+                'date' => 'ISPEEL.Date',
+            ])
+            ->from(['ISPS' => 'PlayerRoundStatistic'])
+            ->innerJoin(['ISPEEL' => 'Round'], 'ISPEEL.Id = ISPS.RoundId')
+            ->where(['ISPEEL.SeasonId' => $seasonId]);
 
-        return $stmt->fetchAll();
+        $rows = $this->queryFactory->newSelectQuery()
+            ->select([
+                'roundId' => 'FullRanking.roundId',
+                'number' => 'FullRanking.number',
+                'average' => 'FullRanking.average',
+                'rank' => 'FullRanking.rank',
+            ])
+            ->from(['FullRanking' => $inner])
+            ->where(['FullRanking.id' => $playerId])
+            ->execute()
+            ->fetchAll('assoc');
+
+        return array_map(static fn (array $row) => RankingHistoryEntry::fromRow($row), $rows ?: []);
     }
 }

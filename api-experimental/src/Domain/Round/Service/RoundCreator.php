@@ -20,13 +20,10 @@ final class RoundCreator
     {
         $this->validator->validateCreateRound($date);
 
-        $currentSeasonId = $this->seasonRepository->getCurrentSeasonId();
-        $roundNumber = 1;
-        $round = $this->roundRepository->getLast($currentSeasonId);
-        if (!empty($round)) {
-            $roundNumber = (int) $round['number'] + 1;
-        }
+        $seasonId = $this->seasonRepository->getCurrentSeasonId();
+        $last = $this->roundRepository->findLast($seasonId);
+        $number = $last !== null ? $last->number + 1 : 1;
 
-        $this->roundRepository->insertRound($currentSeasonId, $date, $roundNumber);
+        $this->roundRepository->insertRound($seasonId, $date, $number);
     }
 }

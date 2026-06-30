@@ -2,7 +2,6 @@ parameters:
     level: 5
     paths:
         - src
-    checkMissingIterableValueType: false
     ignoreErrors:
         # Monolog 2 PHPStan stubs type the $level argument as a literal union of
         # level constants; passing a plain int is valid at runtime.
