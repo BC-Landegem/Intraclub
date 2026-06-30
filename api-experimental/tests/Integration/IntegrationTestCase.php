@@ -47,7 +47,7 @@ abstract class IntegrationTestCase extends TestCase
     {
         $container = self::container();
         $this->app = $container->get(App::class);
-        $this->pdo = $container->get(PDO::class);
+        $this->pdo = self::pdo($container);
 
         if (!self::$schemaLoaded) {
             $this->loadSchema();
@@ -67,6 +67,28 @@ abstract class IntegrationTestCase extends TestCase
         }
 
         return self::$container;
+    }
+
+    /**
+     * A direct PDO connection to the same database, used to load the schema and
+     * seed fixtures. CakePHP 5 no longer exposes the driver's PDO, so the test
+     * harness opens its own connection from the configured settings.
+     */
+    private static function pdo(ContainerInterface $container): PDO
+    {
+        /** @var array<string, mixed> $db */
+        $db = $container->get('settings')['db'];
+        $dsn = sprintf(
+            'mysql:host=%s;port=%s;dbname=%s;charset=utf8mb4',
+            (string) $db['host'],
+            (string) ($db['port'] ?? '3306'),
+            (string) $db['database'],
+        );
+
+        return new PDO($dsn, (string) $db['username'], (string) $db['password'], [
+            PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
+            PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
+        ]);
     }
 
     private function loadSchema(): void

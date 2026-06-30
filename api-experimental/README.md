@@ -7,7 +7,7 @@ layout).
 
 ## Requirements
 
-- PHP 8.1+
+- PHP 8.3+
 - MySQL / MariaDB
 - [Composer](https://getcomposer.org/)
 

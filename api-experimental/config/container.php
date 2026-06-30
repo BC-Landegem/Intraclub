@@ -78,14 +78,6 @@ return [
         return new Connection($container->get('settings')['db']);
     },
 
-    PDO::class => function (ContainerInterface $container) {
-        $db = $container->get(Connection::class);
-        $driver = $db->getDriver();
-        $driver->connect();
-
-        return $driver->getConnection();
-    },
-
     ErrorMiddleware::class => function (ContainerInterface $container) {
         $settings = $container->get('settings')['error'];
         $app = $container->get(App::class);
