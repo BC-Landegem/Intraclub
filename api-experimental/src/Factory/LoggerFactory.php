@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Factory;
 
 use Monolog\Formatter\LineFormatter;
@@ -23,11 +25,11 @@ final class LoggerFactory
     public function __construct(array $settings)
     {
         $this->path = $settings['path'] ?? 'vfs://root/logs';
-        $this->level = (int) $settings['level'] ?? Logger::DEBUG;
+        $this->level = (int) ($settings['level'] ?? Logger::DEBUG);
         $this->test = $settings['test'] ?? null;
     }
 
-    public function createLogger(string $name = null): LoggerInterface
+    public function createLogger(?string $name = null): LoggerInterface
     {
         if ($this->test) {
             $this->handler = [$this->test];
@@ -51,7 +53,7 @@ final class LoggerFactory
         return $this;
     }
 
-    public function addFileHandler(string $filename, int $level = null): self
+    public function addFileHandler(string $filename, ?int $level = null): self
     {
         $filename = sprintf('%s/%s', $this->path, $filename);
         $rotatingFileHandler = new RotatingFileHandler($filename, 0, $level ?? $this->level, true, 0777);
@@ -64,7 +66,7 @@ final class LoggerFactory
         return $this;
     }
 
-    public function addConsoleHandler(int $level = null): self
+    public function addConsoleHandler(?int $level = null): self
     {
         $streamHandler = new StreamHandler('php://output', $level ?? $this->level);
         $streamHandler->setFormatter(new LineFormatter(null, null, false, true));

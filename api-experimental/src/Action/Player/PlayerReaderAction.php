@@ -1,8 +1,9 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Action\Player;
 
-use App\Domain\Player\Data\PlayerReaderResult;
 use App\Domain\Player\Service\PlayerReader;
 use App\Renderer\JsonRenderer;
 use Psr\Http\Message\ResponseInterface;
@@ -10,34 +11,25 @@ use Psr\Http\Message\ServerRequestInterface;
 
 final class PlayerReaderAction
 {
-
-    private PlayerReader $playerReader;
-
-    private JsonRenderer $renderer;
-
-    public function __construct(PlayerReader $playerReader, JsonRenderer $jsonRenderer)
-    {
-        $this->playerReader = $playerReader;
-        $this->renderer = $jsonRenderer;
+    public function __construct(
+        private PlayerReader $playerReader,
+        private JsonRenderer $renderer
+    ) {
     }
 
+    /**
+     * @param array<string, string> $args
+     */
     public function __invoke(
         ServerRequestInterface $request,
         ResponseInterface $response,
         array $args
     ): ResponseInterface {
-        // Fetch parameters from the request
-        $playerId = (int) $args['player_id'];
-        // Invoke the domain and get the result
-        $customer = $this->playerReader->getPlayer($playerId);
+        $playerId = (int) $args['id'];
+        $seasonId = $request->getQueryParams()['seasonId'] ?? null;
 
-        // Transform result and render to json
-        return $this->renderer->json($response, $customer);
-    }
+        $player = $this->playerReader->getPlayer($playerId, $seasonId !== null ? (int) $seasonId : null);
 
-    private function transform(PlayerReaderResult $player): array
-    {
-        // return as array
-        return [];
+        return $this->renderer->json($response, $player);
     }
 }

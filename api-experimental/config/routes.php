@@ -1,21 +1,58 @@
 <?php
 
-// Define app routes
+declare(strict_types=1);
 
+use App\Action\Home\HomeAction;
+use App\Action\Match\MatchCreatorAction;
+use App\Action\Match\MatchListByRoundAction;
+use App\Action\Match\MatchUpdaterAction;
+use App\Action\Player\AttendanceUpdaterAction;
 use App\Action\Player\PlayerCreatorAction;
+use App\Action\Player\PlayerListAction;
+use App\Action\Player\PlayerReaderAction;
+use App\Action\Player\PlayerUpdaterAction;
+use App\Action\Ranking\RankingReaderAction;
+use App\Action\Round\RoundCreatorAction;
+use App\Action\Round\RoundLatestAction;
+use App\Action\Round\RoundLatestCalculatedAction;
+use App\Action\Round\RoundListAction;
+use App\Action\Round\RoundReaderAction;
+use App\Action\Season\SeasonCalculatorAction;
+use App\Action\Season\SeasonCreatorAction;
+use App\Action\Season\SeasonStatisticsAction;
 use Slim\App;
 use Slim\Routing\RouteCollectorProxy;
 
 return function (App $app) {
-    // Redirect to Swagger documentation
-    $app->get('/', \App\Action\Home\HomeAction::class)->setName('home');
+    $app->get('/', HomeAction::class)->setName('home');
 
-    // API
-    $app->group(
-        '/api',
-        function (RouteCollectorProxy $app) {
-            $app->post('/players', PlayerCreatorAction::class);
-            $app->get('/players/{player_id}', \App\Action\Player\PlayerReaderAction::class);
-        }
-    );
+    $app->group('/api', function (RouteCollectorProxy $group) {
+        // Players
+        $group->get('/players', PlayerListAction::class);
+        $group->post('/players', PlayerCreatorAction::class);
+        $group->get('/players/{id}', PlayerReaderAction::class);
+        $group->post('/players/{id}', PlayerUpdaterAction::class);
+
+        // Seasons
+        $group->post('/seasons', SeasonCreatorAction::class);
+        $group->post('/seasons/calculate', SeasonCalculatorAction::class);
+        $group->get('/seasons/latest/statistics', SeasonStatisticsAction::class);
+
+        // Rounds (static routes before the {id} placeholder)
+        $group->get('/rounds', RoundListAction::class);
+        $group->post('/rounds', RoundCreatorAction::class);
+        $group->get('/rounds/latest', RoundLatestAction::class);
+        $group->get('/rounds/latestCalculated', RoundLatestCalculatedAction::class);
+        $group->get('/rounds/{id}', RoundReaderAction::class);
+        $group->get('/rounds/{id}/matches', MatchListByRoundAction::class);
+        $group->post('/rounds/{id}/players/{playerId}', AttendanceUpdaterAction::class);
+
+        // Matches
+        $group->post('/matches', MatchCreatorAction::class);
+        $group->post('/matches/{id}', MatchUpdaterAction::class);
+
+        // Rankings
+        $group->get('/rankings', RankingReaderAction::class);
+        $group->get('/rankings/{type}', RankingReaderAction::class);
+    });
 };

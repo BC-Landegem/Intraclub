@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 use App\Middleware\ValidationExceptionMiddleware;
 use Selective\BasePath\BasePathMiddleware;
 use Slim\App;

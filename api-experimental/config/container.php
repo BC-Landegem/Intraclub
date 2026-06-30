@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 use App\Factory\LoggerFactory;
 use App\Handler\DefaultErrorHandler;
 use Cake\Database\Connection;

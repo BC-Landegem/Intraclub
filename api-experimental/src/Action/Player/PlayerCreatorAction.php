@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Action\Player;
 
 use App\Domain\Player\Service\PlayerCreator;
@@ -10,27 +12,19 @@ use Psr\Http\Message\ServerRequestInterface;
 
 final class PlayerCreatorAction
 {
-    private JsonRenderer $renderer;
-
-    private PlayerCreator $PlayerCreator;
-
-    public function __construct(PlayerCreator $PlayerCreator, JsonRenderer $renderer)
-    {
-        $this->PlayerCreator = $PlayerCreator;
-        $this->renderer = $renderer;
+    public function __construct(
+        private PlayerCreator $playerCreator,
+        private JsonRenderer $renderer
+    ) {
     }
 
     public function __invoke(ServerRequestInterface $request, ResponseInterface $response): ResponseInterface
     {
-        // Extract the form data from the request body
         $data = (array) $request->getParsedBody();
+        $playerId = $this->playerCreator->createPlayer($data);
 
-        // Invoke the Domain with inputs and retain the result
-        $PlayerId = $this->PlayerCreator->createPlayer($data);
-
-        // Build the HTTP response
         return $this->renderer
-            ->json($response, ['Player_id' => $PlayerId])
+            ->json($response, ['id' => $playerId])
             ->withStatus(StatusCodeInterface::STATUS_CREATED);
     }
 }

@@ -1,42 +1,42 @@
 <?php
+
+declare(strict_types=1);
+
 namespace App\Domain\Player\Service;
 
 use App\Domain\Player\Repository\PlayerRepository;
-use App\Domain\Player\Service\PlayerValidator;
-use App\Factory\LoggerFactory;
-use Psr\Log\LoggerInterface;
+use App\Domain\Season\Repository\SeasonRepository;
 
 final class PlayerCreator
 {
-    private PlayerRepository $repository;
-
-    private PlayerValidator $PlayerValidator;
-
-    private LoggerInterface $logger;
-
     public function __construct(
-        PlayerRepository $repository,
-        PlayerValidator $PlayerValidator,
-        LoggerFactory $loggerFactory
+        private PlayerRepository $repository,
+        private SeasonRepository $seasonRepository,
+        private PlayerValidator $validator
     ) {
-        $this->repository = $repository;
-        $this->PlayerValidator = $PlayerValidator;
-        $this->logger = $loggerFactory
-            ->addFileHandler('Player_creator.log')
-            ->createLogger();
     }
 
+    /**
+     * Create a new player together with empty statistics for the current season.
+     *
+     * @param array<string, mixed> $data
+     */
     public function createPlayer(array $data): int
     {
-        // // Input validation
-        // $this->PlayerValidator->validatePlayer($data);
+        $this->validator->validate($data, true);
 
-        // // Insert Player and get new Player ID
-        // $PlayerId = $this->repository->insertPlayer($data);
-        $PlayerId = 0;
-        // Logging
-        $this->logger->info(sprintf('Player created successfully: %s', $PlayerId));
+        $playerId = $this->repository->insertPlayer(
+            (string) $data['firstName'],
+            (string) $data['name'],
+            (string) $data['gender'],
+            (string) $data['birthDate'],
+            (int) $data['doubleRanking'],
+            (bool) $data['playsCompetition']
+        );
 
-        return $PlayerId;
+        $seasonId = $this->seasonRepository->getCurrentSeasonId();
+        $this->repository->createSeasonStatistic($seasonId, $playerId, (float) $data['basePoints']);
+
+        return $playerId;
     }
 }

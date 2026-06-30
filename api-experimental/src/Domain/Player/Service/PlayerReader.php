@@ -1,40 +1,79 @@
 <?php
+
+declare(strict_types=1);
+
 namespace App\Domain\Player\Service;
 
-use App\Domain\Player\Data\PlayerReaderResult;
+use App\Domain\Match\Repository\MatchRepository;
 use App\Domain\Player\Repository\PlayerRepository;
-use DateTime;
+use App\Domain\Ranking\Repository\RankingRepository;
+use App\Domain\Season\Repository\SeasonRepository;
+use App\Support\Transformer;
 
 final class PlayerReader
 {
-
-    private PlayerRepository $repository;
-
-    public function __construct(PlayerRepository $repository)
-    {
-        $this->repository = $repository;
+    public function __construct(
+        private PlayerRepository $repository,
+        private SeasonRepository $seasonRepository,
+        private MatchRepository $matchRepository,
+        private RankingRepository $rankingRepository
+    ) {
     }
 
     /**
-     * Read a player.
-     * 
-     * @param int $playerId The player id
-     * 
-     * @return PlayerReaderResult The player data
+     * Read a single player with season statistics, matches and ranking history.
+     *
+     * @return array<string, mixed>
      */
-    public function getPlayer(int $playerId): PlayerReaderResult
+    public function getPlayer(int $id, ?int $seasonId = null): array
     {
-        $playerRow = $this->repository->getPlayerById($playerId);
+        if ($id <= 0) {
+            return [];
+        }
+        if (empty($seasonId)) {
+            $seasonId = $this->seasonRepository->getCurrentSeasonId();
+        }
 
-        $player = new PlayerReaderResult();
-        $player->id = (int) $playerRow['Id'];
-        $player->firstname = (string) $playerRow['Firstname'];
-        $player->name = (string) $playerRow['Name'];
-        $player->member = (bool) $playerRow['Member'];
-        $player->gender = (string) $playerRow['Gender'];
-        //$player->birthDate = new DateTime($playerRow['BirthDate']);
-        $player->doubleRanking = (int) $playerRow['DoubleRanking'];
-        $player->playsCompetition = (bool) $playerRow['PlaysCompetition'];
-        return $player;
+        $playerStats = $this->repository->getByIdWithSeasonInfo($id, $seasonId);
+        if ($playerStats === null) {
+            return [];
+        }
+
+        $response = Transformer::toPlayerStatistics($playerStats);
+        $response['matches'] = $this->getMatches($id, $seasonId);
+        $response['statistics']['rankingHistory'] = $this->getRankingHistory($id, $seasonId);
+
+        return $response;
+    }
+
+    /**
+     * @return array<int, array<string, mixed>>
+     */
+    private function getMatches(int $id, int $seasonId): array
+    {
+        $matches = [];
+        foreach ($this->matchRepository->getAllBySeasonAndPlayerId($seasonId, $id) as $matchRow) {
+            $matches[] = Transformer::toMatch($matchRow);
+        }
+
+        return $matches;
+    }
+
+    /**
+     * @return array<int, array<string, mixed>>
+     */
+    private function getRankingHistory(int $id, int $seasonId): array
+    {
+        $history = [];
+        foreach ($this->rankingRepository->getRankingHistoryByPlayerAndSeason($id, $seasonId) as $ranking) {
+            $history[] = [
+                'id' => (int) $ranking['roundId'],
+                'number' => (int) $ranking['number'],
+                'average' => round((float) $ranking['average'], 2),
+                'rank' => (int) $ranking['rank'],
+            ];
+        }
+
+        return $history;
     }
 }

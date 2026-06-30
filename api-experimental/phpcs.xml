@@ -1,0 +1,20 @@
+<?xml version="1.0"?>
+<ruleset name="Intraclub">
+    <description>PSR-12 coding standard for the Intraclub API.</description>
+
+    <file>src</file>
+    <file>tests</file>
+
+    <arg name="colors"/>
+    <arg value="sp"/>
+
+    <rule ref="PSR12"/>
+
+    <!-- Allow slightly longer lines for readable SQL strings. -->
+    <rule ref="Generic.Files.LineLength">
+        <properties>
+            <property name="lineLimit" value="140"/>
+            <property name="absoluteLineLimit" value="0"/>
+        </properties>
+    </rule>
+</ruleset>

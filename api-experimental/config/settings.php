@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 // Load .env file, if exists
 use Symfony\Component\Dotenv\Dotenv;
 

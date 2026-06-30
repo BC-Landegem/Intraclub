@@ -5,6 +5,7 @@ composer.lock
 .DS_STORE
 cache.properties
 .php_cs.cache
+.php-cs-fixer.cache
 .vscode
 .phpunit.result.cache
 .phpunit.cache/
