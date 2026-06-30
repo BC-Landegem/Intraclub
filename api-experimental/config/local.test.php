@@ -20,5 +20,8 @@ return function (array $settings): array {
     // Fixed signing secret for the test suite.
     $settings['jwt']['secret'] = getenv('JWT_SECRET') ?: 'test-secret-key-which-is-long-enough-to-be-safe';
 
+    // A known allowed origin so CORS behaviour can be asserted.
+    $settings['cors']['allowedOrigins'] = ['https://app.test'];
+
     return $settings;
 };

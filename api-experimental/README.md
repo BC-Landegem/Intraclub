@@ -125,8 +125,29 @@ variables (`DB_HOST`, `DB_PORT`, `DB_DATABASE`, `DB_USERNAME`, `DB_PASSWORD`)
 with `APP_ENV=test`. CI provisions a MariaDB service automatically. To run only
 the database-free tests locally: `composer test -- --testsuite Unit`.
 
-## Migration note
+## Security
+
+Hardening applied after an OWASP Top 10 review:
+
+- **Fail-closed environment.** `APP_ENV` defaults to `prod`, so a host that
+  forgets to set it loads production settings (no error details, no built-in
+  secret) rather than the development config. Set `APP_ENV=dev` for local work
+  (`composer start` does this automatically).
+- **Authentication.** JWT on all write routes (see above); passwords hashed with
+  `password_hash` (bcrypt); login is constant-time against user enumeration.
+- **Login rate limiting.** Failed logins are throttled per client IP
+  (5 attempts / 15 min → HTTP 429 with `Retry-After`) and all auth events are
+  logged to `logs/auth.log`.
+- **Security headers** on every response (`X-Content-Type-Options`,
+  `X-Frame-Options`, `Referrer-Policy`, `Content-Security-Policy`, HSTS).
+- **CORS** is an explicit allow-list (no wildcard). Configure it with the
+  `CORS_ALLOWED_ORIGINS` environment variable (comma-separated origins);
+  empty = same-origin only.
+- **Supply chain.** `composer.lock` is committed and CI runs `composer install`
+  + `composer audit` so known-vulnerable dependencies fail the build.
+- **Transport.** Serve the API over HTTPS only — tokens and credentials must not
+  travel in clear text (the HSTS header assumes TLS).
 
 The legacy API gated mutating endpoints behind Joomla authentication
-(`checkAccessRights`). That host-specific check is replaced by the JWT
-authentication described above (`JwtAuthMiddleware` on the write routes).
+(`checkAccessRights`); that host-specific check is replaced by the JWT
+authentication above.

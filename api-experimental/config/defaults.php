@@ -76,6 +76,15 @@ $settings['jwt'] = [
     'issuer' => 'intraclub',
 ];
 
+// CORS: comma-separated allow-list of origins (e.g. "https://app.example.com").
+// Empty by default (same-origin only).
+$settings['cors'] = [
+    'allowedOrigins' => array_values(array_filter(array_map(
+        'trim',
+        explode(',', getenv('CORS_ALLOWED_ORIGINS') ?: '')
+    ))),
+];
+
 // Console commands
 $settings['commands'] = [
     \App\Console\ExampleCommand::class,

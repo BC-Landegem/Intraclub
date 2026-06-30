@@ -43,6 +43,7 @@ abstract class IntegrationTestCase extends TestCase
         'Season',
         'Player',
         'User',
+        'LoginAttempt',
     ];
 
     /** Plaintext password of the seeded `admin` user. */

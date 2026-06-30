@@ -19,8 +19,10 @@ if (class_exists(Dotenv::class)) {
     }
 }
 
-// Detect environment
-$_ENV['APP_ENV'] ??= $_SERVER['APP_ENV'] ?? 'dev';
+// Detect environment. Defaults to 'prod' so a host that forgets to set APP_ENV
+// fails closed (production settings: no error details, no built-in secret)
+// instead of loading the development config with its committed dev secret.
+$_ENV['APP_ENV'] ??= $_SERVER['APP_ENV'] ?? 'prod';
 
 // Load default settings
 $settings = require __DIR__ . '/defaults.php';

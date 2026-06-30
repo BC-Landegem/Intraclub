@@ -5,6 +5,7 @@ declare(strict_types=1);
 use App\Domain\Auth\Service\TokenService;
 use App\Factory\LoggerFactory;
 use App\Handler\DefaultErrorHandler;
+use App\Middleware\CorsMiddleware;
 use Cake\Database\Connection;
 use Nyholm\Psr7\Factory\Psr17Factory;
 use Psr\Container\ContainerInterface;
@@ -84,6 +85,13 @@ return [
         $jwt = $container->get('settings')['jwt'];
 
         return new TokenService((string) $jwt['secret'], (int) $jwt['expiresIn'], (string) $jwt['issuer']);
+    },
+
+    CorsMiddleware::class => function (ContainerInterface $container) {
+        return new CorsMiddleware(
+            $container->get('settings')['cors']['allowedOrigins'],
+            $container->get(ResponseFactoryInterface::class),
+        );
     },
 
     ErrorMiddleware::class => function (ContainerInterface $container) {

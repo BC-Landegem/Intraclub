@@ -10,6 +10,18 @@ ENGINE=InnoDB
 ;
 
 
+CREATE TABLE `LoginAttempt` (
+	`Id` INT(11) NOT NULL AUTO_INCREMENT,
+	`Identifier` VARCHAR(190) NOT NULL COLLATE 'utf8mb4_unicode_ci',
+	`AttemptedAt` DATETIME NOT NULL,
+	PRIMARY KEY (`Id`) USING BTREE,
+	INDEX `IX_LoginAttempt_Identifier` (`Identifier`, `AttemptedAt`) USING BTREE
+)
+COLLATE='utf8mb4_unicode_ci'
+ENGINE=InnoDB
+;
+
+
 CREATE TABLE `Player` (
 	`Id` INT(11) NOT NULL AUTO_INCREMENT,
 	`Firstname` VARCHAR(100) NOT NULL COLLATE 'utf8mb4_unicode_ci',

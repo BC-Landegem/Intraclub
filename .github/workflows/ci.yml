@@ -51,8 +51,10 @@ jobs:
         run: composer validate --no-check-publish
 
       - name: Install dependencies
-        # composer.lock is intentionally not committed (see .gitignore), so resolve fresh.
-        run: composer update --prefer-dist --no-interaction --no-progress
+        run: composer install --prefer-dist --no-interaction --no-progress
+
+      - name: Audit dependencies for known vulnerabilities
+        run: composer audit
 
       - name: Coding standard (PHP-CS-Fixer)
         run: composer cs:check
