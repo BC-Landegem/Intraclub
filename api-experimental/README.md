@@ -89,10 +89,24 @@ the new frontend.
 | `composer cs:fix`        | PHP-CS-Fixer apply                           |
 | `composer sniffer:check` | PHP_CodeSniffer (PSR-12)                      |
 | `composer stan`          | PHPStan static analysis (level 5)            |
-| `composer test`          | PHPUnit                                       |
+| `composer test`          | PHPUnit (unit + integration)                 |
 | `composer test:all`      | cs:check + sniffer:check + stan + test       |
 
 CI runs `test:all` on every push/PR (see `../.github/workflows/ci.yml`).
+
+### Tests
+
+- **Unit** (`tests/Support`, `tests/Data`) — pure logic, no database.
+- **Integration** (`tests/Integration`) — HTTP-level tests that boot the real
+  container and Slim app and fire PSR-7 requests through the full middleware /
+  routing / action / service / repository stack against a **real database**,
+  covering every endpoint (success and error paths). A fresh schema + fixture is
+  loaded per test.
+
+Integration tests need a MySQL/MariaDB database; configure it via environment
+variables (`DB_HOST`, `DB_PORT`, `DB_DATABASE`, `DB_USERNAME`, `DB_PASSWORD`)
+with `APP_ENV=test`. CI provisions a MariaDB service automatically. To run only
+the database-free tests locally: `composer test -- --testsuite Unit`.
 
 ## Not yet migrated
 

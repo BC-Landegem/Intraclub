@@ -5,10 +5,17 @@
          colors="true"
          cacheResultFile="build/.phpunit.result.cache">
     <testsuites>
-        <testsuite name="Tests">
-            <directory>tests</directory>
+        <testsuite name="Unit">
+            <directory>tests/Support</directory>
+            <directory>tests/Data</directory>
+        </testsuite>
+        <testsuite name="Integration">
+            <directory>tests/Integration</directory>
         </testsuite>
     </testsuites>
+    <php>
+        <env name="APP_ENV" value="test"/>
+    </php>
     <coverage>
         <include>
             <directory suffix=".php">src</directory>

@@ -16,6 +16,25 @@ jobs:
     defaults:
       run:
         working-directory: api-experimental
+    services:
+      mariadb:
+        image: mariadb:11
+        env:
+          MARIADB_ROOT_PASSWORD: root
+          MARIADB_DATABASE: intraclub_test
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="healthcheck.sh --connect --innodb_initialized"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=10
+    env:
+      DB_HOST: 127.0.0.1
+      DB_PORT: 3306
+      DB_DATABASE: intraclub_test
+      DB_USERNAME: root
+      DB_PASSWORD: root
     steps:
       - uses: actions/checkout@v4
 
@@ -43,7 +62,7 @@ jobs:
       - name: Static analysis (PHPStan)
         run: composer stan
 
-      - name: Unit tests (PHPUnit)
+      - name: Unit + integration tests (PHPUnit)
         run: composer test
 
   api-lint:
