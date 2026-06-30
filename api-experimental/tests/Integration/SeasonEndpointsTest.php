@@ -21,26 +21,26 @@ final class SeasonEndpointsTest extends IntegrationTestCase
 
     public function testCreateSeason(): void
     {
-        $response = $this->request('POST', '/api/seasons', ['period' => '2024 - 2025']);
+        $response = $this->request('POST', '/api/seasons', ['period' => '2024 - 2025'], [], $this->authToken());
         self::assertSame(StatusCodeInterface::STATUS_OK, $response->getStatusCode());
         self::assertSame('ok', $this->jsonBody($response)['status']);
     }
 
     public function testCreateDuplicateSeasonReturns400(): void
     {
-        $response = $this->request('POST', '/api/seasons', ['period' => '2023 - 2024']);
+        $response = $this->request('POST', '/api/seasons', ['period' => '2023 - 2024'], [], $this->authToken());
         self::assertSame(StatusCodeInterface::STATUS_BAD_REQUEST, $response->getStatusCode());
     }
 
     public function testCreateSeasonWithoutPeriodReturns400(): void
     {
-        $response = $this->request('POST', '/api/seasons', ['period' => '']);
+        $response = $this->request('POST', '/api/seasons', ['period' => ''], [], $this->authToken());
         self::assertSame(StatusCodeInterface::STATUS_BAD_REQUEST, $response->getStatusCode());
     }
 
     public function testCalculateCurrentSeason(): void
     {
-        $response = $this->request('POST', '/api/seasons/calculate');
+        $response = $this->request('POST', '/api/seasons/calculate', null, [], $this->authToken());
         self::assertSame(StatusCodeInterface::STATUS_OK, $response->getStatusCode());
         self::assertSame('ok', $this->jsonBody($response)['status']);
 

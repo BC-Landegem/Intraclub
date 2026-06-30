@@ -17,5 +17,8 @@ return function (array $settings): array {
     $settings['db']['username'] = getenv('DB_USERNAME') ?: 'root';
     $settings['db']['password'] = getenv('DB_PASSWORD') ?: '';
 
+    // Fixed signing secret for the test suite.
+    $settings['jwt']['secret'] = getenv('JWT_SECRET') ?: 'test-secret-key-which-is-long-enough-to-be-safe';
+
     return $settings;
 };

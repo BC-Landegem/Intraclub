@@ -51,30 +51,47 @@ Invalid input and "not found" conditions are signalled by throwing
 `DomainException` / `InvalidArgumentException`; `DefaultErrorHandler` renders
 those as HTTP `400` with a JSON `error` body.
 
+## Authentication
+
+Reads are public; **every mutating (POST) endpoint requires a JWT**.
+
+1. Create users with the console command:
+   `composer start` aside, run `php bin/console.php app:user:create <username> [<password>]`
+   (the password is prompted securely if omitted). Passwords are stored hashed
+   (`password_hash`, bcrypt).
+2. `POST /api/login` with `{ "username": "...", "password": "..." }` returns
+   `{ "token": "<jwt>", "expiresIn": <seconds>, "user": { "id", "username" } }`.
+3. Send the token on protected requests: `Authorization: Bearer <jwt>`.
+
+Tokens are HS256-signed; set a long random `JWT_SECRET` environment variable in
+production (the app refuses to issue/validate tokens with an empty secret).
+`JWT_EXPIRES_IN` (seconds, default 28800 = 8h) tunes the lifetime.
+
 ## Endpoints
 
-All routes are prefixed with `/api`.
+All routes are prefixed with `/api`. "Auth" = requires a Bearer token.
 
-| Method | Path                              | Description                          |
-| ------ | --------------------------------- | ------------------------------------ |
-| GET    | `/players`                        | List members                         |
-| POST   | `/players`                        | Create a player                      |
-| GET    | `/players/{id}`                   | Player + season stats, matches, history (optional `?seasonId=`) |
-| POST   | `/players/{id}`                   | Update a player                      |
-| POST   | `/rounds/{id}/players/{playerId}` | Update player attendance for a round |
-| POST   | `/seasons`                        | Create a season                      |
-| POST   | `/seasons/calculate`              | Recalculate the current season       |
-| GET    | `/seasons/latest/statistics`      | Season statistics                    |
-| GET    | `/rounds`                         | Rounds of a season (optional `?seasonId=`) |
-| POST   | `/rounds`                         | Create a round                       |
-| GET    | `/rounds/latest`                  | Latest round                         |
-| GET    | `/rounds/latestCalculated`        | Latest calculated round              |
-| GET    | `/rounds/{id}`                    | Round with matches                   |
-| GET    | `/rounds/{id}/matches`            | Matches of a round                   |
-| POST   | `/matches`                        | Create a match                       |
-| POST   | `/matches/{id}`                   | Update match scores                  |
-| GET    | `/rankings`                       | All rankings (`?$top=` to limit)     |
-| GET    | `/rankings/{type}`                | `general` / `women` / `veterans` / `recreants` |
+| Method | Path                              | Auth   | Description                          |
+| ------ | --------------------------------- | ------ | ------------------------------------ |
+| POST   | `/login`                          | public | Obtain a JWT                         |
+| GET    | `/players`                        | public | List members                         |
+| GET    | `/players/{id}`                   | public | Player + season stats, matches, history (optional `?seasonId=`) |
+| GET    | `/seasons/latest/statistics`      | public | Season statistics                    |
+| GET    | `/rounds`                         | public | Rounds of a season (optional `?seasonId=`) |
+| GET    | `/rounds/latest`                  | public | Latest round                         |
+| GET    | `/rounds/latestCalculated`        | public | Latest calculated round              |
+| GET    | `/rounds/{id}`                    | public | Round with matches                   |
+| GET    | `/rounds/{id}/matches`            | public | Matches of a round                   |
+| GET    | `/rankings`                       | public | All rankings (`?$top=` to limit)     |
+| GET    | `/rankings/{type}`                | public | `general` / `women` / `veterans` / `recreants` |
+| POST   | `/players`                        | token  | Create a player                      |
+| POST   | `/players/{id}`                   | token  | Update a player                      |
+| POST   | `/rounds/{id}/players/{playerId}` | token  | Update player attendance for a round |
+| POST   | `/seasons`                        | token  | Create a season                      |
+| POST   | `/seasons/calculate`              | token  | Recalculate the current season       |
+| POST   | `/rounds`                         | token  | Create a round                       |
+| POST   | `/matches`                        | token  | Create a match                       |
+| POST   | `/matches/{id}`                   | token  | Update match scores                  |
 
 The JSON output is a clean, typed redesign (camelCase keys, enums as strings,
 dates as `Y-m-d`, nested value objects) defined by the DTOs in each domain's
@@ -108,10 +125,8 @@ variables (`DB_HOST`, `DB_PORT`, `DB_DATABASE`, `DB_USERNAME`, `DB_PASSWORD`)
 with `APP_ENV=test`. CI provisions a MariaDB service automatically. To run only
 the database-free tests locally: `composer test -- --testsuite Unit`.
 
-## Not yet migrated
+## Migration note
 
 The legacy API gated mutating endpoints behind Joomla authentication
-(`checkAccessRights`). That host-specific check is **not** ported here; add a
-PSR-15 authentication middleware (e.g. a small custom middleware, or a maintained
-package such as `middlewares/http-authentication`) before exposing the write
-endpoints publicly.
+(`checkAccessRights`). That host-specific check is replaced by the JWT
+authentication described above (`JwtAuthMiddleware` on the write routes).

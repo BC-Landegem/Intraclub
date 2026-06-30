@@ -52,7 +52,7 @@ final class PlayerEndpointsTest extends IntegrationTestCase
             'doubleRanking' => 7,
             'playsCompetition' => true,
             'basePoints' => 18,
-        ]);
+        ], [], $this->authToken());
         self::assertSame(StatusCodeInterface::STATUS_CREATED, $response->getStatusCode());
 
         $body = $this->jsonBody($response);
@@ -74,7 +74,7 @@ final class PlayerEndpointsTest extends IntegrationTestCase
             'doubleRanking' => 99,
             'playsCompetition' => 'yes',
             'basePoints' => 50,
-        ]);
+        ], [], $this->authToken());
         self::assertSame(StatusCodeInterface::STATUS_BAD_REQUEST, $response->getStatusCode());
         self::assertArrayHasKey('error', $this->jsonBody($response));
     }
@@ -88,7 +88,7 @@ final class PlayerEndpointsTest extends IntegrationTestCase
             'birthDate' => '1990-01-01',
             'doubleRanking' => 4,
             'playsCompetition' => true,
-        ]);
+        ], [], $this->authToken());
         self::assertSame(StatusCodeInterface::STATUS_OK, $response->getStatusCode());
 
         $updated = $this->jsonBody($this->request('GET', '/api/players/1'));
@@ -104,7 +104,7 @@ final class PlayerEndpointsTest extends IntegrationTestCase
             'birthDate' => '1990-01-01',
             'doubleRanking' => 4,
             'playsCompetition' => true,
-        ]);
+        ], [], $this->authToken());
         self::assertSame(StatusCodeInterface::STATUS_BAD_REQUEST, $response->getStatusCode());
     }
 
@@ -113,7 +113,7 @@ final class PlayerEndpointsTest extends IntegrationTestCase
         $response = $this->request('POST', '/api/rounds/1/players/1', [
             'present' => true,
             'drawnOut' => false,
-        ]);
+        ], [], $this->authToken());
         self::assertSame(StatusCodeInterface::STATUS_OK, $response->getStatusCode());
     }
 }

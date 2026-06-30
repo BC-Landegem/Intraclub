@@ -19,5 +19,8 @@ return function (array $settings): array {
     $settings['db']['username'] = 'root';
     $settings['db']['password'] = 'root';
 
+    // Development signing secret (override via JWT_SECRET in real deployments).
+    $settings['jwt']['secret'] = getenv('JWT_SECRET') ?: 'dev-secret-key-which-is-long-enough-to-be-safe';
+
     return $settings;
 };

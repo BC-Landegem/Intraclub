@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Domain\Auth\Service\TokenService;
 use App\Factory\LoggerFactory;
 use App\Handler\DefaultErrorHandler;
 use Cake\Database\Connection;
@@ -76,6 +77,13 @@ return [
         // Database connection
     Connection::class => function (ContainerInterface $container) {
         return new Connection($container->get('settings')['db']);
+    },
+
+        // JWT token service
+    TokenService::class => function (ContainerInterface $container) {
+        $jwt = $container->get('settings')['jwt'];
+
+        return new TokenService((string) $jwt['secret'], (int) $jwt['expiresIn'], (string) $jwt['issuer']);
     },
 
     ErrorMiddleware::class => function (ContainerInterface $container) {

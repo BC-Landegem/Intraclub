@@ -59,7 +59,7 @@ final class RoundEndpointsTest extends IntegrationTestCase
 
     public function testCreateRound(): void
     {
-        $response = $this->request('POST', '/api/rounds', ['date' => '2023-10-01']);
+        $response = $this->request('POST', '/api/rounds', ['date' => '2023-10-01'], [], $this->authToken());
         self::assertSame(StatusCodeInterface::STATUS_OK, $response->getStatusCode());
 
         // A second round now exists and gets the next number.
@@ -70,13 +70,13 @@ final class RoundEndpointsTest extends IntegrationTestCase
 
     public function testCreateRoundWithInvalidDateReturns400(): void
     {
-        $response = $this->request('POST', '/api/rounds', ['date' => 'nonsense']);
+        $response = $this->request('POST', '/api/rounds', ['date' => 'nonsense'], [], $this->authToken());
         self::assertSame(StatusCodeInterface::STATUS_BAD_REQUEST, $response->getStatusCode());
     }
 
     public function testCreateDuplicateRoundReturns400(): void
     {
-        $response = $this->request('POST', '/api/rounds', ['date' => '2023-09-15']);
+        $response = $this->request('POST', '/api/rounds', ['date' => '2023-09-15'], [], $this->authToken());
         self::assertSame(StatusCodeInterface::STATUS_BAD_REQUEST, $response->getStatusCode());
     }
 }

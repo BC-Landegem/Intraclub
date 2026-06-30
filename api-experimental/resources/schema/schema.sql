@@ -1,3 +1,15 @@
+CREATE TABLE `User` (
+	`Id` INT(11) NOT NULL AUTO_INCREMENT,
+	`Username` VARCHAR(100) NOT NULL COLLATE 'utf8mb4_unicode_ci',
+	`PasswordHash` VARCHAR(255) NOT NULL COLLATE 'utf8mb4_unicode_ci',
+	PRIMARY KEY (`Id`) USING BTREE,
+	UNIQUE INDEX `UQ_User_Username` (`Username`) USING BTREE
+)
+COLLATE='utf8mb4_unicode_ci'
+ENGINE=InnoDB
+;
+
+
 CREATE TABLE `Player` (
 	`Id` INT(11) NOT NULL AUTO_INCREMENT,
 	`Firstname` VARCHAR(100) NOT NULL COLLATE 'utf8mb4_unicode_ci',

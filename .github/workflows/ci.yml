@@ -35,6 +35,7 @@ jobs:
       DB_DATABASE: intraclub_test
       DB_USERNAME: root
       DB_PASSWORD: root
+      JWT_SECRET: ci-test-secret-which-is-long-enough-to-be-safe
     steps:
       - uses: actions/checkout@v4
 

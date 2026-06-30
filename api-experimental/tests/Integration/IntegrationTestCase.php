@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Test\Integration;
 
+use App\Domain\Auth\Service\TokenService;
 use App\Factory\ContainerFactory;
 use DI\Container;
 use Nyholm\Psr7\Factory\Psr17Factory;
@@ -41,7 +42,11 @@ abstract class IntegrationTestCase extends TestCase
         'Round',
         'Season',
         'Player',
+        'User',
     ];
+
+    /** Plaintext password of the seeded `admin` user. */
+    protected const ADMIN_PASSWORD = 'secret123';
 
     protected function setUp(): void
     {
@@ -119,6 +124,10 @@ abstract class IntegrationTestCase extends TestCase
      */
     protected function seed(): void
     {
+        $adminHash = (string) password_hash(self::ADMIN_PASSWORD, PASSWORD_DEFAULT);
+        $stmt = $this->pdo->prepare('INSERT INTO `User` (`Id`, `Username`, `PasswordHash`) VALUES (1, ?, ?)');
+        $stmt->execute(['admin', $adminHash]);
+
         $this->pdo->exec("INSERT INTO `Season` (`Id`, `Name`) VALUES (1, '2023 - 2024')");
 
         // Id, Firstname, Name, Member, Gender, BirthDate, DoubleRanking, PlaysCompetition
@@ -187,13 +196,22 @@ abstract class IntegrationTestCase extends TestCase
      * @param array<string, mixed>|null $body  JSON body for POST requests
      * @param array<string, string> $query     Query string parameters
      */
-    protected function request(string $method, string $path, ?array $body = null, array $query = []): ResponseInterface
-    {
+    protected function request(
+        string $method,
+        string $path,
+        ?array $body = null,
+        array $query = [],
+        ?string $token = null
+    ): ResponseInterface {
         $factory = new Psr17Factory();
         $request = $factory->createServerRequest($method, $path);
 
         if ($query !== []) {
             $request = $request->withQueryParams($query);
+        }
+
+        if ($token !== null) {
+            $request = $request->withHeader('Authorization', 'Bearer ' . $token);
         }
 
         if ($body !== null) {
@@ -203,6 +221,14 @@ abstract class IntegrationTestCase extends TestCase
         }
 
         return $this->app->handle($request);
+    }
+
+    /**
+     * A valid bearer token for the seeded `admin` user.
+     */
+    protected function authToken(): string
+    {
+        return self::container()->get(TokenService::class)->issue(1, 'admin', time());
     }
 
     /**

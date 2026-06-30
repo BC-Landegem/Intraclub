@@ -24,6 +24,10 @@ return function (array $settings): array {
     $settings['db']['username'] = 'root';
     $settings['db']['password'] = '';
 
+    // JWT signing secret for authentication. Use a long, random value and keep
+    // it secret. Can also be provided via the JWT_SECRET environment variable.
+    $settings['jwt']['secret'] = 'change-me-to-a-long-random-secret';
+
     // Docker example
     // if (isset($_ENV['DOCKER'])) {
     //    $settings['db']['host'] = $_ENV['MYSQL_HOST'] ?? 'host.docker.internal';

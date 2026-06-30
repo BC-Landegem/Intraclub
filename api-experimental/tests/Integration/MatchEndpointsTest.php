@@ -33,7 +33,7 @@ final class MatchEndpointsTest extends IntegrationTestCase
             'player2Id' => 2,
             'player3Id' => 3,
             'player4Id' => 4,
-        ]);
+        ], [], $this->authToken());
         self::assertSame(StatusCodeInterface::STATUS_OK, $response->getStatusCode());
         self::assertArrayHasKey('id', $this->jsonBody($response));
 
@@ -50,7 +50,7 @@ final class MatchEndpointsTest extends IntegrationTestCase
             'player2Id' => 2,
             'player3Id' => 3,
             'player4Id' => 4,
-        ]);
+        ], [], $this->authToken());
         self::assertSame(StatusCodeInterface::STATUS_BAD_REQUEST, $response->getStatusCode());
     }
 
@@ -63,7 +63,7 @@ final class MatchEndpointsTest extends IntegrationTestCase
             'set2Away' => 21,
             'set3Home' => 21,
             'set3Away' => 12,
-        ]);
+        ], [], $this->authToken());
         self::assertSame(StatusCodeInterface::STATUS_OK, $response->getStatusCode());
 
         $match = $this->jsonBody($this->request('GET', '/api/rounds/1/matches'))[0];
@@ -80,7 +80,7 @@ final class MatchEndpointsTest extends IntegrationTestCase
             'set2Away' => 0,
             'set3Home' => 0,
             'set3Away' => 0,
-        ]);
+        ], [], $this->authToken());
         self::assertSame(StatusCodeInterface::STATUS_BAD_REQUEST, $response->getStatusCode());
     }
 }

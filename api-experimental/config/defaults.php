@@ -66,10 +66,21 @@ $settings['db'] = [
     ],
 ];
 
+// JWT authentication
+$settings['jwt'] = [
+    // HS256 signing secret. MUST be set via the JWT_SECRET environment variable
+    // in production; the app refuses to issue/validate tokens with an empty secret.
+    'secret' => getenv('JWT_SECRET') ?: '',
+    // Token lifetime in seconds (default: 8 hours).
+    'expiresIn' => (int) (getenv('JWT_EXPIRES_IN') ?: 28800),
+    'issuer' => 'intraclub',
+];
+
 // Console commands
 $settings['commands'] = [
     \App\Console\ExampleCommand::class,
     \App\Console\SetupCommand::class,
+    \App\Console\CreateUserCommand::class,
 ];
 
 return $settings;
