@@ -13,6 +13,8 @@ export interface PlayerSummary {
   firstName: string;
   name: string;
   fullName: string;
+  /** Derived from gender, competition and doubles ranking; used when composing matches. */
+  bonusPoints: number;
 }
 
 export interface RoundPlayer extends PlayerSummary {
@@ -20,21 +22,24 @@ export interface RoundPlayer extends PlayerSummary {
   drawnOut: boolean;
 }
 
+/** Eén kant van een set: het duo en hun punten. */
+export interface SetSide {
+  players: PlayerSummary[];
+  score: number | null;
+  field: string;
+}
+
 export interface GameSet {
-  home: number;
-  away: number;
+  number: number;
+  home: SetSide;
+  away: SetSide;
 }
 
 export interface Game {
   id: number;
-  firstPlayer: PlayerSummary;
-  secondPlayer: PlayerSummary;
-  thirdPlayer: PlayerSummary;
-  fourthPlayer: PlayerSummary;
-  firstSet: GameSet;
-  secondSet: GameSet;
-  thirdSet: GameSet;
-  round: { id: number; number: number };
+  players: PlayerSummary[];
+  sets: GameSet[];
+  isComplete: boolean;
 }
 
 export interface RoundState {
@@ -62,12 +67,18 @@ export interface NewPlayer {
   doubleRanking: number;
 }
 
-/** Setstanden zoals ze naar de API gaan; leeg veld = nog niet gespeeld. */
-export interface GameScores {
-  set1_home: number | null;
-  set1_away: number | null;
-  set2_home: number | null;
-  set2_away: number | null;
-  set3_home: number | null;
-  set3_away: number | null;
+/** Setstanden zoals ze naar de API gaan; null = nog niet gespeeld. */
+export type GameScores = Record<string, number | null>;
+
+/** Candidates for filling up an incomplete foursome. */
+export interface FillCandidate extends PlayerSummary {
+  present: boolean;
+  drawnOut: boolean;
+  gamesPlayed: number;
+}
+
+export interface FillCandidates {
+  drawnOut: FillCandidate[];
+  present: FillCandidate[];
+  others: FillCandidate[];
 }

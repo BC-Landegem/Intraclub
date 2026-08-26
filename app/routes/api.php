@@ -42,6 +42,7 @@ Route::middleware('web')->group(function (): void {
         Route::prefix('zaal')->group(function (): void {
             Route::get('round', [ZaalController::class, 'currentRound']);
             Route::get('rounds/{round}', [ZaalController::class, 'show']);
+            Route::get('rounds/{round}/fill-candidates', [ZaalController::class, 'fillCandidates']);
             Route::post('rounds/{round}/players', [ZaalController::class, 'storePlayer']);
             Route::post('rounds/{round}/attendance', [ZaalController::class, 'setAttendance']);
             Route::post('rounds/{round}/draw', [ZaalController::class, 'draw']);

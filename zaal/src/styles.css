@@ -113,3 +113,57 @@ label {
   background: rgb(220 38 38 / 0.12);
   color: #fecaca;
 }
+
+/*
+ * Ook de stukken die de browser zelf tekent horen bij de zaal: selectie, caret,
+ * placeholder en de schuifbalk. Anders valt de app op een tablet uit de toon
+ * zodra iemand een score selecteert of door de tussenstand scrollt.
+ */
+::selection {
+  background: rgb(245 165 36 / 0.3);
+  color: var(--tekst);
+}
+
+::placeholder {
+  color: var(--tekst-zacht);
+  opacity: 1;
+}
+
+input {
+  caret-color: var(--accent);
+}
+
+* {
+  scrollbar-color: var(--paneel-rand) transparent;
+  scrollbar-width: thin;
+}
+
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--paneel-rand);
+  border-radius: 999px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #3a424e;
+}
+
+/* Cijferinvoer: de spinners zijn te klein voor een vinger en storen de leesbaarheid. */
+input[type='number'] {
+  -moz-appearance: textfield;
+  appearance: textfield;
+}
+
+input[type='number']::-webkit-outer-spin-button,
+input[type='number']::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}

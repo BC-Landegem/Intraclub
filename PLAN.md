@@ -83,9 +83,24 @@
 - Uitgeloot wordt **bewaard** in `player_round_statistics.is_drawn_out` (overleeft refresh, weegt mee in latere lotingen).
 - **Een uitgelote speeldag telt niet mee** voor het gemiddelde van die speler: hij was er wél, maar mocht niet spelen. Legacy gaf hem het verliezersgemiddelde, net als een afwezige. Effect op historische data: 2 spelers in seizoen 2023-2024 (30 waarden); `intraclub:verify-calculation` rapporteert die apart als *verwachte* afwijking, alle andere waarden blijven bit-identiek.
 - **Beschermingsvenster:** wie uitgeloot werd, blijft de volgende `DrawService::PROTECTED_ROUNDS` (= 4) speeldagen buiten schot. Moet er tóch iemand beschermd aan de kant, dan valt de keuze op wie het langst geleden zat.
-- **Laatkomers:** een nieuwe loting deelt enkel spelers in die nog geen match hebben. Belanden uitgelote spelers alsnog in een match, dan wist `GameObserver` hun vlag en telt de speeldag weer mee.
-- Er zitten er nooit meer aan de kant dan `aantal aanwezigen mod 4`.
+- **Invallen is vrijwillig, nooit door de app opgelegd.** De loting deelt enkel spelers in die nog geen match hebben en vult een onvolledig viertal *niet* zelf aan. Blijven er 1-3 spelers over, dan biedt de zaal-app een knop **"Match aanvullen"**: de uitgelote spelers staan vast in de match en de zaal kiest zelf wie wil invallen. Kandidaten zijn alle aanwezigen die niet uitgeloot zijn (met hun aantal gespeelde matches erbij), plus een zoeklijst met de overige leden voor wie **net binnenkomt** — die wordt bij het bevestigen meteen aanwezig gezet. Voor de tussenstand telt enkel iemands eerste game van de speeldag, dus een invaller krijgt er geen statistieken bij; dat staat ook zo in het scherm. Belanden uitgelote spelers alsnog in een match, dan wist `GameObserver` hun vlag en telt de speeldag weer mee.
+- **Vrije match:** met "+ Match toevoegen" kan de zaal zelf vier aanwezigen kiezen, los van loting of aanvulling.
+- **Bonuspunten** staan bij elke speler in de zaal-app (aanwezigheidslijst, loting, matches, aanvul-scherm). Port van `helpers.calculateBonusPoints`: vrouw +2, recreant +5, competitiespeler naargelang dubbelklassement (>10 → +4, >8 → +3, >6 → +2, >4 → +1). Berekend in `Player::bonusPoints`, dus overal consistent.
+- Er blijft alleen iemand aan de kant staan als de zaal niet aanvult.
 
+**Score-invoer (na review 26-08):**
+- Elke set toont de twee duo's mét volledige namen, zodat meteen duidelijk is welke score bij welke spelers hoort (zoals in de oude app).
+- Grote invoervelden (76px hoog, 2,25rem cijfers) — bedoeld om op een tablet in te vullen vlak na het spelen.
+- Een match kan set per set ingevuld worden; niet-ingevulde sets blijven leeg.
+- Statusbadge per match: "Nog X van 3 sets" of "✓ Volledig ingevuld", met een groene rand en achtergrond wanneer alles ingevuld is.
+- Na bewaren verschijnt "✓ Bewaard" bij de knop.
+- `Game::is_complete` vereist nu alle drie de sets (was: de eerste twee). Historische games hebben altijd drie sets, dus de regressie blijft intact.
+
+**Tussenstand in de zaal (26-08):** derde tabblad "Tussenstand", zodat spelers tussen twee matches door hun plaats kunnen opzoeken. Vier categorieën, zoekveld ("Zoek jezelf…"), en per rij een slanke meetlat onderaan die toont waar dat gemiddelde ligt tussen het laagste en hoogste van dat klassement — de stand is een gemiddelde op 21, dus die verhouding is betekenisvol. Toont ook na welke speeldag de stand berekend is. Voedt zich met de publieke endpoints `/api/rankings` en `/api/rounds/latestCalculated`.
+
+**Inchecken als moment:** je naam aantikken is het enige in de app dat over de speler zelf gaat. De groene vulling veegt open vanaf het punt waar de vinger landde, het vinkje tekent zichzelf in een ring, en de aanwezigheidsteller pulseert. Uitchecken gebeurt bewust zonder ceremonie — dat is een correctie, geen moment. Alles valt terug op een directe toestandswissel bij `prefers-reduced-motion`.
+
+Daarbij ook de basis opgeschoond: getekende SVG-iconen in plaats van unicode-vinkjes, geen dikke gekleurde randbalk meer op matchkaarten, en de browser-eigen oppervlakken (selectie, caret, placeholder, schuifbalk, cijfer-spinners) mee in het thema getrokken.
 **Bewust weggelaten:** de zaal-app kan een match niet verwijderen — eenmaal aangemaakt blijft ze bestaan (de DELETE-route is uit de API gehaald). Corrigeren gebeurt in het beheerspaneel.
 
 **Aandachtspunt voor go-live:** onder `php artisan serve` matcht de Laravel-route `/zaal/{path?}` niet, omdat de map `public/zaal` bestaat en Symfony dat als base-path afsplitst. In productie (Apache) is dat geen probleem, en `public/zaal/.htaccess` vangt diepe links sowieso statisch op. Voor lokale ontwikkeling: `ng serve` gebruiken.

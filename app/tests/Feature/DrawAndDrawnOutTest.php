@@ -191,7 +191,7 @@ class DrawAndDrawnOutTest extends TestCase
         $this->assertSame(1, $statistic->rounds_present);
     }
 
-    public function test_opnieuw_loten_deelt_enkel_spelers_zonder_match_in(): void
+    public function test_wie_al_speelde_wordt_niet_opnieuw_ingedeeld_zolang_anderen_wachten(): void
     {
         // Acht aanwezigen, waarvan er vier al een match hebben.
         $round = $this->roundWithPresentPlayers(1, range(1, 8));
@@ -199,13 +199,44 @@ class DrawAndDrawnOutTest extends TestCase
 
         $result = app(DrawService::class)->draw($round);
 
-        $this->assertCount(1, $result['games'], 'Enkel de vier resterende spelers vormen een nieuwe match.');
+        $this->assertCount(1, $result['games'], 'De vier wachtende spelers vormen samen een match.');
         $this->assertSame([], $result['drawnOut']);
 
-        $ingedeeld = $result['games'][0];
         foreach ([1, 2, 3, 4] as $index) {
-            $this->assertNotContains($this->players[$index]->id, $ingedeeld, 'Wie al speelt, mag niet opnieuw ingedeeld worden.');
+            $this->assertNotContains(
+                $this->players[$index]->id,
+                $result['games'][0],
+                'Zolang er genoeg wachtenden zijn, speelt niemand een tweede keer.'
+            );
         }
+    }
+
+    public function test_de_loting_vult_nooit_zelf_aan_met_spelers_die_al_speelden(): void
+    {
+        // Zes aanwezigen: vier spelen al, twee wachten. Die twee kunnen geen viertal
+        // vormen. Invallen is vrijwillig, dus de loting laat hen uitgeloot staan; de
+        // zaal beslist zelf of iemand komt aanvullen.
+        $round = $this->roundWithPresentPlayers(1, range(1, 6));
+        $this->completeGame($round, [1, 2, 3, 4]);
+
+        $result = app(DrawService::class)->draw($round);
+
+        $this->assertSame([], $result['games']);
+        $this->assertEqualsCanonicalizing(
+            [$this->players[5]->id, $this->players[6]->id],
+            $result['drawnOut'],
+        );
+    }
+
+    public function test_zonder_invallers_blijven_de_overblijvers_uitgeloot(): void
+    {
+        // Zes aanwezigen en nog geen enkele match: twee blijven noodgedwongen zitten.
+        $round = $this->roundWithPresentPlayers(1, range(1, 6));
+
+        $result = app(DrawService::class)->draw($round);
+
+        $this->assertCount(1, $result['games']);
+        $this->assertCount(2, $result['drawnOut']);
     }
 
     public function test_laatkomers_maken_dat_uitgelote_spelers_alsnog_kunnen_spelen(): void

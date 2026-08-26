@@ -1,0 +1,190 @@
+/*
+ * Bedoeld om tussen twee matches door even te raadplegen: van een meter of twee
+ * afstand moet je je eigen plaats terugvinden zonder te zoeken.
+ */
+
+.stand {
+  display: grid;
+  gap: 1rem;
+}
+
+.kop {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: end;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.kop h2 {
+  margin: 0;
+  font-size: 1.5rem;
+  letter-spacing: -0.02em;
+}
+
+.na {
+  margin: 0.2rem 0 0;
+  color: var(--tekst-zacht);
+}
+
+.kop input {
+  width: min(320px, 100%);
+}
+
+.categorieen {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.categorieen button {
+  min-height: 48px;
+  padding: 0 1.1rem;
+  border-radius: 999px;
+  font-size: 1rem;
+}
+
+.categorieen button.actief {
+  border-color: var(--accent);
+  background: rgb(245 165 36 / 0.14);
+  color: var(--accent);
+  font-weight: 700;
+}
+
+.lijst {
+  display: grid;
+  gap: 0.4rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.rij {
+  position: relative;
+  display: grid;
+  grid-template-columns: 3rem 1fr auto auto;
+  align-items: center;
+  gap: 1rem;
+  min-height: 62px;
+  padding: 0 1.1rem;
+  border-radius: var(--straal);
+  background: var(--paneel);
+  overflow: hidden;
+}
+
+/* De koploper draagt de volle meetlat; dat is genoeg nadruk. */
+.rij:first-child .meter {
+  opacity: 0.9;
+}
+
+/* Een meetlat onderaan de rij: hij toont waar dit gemiddelde ligt tussen het
+   laagste en het hoogste van dit klassement. Data, geen achtergrond — vandaar
+   een lijn en geen vlak. */
+.meter {
+  position: absolute;
+  inset: auto auto 0 0;
+  height: 3px;
+  background: var(--accent);
+  opacity: 0.55;
+  border-radius: 0 3px 3px 0;
+}
+
+.plaats,
+.speler,
+.verschil,
+.gemiddelde {
+  position: relative;
+}
+
+.plaats {
+  color: var(--tekst-zacht);
+  font-size: 1.1rem;
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+}
+
+.speler {
+  font-size: 1.2rem;
+  font-weight: 600;
+}
+
+.gemiddelde {
+  font-size: 1.35rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.02em;
+}
+
+.verschil {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  min-width: 3.25rem;
+  color: var(--tekst-zacht);
+  font-variant-numeric: tabular-nums;
+}
+
+.pijl {
+  width: 18px;
+  height: 18px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2.4;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.pijl.op {
+  color: #4ade80;
+}
+
+.pijl.neer {
+  color: #f87171;
+}
+
+.pijl.gelijk {
+  color: var(--tekst-zacht);
+  opacity: 0.5;
+}
+
+.verschil:has(.op) {
+  color: #4ade80;
+}
+
+.verschil:has(.neer) {
+  color: #f87171;
+}
+
+.melding {
+  color: var(--tekst-zacht);
+}
+
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+@media (max-width: 640px) {
+  .rij {
+    grid-template-columns: 2.25rem 1fr auto;
+    row-gap: 0.2rem;
+    padding: 0.6rem 0.9rem;
+  }
+
+  .verschil {
+    grid-column: 3;
+    justify-self: end;
+  }
+
+  .gemiddelde {
+    grid-column: 2 / -1;
+    justify-self: start;
+    font-size: 1.15rem;
+    color: var(--tekst-zacht);
+  }
+}

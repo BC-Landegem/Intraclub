@@ -13,7 +13,9 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware): void {
-        //
+        // Niet-aangemelde API-oproepen krijgen 401; enkel gewone paginabezoeken
+        // gaan naar het aanmeldscherm van de zaal-app.
+        $middleware->redirectGuestsTo(fn (Request $request) => $request->is('api/*') ? null : '/zaal/login');
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         $exceptions->shouldRenderJsonWhen(

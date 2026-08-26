@@ -20,6 +20,8 @@ use Illuminate\Support\Facades\DB;
  *   lotingen, en de tussenstand rekent die speeldag voor hem niet mee.
  * - Spelers die al een match hebben, doen niet meer mee aan een nieuwe loting.
  *   Zo deelt een tweede loting (bv. na laatkomers) enkel de rest in.
+ * - De loting vult een onvolledig viertal nooit zelf aan met spelers die al
+ *   speelden: invallen is vrijwillig en gebeurt via het aanvul-scherm in de zaal.
  */
 class DrawService
 {

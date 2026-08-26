@@ -1,7 +1,7 @@
 import { HttpClient } from '@angular/common/http';
 import { Injectable, computed, inject, signal } from '@angular/core';
 import { firstValueFrom } from 'rxjs';
-import { GameScores, NewPlayer, RoundState } from './models';
+import { FillCandidates, GameScores, NewPlayer, RoundState } from './models';
 
 /**
  * Praat met de zaal-API. Elke wijziging geeft de volledige toestand van de
@@ -25,16 +25,9 @@ export class ZaalApi {
   readonly isBusy = this.busy.asReadonly();
   readonly errorMessage = this.failure.asReadonly();
 
-  /** Spelers die aanwezig zijn maar in geen enkele game staan. */
+  /** Players who are present but not in any game yet. */
   readonly playersWithoutGame = computed(() => {
-    const playing = new Set(
-      this.games().flatMap((game) => [
-        game.firstPlayer.id,
-        game.secondPlayer.id,
-        game.thirdPlayer.id,
-        game.fourthPlayer.id,
-      ]),
-    );
+    const playing = new Set(this.games().flatMap((game) => game.players.map((player) => player.id)));
 
     return this.presentPlayers().filter((player) => !playing.has(player.id));
   });
@@ -61,6 +54,13 @@ export class ZaalApi {
 
   saveScores(gameId: number, scores: GameScores): Promise<void> {
     return this.run(() => this.http.put<RoundState>(`/api/zaal/games/${gameId}`, scores));
+  }
+
+  /** Candidates that can volunteer to fill up an incomplete foursome. */
+  fillCandidates(): Promise<FillCandidates> {
+    return firstValueFrom(
+      this.http.get<FillCandidates>(`/api/zaal/rounds/${this.roundId()}/fill-candidates`),
+    );
   }
 
   addPlayer(player: NewPlayer): Promise<void> {

@@ -60,11 +60,11 @@ class Game extends Model
         return [$this->player1_id, $this->player2_id, $this->player3_id, $this->player4_id];
     }
 
+    /** Een game telt pas mee wanneer alle drie de sets ingevuld zijn. */
     protected function isComplete(): Attribute
     {
-        return Attribute::get(
-            fn (): bool => $this->set1_home !== null && $this->set1_away !== null
-                && $this->set2_home !== null && $this->set2_away !== null
-        );
+        return Attribute::get(fn (): bool => $this->set1_home !== null && $this->set1_away !== null
+            && $this->set2_home !== null && $this->set2_away !== null
+            && $this->set3_home !== null && $this->set3_away !== null);
     }
 }

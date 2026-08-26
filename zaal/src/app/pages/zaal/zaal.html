@@ -21,10 +21,13 @@
 } @else {
   <nav class="tabs">
     <button type="button" [class.active]="tab() === 'attendance'" (click)="tab.set('attendance')">
-      Aanwezig ({{ api.presentCount() }})
+      Aanwezig <span class="teller" [class.pulse]="countPulse()">{{ api.presentCount() }}</span>
     </button>
     <button type="button" [class.active]="tab() === 'matches'" (click)="tab.set('matches')">
       Matches ({{ api.games().length }})
+    </button>
+    <button type="button" [class.active]="tab() === 'standings'" (click)="tab.set('standings')">
+      Tussenstand
     </button>
   </nav>
 
@@ -50,13 +53,19 @@
               class="player-button"
               [class.present]="player.present"
               [disabled]="api.isBusy()"
-              (click)="toggleAttendance(player.id, !player.present)"
+              (click)="checkIn($event, player)"
             >
-              <span class="name">{{ player.fullName }}</span>
+              <span class="sweep" aria-hidden="true"></span>
+              <span class="name">{{ player.fullName }} <span class="bonus">({{ player.bonusPoints }})</span></span>
               @if (player.drawnOut) {
                 <span class="tag drawn-out">uitgeloot</span>
               }
-              <span class="check">{{ player.present ? '✓' : '' }}</span>
+              <span class="check" aria-hidden="true">
+                <svg viewBox="0 0 24 24">
+                  <circle cx="12" cy="12" r="10" class="ring" />
+                  <path d="M7.5 12.4l3.2 3.2 6-6.4" class="vink" />
+                </svg>
+              </span>
             </button>
           </li>
         } @empty {
@@ -86,9 +95,12 @@
           </p>
           <ul class="chips">
             @for (player of api.drawnOut(); track player.id) {
-              <li class="chip">{{ player.fullName }}</li>
+              <li class="chip">{{ player.fullName }} ({{ player.bonusPoints }})</li>
             }
           </ul>
+          <button type="button" class="primair groot vullen" (click)="startFillingDrawnOut()">
+            Match aanvullen
+          </button>
         </div>
       }
 
@@ -105,7 +117,7 @@
             <div class="proposal">
               <ol class="foursome">
                 @for (player of proposal; track player.id) {
-                  <li>{{ player.fullName }}</li>
+                  <li>{{ player.fullName }} <span class="bonus">({{ player.bonusPoints }})</span></li>
                 }
               </ol>
               <button type="button" [disabled]="api.isBusy()" (click)="confirmProposal($index)">
@@ -116,82 +128,64 @@
         </div>
       }
 
+      <div class="acties">
+        <button type="button" (click)="startFreeMatch()">+ Match toevoegen</button>
+      </div>
+
       @for (game of api.games(); track game.id) {
-        <form class="paneel match" #scoreForm (submit)="saveScores($event, game, scoreForm)">
-          <div class="players">
-            <span>1. {{ game.firstPlayer.firstName }} {{ game.firstPlayer.name }}</span>
-            <span>2. {{ game.secondPlayer.firstName }} {{ game.secondPlayer.name }}</span>
-            <span>3. {{ game.thirdPlayer.firstName }} {{ game.thirdPlayer.name }}</span>
-            <span>4. {{ game.fourthPlayer.firstName }} {{ game.fourthPlayer.name }}</span>
-          </div>
+        <form class="paneel match" [class.done]="game.isComplete" #scoreForm (submit)="saveScores($event, game, scoreForm)">
+          <header class="match-header">
+            <h2>Match {{ $index + 1 }}</h2>
+            @if (game.isComplete) {
+              <span class="status done"><svg viewBox="0 0 24 24" class="icoon" aria-hidden="true"><path d="M4.5 12.5l5 5 10-11" /></svg> Volledig ingevuld</span>
+            } @else {
+              <span class="status todo">Nog {{ setsRemaining(game) }} van 3 sets</span>
+            }
+          </header>
 
-          <div class="sets">
-            <div class="set">
-              <span class="set-label" id="set1-{{ game.id }}">Set 1 · 1+2 vs 3+4</span>
-              <div class="score-row" role="group" [attr.aria-labelledby]="'set1-' + game.id">
+          @for (set of game.sets; track set.number) {
+            <div class="set" [class.filled]="set.home.score !== null && set.away.score !== null">
+              <span class="set-number">Set {{ set.number }}</span>
+
+              <div class="side">
+                <span class="pair">
+                  @for (player of set.home.players; track player.id) {
+                    <span class="pair-name">{{ player.fullName }} <span class="bonus">({{ player.bonusPoints }})</span></span>
+                  }
+                </span>
                 <input
                   type="number"
-                  name="set1_home"
                   inputmode="numeric"
-                  aria-label="Set 1, punten team 1+2"
-                  [value]="game.firstSet.home || ''"
+                  [name]="set.home.field"
+                  [attr.aria-label]="'Set ' + set.number + ', punten ' + pairName(set.home.players)"
+                  [value]="set.home.score ?? ''"
                 />
-                <span aria-hidden="true">-</span>
+              </div>
+
+              <span class="versus">vs</span>
+
+              <div class="side">
+                <span class="pair">
+                  @for (player of set.away.players; track player.id) {
+                    <span class="pair-name">{{ player.fullName }} <span class="bonus">({{ player.bonusPoints }})</span></span>
+                  }
+                </span>
                 <input
                   type="number"
-                  name="set1_away"
                   inputmode="numeric"
-                  aria-label="Set 1, punten team 3+4"
-                  [value]="game.firstSet.away || ''"
+                  [name]="set.away.field"
+                  [attr.aria-label]="'Set ' + set.number + ', punten ' + pairName(set.away.players)"
+                  [value]="set.away.score ?? ''"
                 />
               </div>
             </div>
+          }
 
-            <div class="set">
-              <span class="set-label" id="set2-{{ game.id }}">Set 2 · 1+3 vs 2+4</span>
-              <div class="score-row" role="group" [attr.aria-labelledby]="'set2-' + game.id">
-                <input
-                  type="number"
-                  name="set2_home"
-                  inputmode="numeric"
-                  aria-label="Set 2, punten team 1+3"
-                  [value]="game.secondSet.home || ''"
-                />
-                <span aria-hidden="true">-</span>
-                <input
-                  type="number"
-                  name="set2_away"
-                  inputmode="numeric"
-                  aria-label="Set 2, punten team 2+4"
-                  [value]="game.secondSet.away || ''"
-                />
-              </div>
-            </div>
-
-            <div class="set">
-              <span class="set-label" id="set3-{{ game.id }}">Set 3 · 1+4 vs 2+3</span>
-              <div class="score-row" role="group" [attr.aria-labelledby]="'set3-' + game.id">
-                <input
-                  type="number"
-                  name="set3_home"
-                  inputmode="numeric"
-                  aria-label="Set 3, punten team 1+4"
-                  [value]="game.thirdSet.home || ''"
-                />
-                <span aria-hidden="true">-</span>
-                <input
-                  type="number"
-                  name="set3_away"
-                  inputmode="numeric"
-                  aria-label="Set 3, punten team 2+3"
-                  [value]="game.thirdSet.away || ''"
-                />
-              </div>
-            </div>
-          </div>
-
-          <div class="match-buttons">
-            <button type="submit" class="primair" [disabled]="api.isBusy()">Score bewaren</button>
+          <div class="match-footer">
+            <button type="submit" class="primair groot" [disabled]="api.isBusy()">Score bewaren</button>
+            @if (savedGameId() === game.id) {
+              <span class="bewaard" role="status"><svg viewBox="0 0 24 24" class="icoon" aria-hidden="true"><path d="M4.5 12.5l5 5 10-11" /></svg> Bewaard</span>
+            }
           </div>
         </form>
       } @empty {
@@ -203,6 +197,16 @@
       }
     </section>
   }
+
+  @if (tab() === 'standings') {
+    <section class="content">
+      <app-standings />
+    </section>
+  }
+}
+
+@if (composeFor(); as fixed) {
+  <app-compose-match [fixedPlayers]="fixed" (closed)="closeCompose()" />
 }
 
 @if (showAddPlayer()) {

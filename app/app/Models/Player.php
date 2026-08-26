@@ -47,6 +47,31 @@ class Player extends Model
         return Attribute::get(fn (): string => "{$this->first_name} {$this->last_name}");
     }
 
+    /**
+     * Bonuspunten van een speler, gebruikt bij het samenstellen van matches in de
+     * zaal. Port van helpers.calculateBonusPoints uit de legacy zaal-app:
+     * vrouwen +2, recreanten +5, en competitiespelers naargelang hun
+     * dubbelklassement (>10 → +4, >8 → +3, >6 → +2, >4 → +1).
+     */
+    protected function bonusPoints(): Attribute
+    {
+        return Attribute::get(function (): int {
+            $bonus = $this->gender === Gender::Female ? 2 : 0;
+
+            if (! $this->plays_competition) {
+                return $bonus + 5;
+            }
+
+            return $bonus + match (true) {
+                $this->double_ranking > 10 => 4,
+                $this->double_ranking > 8 => 3,
+                $this->double_ranking > 6 => 2,
+                $this->double_ranking > 4 => 1,
+                default => 0,
+            };
+        });
+    }
+
     protected function isVeteran(): Attribute
     {
         return Attribute::get(fn (): bool => $this->birth_date->age >= self::VETERAN_AGE);

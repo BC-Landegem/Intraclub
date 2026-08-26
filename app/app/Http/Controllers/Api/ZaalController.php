@@ -4,7 +4,6 @@ namespace App\Http\Controllers\Api;
 
 use App\Enums\Gender;
 use App\Http\Controllers\Controller;
-use App\Http\Resources\GameResource;
 use App\Models\Game;
 use App\Models\Player;
 use App\Models\PlayerRoundStatistic;
@@ -80,7 +79,12 @@ class ZaalController extends Controller
         ] + $this->roundPayload($round));
     }
 
-    /** Bevestig een match: maakt de game aan (zonder scores). */
+    /**
+     * Maak een match aan (zonder scores). Wordt gebruikt om een geloot viertal te
+     * bevestigen, om uitgelote spelers aan te vullen met vrijwilligers, en om een
+     * vrije match samen te stellen. Spelers die nog niet aanwezig stonden — een
+     * laatkomer die meteen invalt — worden meteen aanwezig gezet.
+     */
     public function storeGame(Request $request, Round $round): JsonResponse
     {
         $data = $request->validate([
@@ -88,12 +92,21 @@ class ZaalController extends Controller
             'playerIds.*' => ['required', 'integer', 'distinct', Rule::exists('players', 'id')],
         ]);
 
-        $round->games()->create([
-            'player1_id' => $data['playerIds'][0],
-            'player2_id' => $data['playerIds'][1],
-            'player3_id' => $data['playerIds'][2],
-            'player4_id' => $data['playerIds'][3],
-        ]);
+        DB::transaction(function () use ($data, $round): void {
+            foreach ($data['playerIds'] as $playerId) {
+                PlayerRoundStatistic::updateOrCreate(
+                    ['round_id' => $round->id, 'player_id' => $playerId],
+                    ['is_present' => true],
+                );
+            }
+
+            $round->games()->create([
+                'player1_id' => $data['playerIds'][0],
+                'player2_id' => $data['playerIds'][1],
+                'player3_id' => $data['playerIds'][2],
+                'player4_id' => $data['playerIds'][3],
+            ]);
+        });
 
         return response()->json($this->roundPayload($round));
     }
@@ -111,6 +124,44 @@ class ZaalController extends Controller
         $game->update($data);
 
         return response()->json($this->roundPayload($game->round));
+    }
+
+    /**
+     * Wie kan er invallen om een onvolledig viertal aan te vullen? Invallen is
+     * vrijwillig: de app kiest niemand, ze toont enkel wie in aanmerking komt.
+     *
+     * - "present": aanwezige leden die niet uitgeloot zijn, met hoeveel matches ze
+     *   deze speeldag al speelden.
+     * - "others": de overige leden, voor wie net binnenkomt; die wordt bij het
+     *   aanmaken van de match meteen aanwezig gezet.
+     */
+    public function fillCandidates(Round $round): JsonResponse
+    {
+        $attendance = $round->playerStatistics()->get()->keyBy('player_id');
+
+        $gamesPerPlayer = [];
+        foreach ($round->games()->get(['player1_id', 'player2_id', 'player3_id', 'player4_id']) as $game) {
+            foreach ($game->playerIds() as $playerId) {
+                $gamesPerPlayer[$playerId] = ($gamesPerPlayer[$playerId] ?? 0) + 1;
+            }
+        }
+
+        $members = Player::query()
+            ->members()
+            ->orderBy('first_name')
+            ->orderBy('last_name')
+            ->get()
+            ->map(fn (Player $player): array => $this->playerSummary($player) + [
+                'present' => (bool) ($attendance->get($player->id)?->is_present ?? false),
+                'drawnOut' => (bool) ($attendance->get($player->id)?->is_drawn_out ?? false),
+                'gamesPlayed' => $gamesPerPlayer[$player->id] ?? 0,
+            ]);
+
+        return response()->json([
+            'drawnOut' => $members->where('drawnOut', true)->values(),
+            'present' => $members->where('present', true)->where('drawnOut', false)->sortBy('gamesPlayed')->values(),
+            'others' => $members->where('present', false)->values(),
+        ]);
     }
 
     /**
@@ -181,9 +232,11 @@ class ZaalController extends Controller
             ->values();
 
         $games = $round->games()
-            ->with(['round', 'player1', 'player2', 'player3', 'player4'])
+            ->with(['player1', 'player2', 'player3', 'player4'])
             ->orderBy('id')
-            ->get();
+            ->get()
+            ->map(fn (Game $game): array => $this->gamePayload($game))
+            ->values();
 
         return [
             'round' => [
@@ -196,7 +249,55 @@ class ZaalController extends Controller
             'players' => $players,
             'presentCount' => $players->where('present', true)->count(),
             'drawnOut' => $players->where('drawnOut', true)->values(),
-            'games' => GameResource::collection($games)->resolve(),
+            'games' => $games,
+        ];
+    }
+
+    /**
+     * Eén game met per set de twee duo's en de ingevulde punten. Niet-ingevulde
+     * sets blijven null, zodat de zaal-app "nog niet ingevuld" kan tonen en er set
+     * per set bewaard kan worden.
+     *
+     * @return array<string, mixed>
+     */
+    private function gamePayload(Game $game): array
+    {
+        $players = [
+            1 => $game->player1,
+            2 => $game->player2,
+            3 => $game->player3,
+            4 => $game->player4,
+        ];
+
+        // De duo's roteren per set: 1+2 vs 3+4, dan 1+3 vs 2+4, dan 1+4 vs 2+3.
+        $pairings = [
+            1 => [[1, 2], [3, 4]],
+            2 => [[1, 3], [2, 4]],
+            3 => [[1, 4], [2, 3]],
+        ];
+
+        $sets = [];
+        foreach ($pairings as $number => [$home, $away]) {
+            $sets[] = [
+                'number' => $number,
+                'home' => [
+                    'players' => array_map(fn (int $slot): array => $this->playerSummary($players[$slot]), $home),
+                    'score' => $game->{"set{$number}_home"},
+                    'field' => "set{$number}_home",
+                ],
+                'away' => [
+                    'players' => array_map(fn (int $slot): array => $this->playerSummary($players[$slot]), $away),
+                    'score' => $game->{"set{$number}_away"},
+                    'field' => "set{$number}_away",
+                ],
+            ];
+        }
+
+        return [
+            'id' => $game->id,
+            'players' => array_map(fn (Player $player): array => $this->playerSummary($player), array_values($players)),
+            'sets' => $sets,
+            'isComplete' => $game->is_complete,
         ];
     }
 
@@ -208,6 +309,7 @@ class ZaalController extends Controller
             'firstName' => $player->first_name,
             'name' => $player->last_name,
             'fullName' => $player->full_name,
+            'bonusPoints' => $player->bonus_points,
         ];
     }
 }
