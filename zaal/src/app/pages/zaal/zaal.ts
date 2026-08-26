@@ -72,9 +72,17 @@ export class Zaal {
   }
 
   protected async draw(): Promise<void> {
+    await this.redraw();
+    this.tab.set('matches');
+  }
+
+  /**
+   * Draws again. Matches that were already confirmed keep their players, so a
+   * redraw only reshuffles whoever is still waiting.
+   */
+  protected async redraw(): Promise<void> {
     await this.api.drawRound();
     this.proposals.set(this.api.proposedGames());
-    this.tab.set('matches');
   }
 
   protected async confirmProposal(index: number): Promise<void> {

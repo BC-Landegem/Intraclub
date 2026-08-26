@@ -266,6 +266,31 @@ class DrawAndDrawnOutTest extends TestCase
         }
     }
 
+    public function test_herloten_laat_bevestigde_matches_staan_en_herschikt_enkel_de_wachtenden(): void
+    {
+        // Acht aanwezigen, waarvan er vier al een bevestigde match hebben.
+        $round = $this->roundWithPresentPlayers(1, range(1, 8));
+        $this->completeGame($round, [1, 2, 3, 4]);
+
+        $eerste = app(DrawService::class)->draw($round);
+        $tweede = app(DrawService::class)->draw($round);
+
+        foreach ([$eerste, $tweede] as $loting) {
+            $this->assertCount(1, $loting['games'], 'Enkel de vier wachtende spelers worden ingedeeld.');
+
+            foreach ([1, 2, 3, 4] as $index) {
+                $this->assertNotContains(
+                    $this->players[$index]->id,
+                    $loting['games'][0],
+                    'Wie al een bevestigde match heeft, mag bij het herloten niet opnieuw ingedeeld worden.'
+                );
+            }
+        }
+
+        // De bevestigde match blijft onaangeroerd.
+        $this->assertSame(1, $round->games()->count());
+    }
+
     /** @param list<int> $playerIndexes */
     private function markDrawnOut(Round $round, array $playerIndexes): void
     {

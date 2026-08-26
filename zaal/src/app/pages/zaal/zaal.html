@@ -108,10 +108,17 @@
         <div class="paneel">
           <div class="block-header">
             <h2>Voorgestelde matches</h2>
-            <button type="button" class="primair" [disabled]="api.isBusy()" (click)="confirmAllProposals()">
-              Alle bevestigen
-            </button>
+            <div class="voorstel-knoppen">
+              <button type="button" [disabled]="api.isBusy()" (click)="redraw()">Opnieuw loten</button>
+              <button type="button" class="primair" [disabled]="api.isBusy()" (click)="confirmAllProposals()">
+                Alle bevestigen
+              </button>
+            </div>
           </div>
+          <p class="subtitle herloot-uitleg">
+            Nog niets bevestigd? Dan kan je gerust opnieuw loten. Matches die je al
+            bevestigde blijven staan; enkel wie nog wacht wordt opnieuw ingedeeld.
+          </p>
 
           @for (proposal of proposals(); track $index) {
             <div class="proposal">
