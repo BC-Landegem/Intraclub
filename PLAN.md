@@ -9,12 +9,12 @@
 | Hosting | Bestaande shared hosting (DirectAdmin), deploy via FTP (geen SSH/composer op server). **⚠ Blokkade (26-08): PHP-versie kan enkel per volledig domein gezet worden en de oude Joomla-site vereist nog PHP 7.x.** Eerst lokaal bouwen; go-live vereist één van: (a) Joomla-site PHP 8-compatibel maken/upgraden, (b) aparte hosting voor de app, (c) hoster vragen naar per-subdomein PHP (soms tóch mogelijk via php-fpm selector) |
 | Locatie | Subdomein, bv. `intraclub.bclandegem.be`, document root → `public/` van de Laravel-app (zodra PHP-blokkade opgelost) |
 | Stack | Laravel 12 + Filament (beheerspaneel), publieke JSON-API, Angular zaal-app |
-| Zaal-app | Angular (standalone components, signals), `ng build` output naar `public/zaal/` van Laravel → zelfde origin, geen CORS, Sanctum cookie-auth |
+| Zaal-app | Angular (standalone components, signals), `ng build` output naar `public/zaal/` van Laravel → zelfde origin, Sanctum cookie-auth |
 | Database | Nieuw snake_case schema via Laravel-migrations + herhaalbaar datamigratiescript vanaf het oude schema. Model heet `Game` (niet `Match` — gereserveerd keyword in PHP 8) |
 | Auth | Eén `users`-tabel (e-mail + wachtwoord). Filament-login voor beheer; zaal-app logt in via Sanctum SPA cookie-mode; publieke lees-endpoints anoniem. **Alle schrijf-endpoints vereisen auth** (nu staan de match-endpoints open!) |
 | Rekenlogica | 1:1 porten, geborgd met regressietest op een productie-dump (oude vs. nieuwe output diffen tot 0 verschillen). Daarna: automatisch herberekenen na score-invoer + handmatige force-knop in Filament |
 | Admin-scope | CRUD spelers/speeldagen/wedstrijden/seizoenen, gebruikersbeheer, klassement-inzage + herberekening. Aanwezigheden/uitloting blijven een zaal-app-feature |
-| Publieke site | Joomla blijft; `web/*.html` pagina's worden éénmalig omgezet naar de nieuwe API-base-URL |
+| Publieke site | Joomla blijft. De pagina’s worden in een **apart project** beheerd; daar volstaat het wijzigen van de API-base-URL, want het contract is identiek gebleven. `web/` in deze repo is enkel een referentiekopie — niet aanpassen. |
 | Deploy | GitHub Actions: `composer install --no-dev` + `ng build` in CI, FTPS-sync van gewijzigde bestanden. Migrations via beveiligde web-route na deploy |
 | Cutover | Big bang vóór seizoensstart. Fallback: oude systeem blijft staan; datamigratie is herhaalbaar, dus omschakelen kan desnoods ook na speeldag 1 |
 
@@ -23,7 +23,7 @@
 ```
 /app            → Laravel-app (Filament, API, serveert ook de zaal-app)
 /zaal           → Angular-workspace, build-output → ../app/public/zaal
-/web            → Joomla-pagina's (blijven, endpoints geüpdatet)
+/web            → referentiekopie van de Joomla-pagina’s (worden elders beheerd — niet aanpassen)
 /legacy         → oude api/, api-experimental/, intra-app/ (verwijderen na cutover)
 ```
 
@@ -39,7 +39,7 @@
 
 ### Fase 1 — Fundament ✅ (afgerond 26-08)
 - [x] Laravel 12-app in `/app`, Filament 5 geïnstalleerd (admin op /admin), Laravel Boost dev-tooling
-- [x] Migrations: `players`, `seasons`, `rounds`, `games` (semantische kolommen: home_player1_id…away_player2_id), `player_round_statistics`, `player_season_statistics` — originele ID's blijven behouden
+- [x] Migrations: `players`, `seasons`, `rounds`, `games` (player1_id…player4_id; teams roteren per set), `player_round_statistics`, `player_season_statistics` — originele ID's blijven behouden
 - [x] Eloquent-models + relaties, `Gender`-enum, accessors (`full_name`, `is_veteran` ≥45j, `is_recreant`, `is_complete`)
 - [x] `php artisan intraclub:import-legacy --force`: idempotente import vanaf connectie `legacy` (intraclub_legacy). Geverifieerd: alle rijaantallen én aggregaten (scores, basispunten, gemiddelden) identiek aan de dump
 - [x] Eerste admin-user via `make:filament-user`
@@ -61,9 +61,15 @@
 - [x] Browser-getest op echte data: login, CRUD, games bewerken + opslaan (auto-herberekening bevestigd), klassement, herberekenknop
 - Opmerking: relation managers zijn read-only op de "bekijken"-pagina van een speeldag (Filament-standaard); games bewerken gebeurt via "Bewerken".
 
-### Fase 4 — Publieke API (±1 dag)
-- Read-only endpoints, functioneel gelijk aan de oude: rankings (4 varianten), rounds (+ latest/latestCalculated + matches), players (+ seizoensinfo), season statistics
-- `web/*.html` (tussenstand, speler, speeldag, toptien) omzetten naar nieuwe base-URL en response-shape verifiëren
+### Fase 4 — Publieke API ✅ (afgerond 26-08)
+- [x] Alle legacy read-endpoints geport: `rankings` (+ `/general|women|veterans|recreants`, met `$top`), `rounds` (+ `latest`, `latestCalculated`, `{id}`, `{id}/matches`), `players` (+ `{id}` met seizoensinfo, wedstrijden en rankinggeschiedenis), `seasons`, `seasons/latest/statistics`
+- [x] **Contract geverifieerd tegen de live legacy-API** (https://www.bclandegem.be/intra-app/api/index.php/): response-voor-response identiek op alle endpoints. Vergelijkscript: zie git-historie van deze fase.
+- [x] `JsonResource::withoutWrapping()` — de site verwacht kale arrays, geen `data`-wrapper
+- [x] `gender` blijft `Man`/`Woman` in de API (intern een enum met `male`/`female`), want consumenten vergelijken er strikt op
+- [x] CORS in `config/cors.php`, origins instelbaar via `CORS_ALLOWED_ORIGINS`; `supports_credentials` aan voor de zaal-app (Sanctum SPA-cookie)
+- [x] 10 contracttests in `tests/Feature/PublicApiTest.php`; volledige suite: 22 tests groen
+- **Legacy-bug gevonden:** `GET /rounds/{id}` gaf per wedstrijd de *speeldag*-id terug als `matches[].id` en `round: {id: 0, number: 0}` (de query selecteert `RND.id` en haalt `MT.id`/roundnummer niet op). Onze versie geeft de juiste waarden. De speeldagpagina gebruikt die velden niet, dus dit breekt niets.
+- **Joomla-pagina's worden apart beheerd** (ander project) — het omzetten naar de nieuwe base-URL gebeurt daar. Omdat het contract identiek is, volstaat het wijzigen van de basis-URL; verder is geen enkele aanpassing nodig.
 
 ### Fase 5 — Zaal-app in Angular (±3 dagen)
 - Login-scherm (Sanctum cookie), daarna permanent ingelogd op het zaaltoestel

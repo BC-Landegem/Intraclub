@@ -16,4 +16,16 @@ enum Gender: string implements HasLabel
             self::Female => 'Vrouw',
         };
     }
+
+    /**
+     * Waarde zoals de legacy-API ze publiceert. De publieke API blijft deze
+     * gebruiken zodat bestaande consumenten (o.a. de zaal-app) blijven werken.
+     */
+    public function apiValue(): string
+    {
+        return match ($this) {
+            self::Male => 'Man',
+            self::Female => 'Woman',
+        };
+    }
 }
