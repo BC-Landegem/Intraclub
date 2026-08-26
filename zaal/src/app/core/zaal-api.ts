@@ -22,6 +22,8 @@ export class ZaalApi {
   readonly proposedGames = computed(() => this.state()?.proposedGames ?? []);
   readonly presentPlayers = computed(() => this.players().filter((player) => player.present));
   readonly presentCount = computed(() => this.state()?.presentCount ?? 0);
+  readonly latestRound = computed(() => this.state()?.latestRound ?? null);
+  readonly seasonName = computed(() => this.state()?.seasonName ?? null);
   readonly isBusy = this.busy.asReadonly();
   readonly errorMessage = this.failure.asReadonly();
 
@@ -31,6 +33,16 @@ export class ZaalApi {
 
     return this.presentPlayers().filter((player) => !playing.has(player.id));
   });
+
+  /** Starts today's matchday (or opens it when it already exists). */
+  startToday(): Promise<void> {
+    return this.run(() => this.http.post<RoundState>('/api/zaal/rounds', {}));
+  }
+
+  /** Deliberately opens an older matchday, e.g. to finish entering scores. */
+  openRound(roundId: number): Promise<void> {
+    return this.run(() => this.http.get<RoundState>(`/api/zaal/rounds/${roundId}`));
+  }
 
   loadCurrentRound(): Promise<void> {
     return this.run(() => this.http.get<RoundState>('/api/zaal/round'));

@@ -91,6 +91,7 @@ class ZaalApiTest extends TestCase
     public function test_huidige_speeldag_toont_spelers_en_aanwezigheid(): void
     {
         $this->actingAs($this->user);
+        $this->round->update(['date' => today()]);
 
         $this->getJson('/api/zaal/round')
             ->assertOk()
@@ -383,6 +384,7 @@ class ZaalApiTest extends TestCase
     public function test_spelers_tonen_hun_bonuspunten(): void
     {
         $this->actingAs($this->user);
+        $this->round->update(['date' => today()]);
 
         $vrouwelijkeRecreant = Player::create([
             'first_name' => 'Rita', 'last_name' => 'Recreant', 'gender' => 'female',
@@ -398,6 +400,53 @@ class ZaalApiTest extends TestCase
 
         // Man met dubbelklassement 100 in de fixture: competitie, > 10 → +4.
         $this->assertSame(4, $spelers[$this->players[1]->id]['bonusPoints']);
+    }
+
+    public function test_zonder_speeldag_van_vandaag_wordt_er_geen_oude_speeldag_geopend(): void
+    {
+        $this->actingAs($this->user);
+        $this->round->update(['date' => today()->subWeeks(2)]);
+
+        $response = $this->getJson('/api/zaal/round')->assertOk();
+
+        // Cruciaal: geen speeldag, anders belanden aanwezigheden op een afgesloten dag.
+        $this->assertNull($response->json('round'));
+        $this->assertSame($this->round->id, $response->json('latestRound.id'));
+        $this->assertSame($this->season->name, $response->json('seasonName'));
+    }
+
+    public function test_speeldag_van_vandaag_starten(): void
+    {
+        $this->actingAs($this->user);
+        $this->round->update(['date' => today()->subWeeks(2), 'number' => 7]);
+
+        $response = $this->postJson('/api/zaal/rounds')->assertCreated();
+
+        $this->assertSame(8, $response->json('round.number'), 'Het nummer volgt op de vorige speeldag.');
+        $this->assertSame(today()->toDateString(), $response->json('round.date'));
+        $this->assertTrue($response->json('round.isToday'));
+    }
+
+    public function test_speeldag_starten_opent_de_bestaande_speeldag_van_vandaag(): void
+    {
+        $this->actingAs($this->user);
+        $this->round->update(['date' => today()]);
+
+        $this->postJson('/api/zaal/rounds')
+            ->assertCreated()
+            ->assertJsonPath('round.id', $this->round->id);
+
+        $this->assertSame(1, $this->season->rounds()->count(), 'Er mag geen tweede speeldag voor vandaag ontstaan.');
+    }
+
+    public function test_een_oudere_speeldag_wordt_als_niet_vandaag_gemarkeerd(): void
+    {
+        $this->actingAs($this->user);
+        $this->round->update(['date' => today()->subWeeks(2)]);
+
+        $this->getJson("/api/zaal/rounds/{$this->round->id}")
+            ->assertOk()
+            ->assertJsonPath('round.isToday', false);
     }
 
     /** @param list<int> $playerIndexes */

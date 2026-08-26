@@ -6,6 +6,14 @@ export interface RoundInfo {
   date: string;
   seasonId: number;
   isCalculated: boolean;
+  isToday: boolean;
+}
+
+/** The most recent matchday, offered when there is none for today. */
+export interface LatestRound {
+  id: number;
+  number: number;
+  date: string;
 }
 
 export interface PlayerSummary {
@@ -50,6 +58,9 @@ export interface RoundState {
   games: Game[];
   /** Enkel aanwezig in het antwoord van een loting. */
   proposedGames?: PlayerSummary[][];
+  /** Enkel aanwezig wanneer er nog geen speeldag voor vandaag is. */
+  latestRound?: LatestRound | null;
+  seasonName?: string | null;
 }
 
 export interface CurrentUser {

@@ -71,6 +71,14 @@ export class Zaal {
     }
   }
 
+  protected async startToday(): Promise<void> {
+    await this.api.startToday();
+  }
+
+  protected async openRound(roundId: number): Promise<void> {
+    await this.api.openRound(roundId);
+  }
+
   protected async draw(): Promise<void> {
     await this.redraw();
     this.tab.set('matches');

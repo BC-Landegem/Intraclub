@@ -30,16 +30,54 @@ class ZaalController extends Controller
 
     public function __construct(private readonly DrawService $drawService) {}
 
-    /** De speeldag waar in de zaal aan gewerkt wordt: de laatste van het huidige seizoen. */
+    /**
+     * De speeldag waaraan in de zaal gewerkt wordt: die van vandaag.
+     *
+     * Bewust niet "de laatste speeldag": staat die van vandaag er nog niet, dan
+     * zouden aanwezigheden en matches op een al afgesloten speeldag belanden.
+     * In dat geval krijgt de zaal een lege toestand met de keuze om de speeldag
+     * van vandaag te starten of bewust een oudere te openen.
+     */
     public function currentRound(): JsonResponse
     {
-        $round = Season::current()?->rounds()->orderByDesc('date')->orderByDesc('id')->first();
+        $season = Season::current();
+        $today = $season?->rounds()->whereDate('date', today())->first();
 
-        if ($round === null) {
-            return response()->json(['round' => null, 'players' => [], 'games' => [], 'drawnOut' => []]);
+        if ($today !== null) {
+            return response()->json($this->roundPayload($today));
         }
 
-        return response()->json($this->roundPayload($round));
+        $latest = $season?->rounds()->orderByDesc('date')->orderByDesc('id')->first();
+
+        return response()->json([
+            'round' => null,
+            'players' => [],
+            'presentCount' => 0,
+            'drawnOut' => [],
+            'games' => [],
+            'seasonName' => $season?->name,
+            'latestRound' => $latest === null ? null : [
+                'id' => $latest->id,
+                'number' => $latest->number,
+                'date' => $latest->date->format('Y-m-d'),
+            ],
+        ]);
+    }
+
+    /** Start de speeldag van vandaag; bestaat die al, dan wordt die geopend. */
+    public function storeRound(): JsonResponse
+    {
+        $season = Season::current();
+
+        abort_if($season === null, 422, 'Er is nog geen seizoen aangemaakt.');
+
+        $round = $season->rounds()->whereDate('date', today())->first()
+            ?? $season->rounds()->create([
+                'date' => today()->toDateString(),
+                'number' => (int) $season->rounds()->max('number') + 1,
+            ]);
+
+        return response()->json($this->roundPayload($round), 201);
     }
 
     public function show(Round $round): JsonResponse
@@ -245,6 +283,7 @@ class ZaalController extends Controller
                 'date' => $round->date->format('Y-m-d'),
                 'seasonId' => $round->season_id,
                 'isCalculated' => (bool) $round->is_calculated,
+                'isToday' => $round->date->isToday(),
             ],
             'players' => $players,
             'presentCount' => $players->where('present', true)->count(),

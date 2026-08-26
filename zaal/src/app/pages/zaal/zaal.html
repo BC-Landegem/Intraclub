@@ -15,10 +15,32 @@
 }
 
 @if (api.round() === null) {
-  <p class="paneel notice">
-    Er staat nog geen speeldag klaar voor dit seizoen. Maak er eerst een aan in het beheer.
-  </p>
+  <section class="paneel start">
+    <h2>Nog geen speeldag voor vandaag</h2>
+    @if (api.seasonName(); as seizoen) {
+      <p class="subtitle">Seizoen {{ seizoen }}</p>
+    }
+
+    <button type="button" class="primair groot" [disabled]="api.isBusy()" (click)="startToday()">
+      Speeldag van vandaag starten
+    </button>
+
+    @if (api.latestRound(); as vorige) {
+      <p class="subtitle">
+        Wil je de vorige speeldag afwerken — bijvoorbeeld scores nog invullen?
+      </p>
+      <button type="button" [disabled]="api.isBusy()" (click)="openRound(vorige.id)">
+        Speeldag {{ vorige.number }} van {{ vorige.date }} openen
+      </button>
+    }
+  </section>
 } @else {
+  @if (!api.round()!.isToday) {
+    <p class="waarschuwing notice">
+      Let op: dit is speeldag {{ api.round()!.number }} van {{ api.round()!.date }}, niet vandaag.
+      Alles wat je hier invult, hoort bij die dag.
+    </p>
+  }
   <nav class="tabs">
     <button type="button" [class.active]="tab() === 'attendance'" (click)="tab.set('attendance')">
       Aanwezig <span class="teller" [class.pulse]="countPulse()">{{ api.presentCount() }}</span>

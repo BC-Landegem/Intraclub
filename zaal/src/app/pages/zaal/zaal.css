@@ -443,3 +443,28 @@ button.groot {
 .herloot-uitleg {
   margin: -0.25rem 0 0.75rem;
 }
+
+.start {
+  display: grid;
+  gap: 1rem;
+  justify-items: start;
+  padding: 2rem;
+}
+
+.start h2 {
+  margin: 0;
+  font-size: 1.5rem;
+  letter-spacing: -0.02em;
+}
+
+.start .subtitle {
+  margin: 0;
+}
+
+.waarschuwing {
+  padding: 0.85rem 1rem;
+  border: 1px solid var(--accent);
+  border-radius: var(--straal);
+  background: rgb(245 165 36 / 0.12);
+  color: var(--accent);
+}
