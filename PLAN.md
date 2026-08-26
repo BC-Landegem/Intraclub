@@ -49,13 +49,17 @@
 - [x] `App\Services\SeasonCalculator`: port van `calculateCurrentSeason` (verliezersgemiddelde per speeldag, voortschrijdend gemiddelde per speler, seizoenstellers; zet ook `is_calculated` zoals legacy)
 - [x] `php artisan intraclub:verify-calculation [--season=]`: herberekent en dift tegen de geïmporteerde legacy-waarden — **alle 3 seizoenen bit-identiek (Δ = 0.0)**
 - [x] Automatische herberekening via `GameObserver` (score ingevoerd/gewijzigd/game verwijderd → seizoen herberekend); end-to-end getest
-- **TODO (besloten 26-08):** auto-herberekening pas triggeren wanneer álle games van de speeldag volledig zijn ingevuld (`is_complete`), i.p.v. na elke score-wijziging. Nu markeert de eerste score de speeldag al als `is_calculated`, waardoor de publieke tussenstand een halve speeldag kan tonen. Aanpassen in `GameObserver`: na een score-wijziging eerst checken of `round->games` allemaal compleet zijn (en er minstens één game is) vóór `SeasonCalculator` draait; een verwijderde game die de speeldag weer incompleet maakt vereist dan wél een herberekening/reset.
+- [x] **Opgelost in fase 3:** de `SeasonCalculator` rekent nu tot de eerste speeldag die niet volledig is ingevuld (een speeldag telt zodra ze games heeft én álle games compleet zijn). Speeldagen die niet meetellen worden teruggezet (`is_calculated = false`, gemiddelden `null`), dus de publieke tussenstand toont nooit een halve speeldag. Gedekt door feature tests.
 - Vondst: legacy `RoundRepository::create` verwijst naar kolom `DrawClosed` die niet in de productie-DB bestaat (dode code) — speeldag-creatie liep dus al niet meer via dat pad. Bekijken bij de zaal-app of een "loting gesloten"-status alsnog nodig is.
 
-### Fase 3 — Filament-beheerspaneel (±2 dagen)
-- Resources: Players, Rounds, Games, Seasons, Users
-- Klassement-pagina (tussenstand per categorie: algemeen, dames, veteranen, recreanten) + knop "herbereken"
-- Autorisatie: alleen ingelogde users
+### Fase 3 — Filament-beheerspaneel ✅ (afgerond 26-08)
+- [x] Resources: Spelers, Speeldagen (met games-beheer als relation manager), Seizoenen, Gebruikers — Nederlandstalig, met filters en zinnige defaults
+- [x] Games bewerken: spelers + de drie sets met de roterende teamsamenstelling in de labels (set 1 = 1+2 vs 3+4, set 2 = 1+3 vs 2+4, set 3 = 1+4 vs 2+3); elke speler mag maar één keer in een game
+- [x] Nieuw seizoen aanmaken kent automatisch basispunten toe volgens de eindstand (`SeasonCreator`, port van legacy)
+- [x] Klassement-pagina: 4 categorieën (algemeen, dames, veteranen 45+, recreanten) met stijgers/dalers t.o.v. de vorige speeldag, seizoenkeuze en knop "Herbereken tussenstand" (`RankingService`, port van legacy `RankingManager`)
+- [x] Autorisatie: alles achter de Filament-login; gebruiker kan zichzelf niet verwijderen
+- [x] Browser-getest op echte data: login, CRUD, games bewerken + opslaan (auto-herberekening bevestigd), klassement, herberekenknop
+- Opmerking: relation managers zijn read-only op de "bekijken"-pagina van een speeldag (Filament-standaard); games bewerken gebeurt via "Bewerken".
 
 ### Fase 4 — Publieke API (±1 dag)
 - Read-only endpoints, functioneel gelijk aan de oude: rankings (4 varianten), rounds (+ latest/latestCalculated + matches), players (+ seizoensinfo), season statistics

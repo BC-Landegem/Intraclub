@@ -16,6 +16,9 @@ use Illuminate\Support\Facades\DB;
  *
  * 1:1 port van intraclub\managers\SeasonManager::calculateCurrentSeason uit de legacy-API.
  * Spelregels:
+ * - Enkel afgewerkte speeldagen tellen mee: een speeldag telt zodra ze games heeft én
+ *   álle games volledig zijn ingevuld. Er wordt gerekend tot de eerste speeldag die daar
+ *   niet aan voldoet, zodat de tussenstand nooit een half ingevulde speeldag toont.
  * - Afwezig op een speeldag ⇒ de speler krijgt het verliezersgemiddelde van die speeldag.
  * - Meerdere games op één speeldag ⇒ enkel de eerste (laagste id) telt.
  * - De stand na speeldag N = gemiddelde van (basispunten + resultaat speeldag 1..N).
@@ -26,7 +29,10 @@ class SeasonCalculator
     public function calculate(Season $season): void
     {
         DB::transaction(function () use ($season): void {
-            $rounds = $season->rounds()->orderBy('id')->get();
+            $allRounds = $season->rounds()->with('games')->orderBy('id')->get();
+            $rounds = $this->completedRounds($allRounds);
+
+            $this->resetUncountedRounds($allRounds->skip($rounds->count()));
 
             $averageLosersPerRound = $this->calculateRoundAverages($rounds);
             $lastRoundPosition = count($averageLosersPerRound);
@@ -41,9 +47,48 @@ class SeasonCalculator
                 ->get();
 
             foreach ($playerStatistics as $playerStatistic) {
-                $this->calculatePlayer($season, $rounds, $playerStatistic, $averageLosersPerRound, $lastRoundPosition);
+                $this->calculatePlayer($rounds, $playerStatistic, $averageLosersPerRound, $lastRoundPosition);
             }
         });
+    }
+
+    /**
+     * De aaneengesloten reeks speeldagen vanaf het begin van het seizoen die volledig
+     * gespeeld zijn. Bij de eerste onafgewerkte (of lege) speeldag stopt de telling.
+     *
+     * @param Collection<int, Round> $rounds
+     * @return Collection<int, Round>
+     */
+    private function completedRounds(Collection $rounds): Collection
+    {
+        return $rounds->takeWhile(
+            fn (Round $round): bool => $round->games->isNotEmpty()
+                && $round->games->every(fn (Game $game): bool => $game->is_complete)
+        )->values();
+    }
+
+    /**
+     * Wis de berekende waarden van speeldagen die (nog) niet meetellen, zodat de
+     * publieke tussenstand niet op verouderde cijfers blijft staan.
+     *
+     * @param Collection<int, Round> $rounds
+     */
+    private function resetUncountedRounds(Collection $rounds): void
+    {
+        if ($rounds->isEmpty()) {
+            return;
+        }
+
+        $roundIds = $rounds->pluck('id');
+
+        Round::whereIn('id', $roundIds)->update([
+            'average_absent' => null,
+            'is_calculated' => false,
+        ]);
+
+        DB::table('player_round_statistics')
+            ->whereIn('round_id', $roundIds)
+            ->update(['average' => null]);
     }
 
     /**
@@ -77,7 +122,6 @@ class SeasonCalculator
      * @param array<int, float> $averageLosersPerRound
      */
     private function calculatePlayer(
-        Season $season,
         Collection $rounds,
         PlayerSeasonStatistic $playerStatistic,
         array $averageLosersPerRound,
@@ -100,7 +144,7 @@ class SeasonCalculator
 
         $games = Game::query()
             ->join('rounds', 'rounds.id', '=', 'games.round_id')
-            ->where('rounds.season_id', $season->id)
+            ->whereIn('games.round_id', $rounds->pluck('id'))
             ->where(fn ($query) => $query
                 ->orWhere('games.player1_id', $playerId)
                 ->orWhere('games.player2_id', $playerId)

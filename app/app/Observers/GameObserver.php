@@ -6,9 +6,9 @@ use App\Models\Game;
 use App\Services\SeasonCalculator;
 
 /**
- * Herberekent de tussenstand automatisch zodra een score wordt ingevoerd,
- * gewijzigd of een game wordt verwijderd (vervangt de handmatige
- * "bereken tussenstand"-actie uit de legacy-API).
+ * Herberekent de tussenstand automatisch na elke wijziging aan een game; de
+ * SeasonCalculator bepaalt zelf welke speeldagen meetellen (enkel volledig
+ * ingevulde). Vervangt de handmatige "bereken tussenstand"-actie uit de legacy-API.
  */
 class GameObserver
 {
@@ -24,21 +24,12 @@ class GameObserver
 
     public function saved(Game $game): void
     {
-        $scoresEntered = $game->wasRecentlyCreated
-            ? collect(self::SCORE_COLUMNS)->contains(fn (string $column): bool => $game->{$column} !== null)
-            : $game->wasChanged(self::SCORE_COLUMNS);
-
-        if ($scoresEntered) {
-            $this->recalculate($game);
+        if ($game->wasRecentlyCreated || $game->wasChanged(self::SCORE_COLUMNS)) {
+            $this->calculator->calculate($game->round->season);
         }
     }
 
     public function deleted(Game $game): void
-    {
-        $this->recalculate($game);
-    }
-
-    private function recalculate(Game $game): void
     {
         $this->calculator->calculate($game->round->season);
     }
