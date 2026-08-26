@@ -37,12 +37,12 @@
 - [ ] Testen of PUT/PATCH werkt op het subdomein (los van Joomla's .htaccess); zo niet: `_method`-spoofing inbouwen
 - [ ] Tweede MariaDB-database aanmaken voor de nieuwe app (oude blijft onaangeroerd tot cutover)
 
-### Fase 1 — Fundament (±2 dagen)
-- Laravel-app opzetten in `/app`, Filament installeren
-- Migrations: `players`, `seasons`, `rounds`, `games`, `player_round_statistics`, `player_season_statistics`, `users`
-- Eloquent-models + relaties
-- Artisan-command `intraclub:import-legacy` dat de oude database → nieuw schema migreert (idempotent/herhaalbaar)
-- Eerste admin-user via seeder
+### Fase 1 — Fundament ✅ (afgerond 26-08)
+- [x] Laravel 12-app in `/app`, Filament 5 geïnstalleerd (admin op /admin), Laravel Boost dev-tooling
+- [x] Migrations: `players`, `seasons`, `rounds`, `games` (semantische kolommen: home_player1_id…away_player2_id), `player_round_statistics`, `player_season_statistics` — originele ID's blijven behouden
+- [x] Eloquent-models + relaties, `Gender`-enum, accessors (`full_name`, `is_veteran` ≥45j, `is_recreant`, `is_complete`)
+- [x] `php artisan intraclub:import-legacy --force`: idempotente import vanaf connectie `legacy` (intraclub_legacy). Geverifieerd: alle rijaantallen én aggregaten (scores, basispunten, gemiddelden) identiek aan de dump
+- [x] Eerste admin-user via `make:filament-user`
 
 ### Fase 2 — Rekenlogica + regressietest (±2 dagen, kritisch pad)
 - Port van `RankingManager`, `SeasonManager::calculateCurrentSeason`, `RoundManager`-berekeningen naar services
