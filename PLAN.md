@@ -44,11 +44,13 @@
 - [x] `php artisan intraclub:import-legacy --force`: idempotente import vanaf connectie `legacy` (intraclub_legacy). Geverifieerd: alle rijaantallen én aggregaten (scores, basispunten, gemiddelden) identiek aan de dump
 - [x] Eerste admin-user via `make:filament-user`
 
-### Fase 2 — Rekenlogica + regressietest (±2 dagen, kritisch pad)
-- Port van `RankingManager`, `SeasonManager::calculateCurrentSeason`, `RoundManager`-berekeningen naar services
-- Artisan-command dat op de geïmporteerde prod-dump de nieuwe berekening draait en de statistiektabellen regel-voor-regel difft tegen de oude waarden
-- Pas door naar fase 3 bij 0 verschillen
-- Herberekening triggeren via event na score-wijziging
+### Fase 2 — Rekenlogica + regressietest ✅ (afgerond 26-08)
+- [x] `App\Services\GameStatistics`: pure port van `Utilities::calculateMatchStatistics` (roterende teams per set, trim-naar-21-regel) — gedekt door unit tests
+- [x] `App\Services\SeasonCalculator`: port van `calculateCurrentSeason` (verliezersgemiddelde per speeldag, voortschrijdend gemiddelde per speler, seizoenstellers; zet ook `is_calculated` zoals legacy)
+- [x] `php artisan intraclub:verify-calculation [--season=]`: herberekent en dift tegen de geïmporteerde legacy-waarden — **alle 3 seizoenen bit-identiek (Δ = 0.0)**
+- [x] Automatische herberekening via `GameObserver` (score ingevoerd/gewijzigd/game verwijderd → seizoen herberekend); end-to-end getest
+- **TODO (besloten 26-08):** auto-herberekening pas triggeren wanneer álle games van de speeldag volledig zijn ingevuld (`is_complete`), i.p.v. na elke score-wijziging. Nu markeert de eerste score de speeldag al als `is_calculated`, waardoor de publieke tussenstand een halve speeldag kan tonen. Aanpassen in `GameObserver`: na een score-wijziging eerst checken of `round->games` allemaal compleet zijn (en er minstens één game is) vóór `SeasonCalculator` draait; een verwijderde game die de speeldag weer incompleet maakt vereist dan wél een herberekening/reset.
+- Vondst: legacy `RoundRepository::create` verwijst naar kolom `DrawClosed` die niet in de productie-DB bestaat (dode code) — speeldag-creatie liep dus al niet meer via dat pad. Bekijken bij de zaal-app of een "loting gesloten"-status alsnog nodig is.
 
 ### Fase 3 — Filament-beheerspaneel (±2 dagen)
 - Resources: Players, Rounds, Games, Seasons, Users

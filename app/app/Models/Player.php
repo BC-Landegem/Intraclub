@@ -66,10 +66,10 @@ class Player extends Model
     {
         return Game::query()->where(
             fn (Builder $query) => $query
-                ->orWhere('home_player1_id', $this->id)
-                ->orWhere('home_player2_id', $this->id)
-                ->orWhere('away_player1_id', $this->id)
-                ->orWhere('away_player2_id', $this->id)
+                ->orWhere('player1_id', $this->id)
+                ->orWhere('player2_id', $this->id)
+                ->orWhere('player3_id', $this->id)
+                ->orWhere('player4_id', $this->id)
         );
     }
 }
