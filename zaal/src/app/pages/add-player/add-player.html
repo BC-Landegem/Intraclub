@@ -1,0 +1,69 @@
+<div class="backdrop" (click)="closed.emit()"></div>
+
+<div class="dialog paneel" role="dialog" aria-modal="true" aria-labelledby="add-player-title">
+  <h2 id="add-player-title">Nieuwe speler</h2>
+
+  @if (errorMessage()) {
+    <p class="foutmelding">{{ errorMessage() }}</p>
+  }
+
+  <form (submit)="onSubmit($event)">
+    <div class="row">
+      <div class="field">
+        <label for="first-name">Voornaam</label>
+        <input id="first-name" type="text" autocomplete="given-name" [formField]="playerForm.firstName" />
+        @if (playerForm.firstName().touched() && playerForm.firstName().invalid()) {
+          <p class="field-error">{{ playerForm.firstName().errors()[0]?.message }}</p>
+        }
+      </div>
+
+      <div class="field">
+        <label for="last-name">Achternaam</label>
+        <input id="last-name" type="text" autocomplete="family-name" [formField]="playerForm.name" />
+        @if (playerForm.name().touched() && playerForm.name().invalid()) {
+          <p class="field-error">{{ playerForm.name().errors()[0]?.message }}</p>
+        }
+      </div>
+    </div>
+
+    <div class="row">
+      <div class="field">
+        <label for="gender">Geslacht</label>
+        <select id="gender" [formField]="playerForm.gender">
+          <option value="male">Man</option>
+          <option value="female">Vrouw</option>
+        </select>
+      </div>
+
+      <div class="field">
+        <label for="birth-date">Geboortedatum</label>
+        <input id="birth-date" type="date" [formField]="playerForm.birthDate" />
+        @if (playerForm.birthDate().touched() && playerForm.birthDate().invalid()) {
+          <p class="field-error">{{ playerForm.birthDate().errors()[0]?.message }}</p>
+        }
+      </div>
+    </div>
+
+    <div class="field checkbox">
+      <input id="competition" type="checkbox" [formField]="playerForm.playsCompetition" />
+      <label for="competition">Speelt competitie</label>
+    </div>
+
+    @if (playerForm.playsCompetition().value()) {
+      <div class="field">
+        <label for="double-ranking">Dubbelklassement (0 - 12)</label>
+        <input id="double-ranking" type="number" inputmode="numeric" [formField]="playerForm.doubleRanking" />
+        @if (playerForm.doubleRanking().touched() && playerForm.doubleRanking().invalid()) {
+          <p class="field-error">{{ playerForm.doubleRanking().errors()[0]?.message }}</p>
+        }
+      </div>
+    }
+
+    <div class="buttons">
+      <button type="submit" class="primair" [disabled]="busy()">
+        {{ busy() ? 'Bezig…' : 'Toevoegen' }}
+      </button>
+      <button type="button" [disabled]="busy()" (click)="closed.emit()">Annuleren</button>
+    </div>
+  </form>
+</div>

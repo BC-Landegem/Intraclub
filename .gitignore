@@ -1,2 +1,7 @@
 # Database dumps (nooit committen)
 /*.sql
+
+# Angular build-artefacten en afhankelijkheden
+/zaal/node_modules
+/zaal/dist
+/zaal/.angular

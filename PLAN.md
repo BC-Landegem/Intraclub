@@ -22,7 +22,7 @@
 
 ```
 /app            → Laravel-app (Filament, API, serveert ook de zaal-app)
-/zaal           → Angular-workspace, build-output → ../app/public/zaal
+/zaal           → Angular 22-workspace (zaal-app), build-output → ../app/public/zaal
 /web            → referentiekopie van de Joomla-pagina’s (worden elders beheerd — niet aanpassen)
 /legacy         → oude api/, api-experimental/, intra-app/ (verwijderen na cutover)
 ```
@@ -71,11 +71,24 @@
 - **Legacy-bug gevonden:** `GET /rounds/{id}` gaf per wedstrijd de *speeldag*-id terug als `matches[].id` en `round: {id: 0, number: 0}` (de query selecteert `RND.id` en haalt `MT.id`/roundnummer niet op). Onze versie geeft de juiste waarden. De speeldagpagina gebruikt die velden niet, dus dit breekt niets.
 - **Joomla-pagina's worden apart beheerd** (ander project) — het omzetten naar de nieuwe base-URL gebeurt daar. Omdat het contract identiek is, volstaat het wijzigen van de basis-URL; verder is geen enkele aanpassing nodig.
 
-### Fase 5 — Zaal-app in Angular (±3 dagen)
-- Login-scherm (Sanctum cookie), daarna permanent ingelogd op het zaaltoestel
-- Features van de huidige intra-app: aanwezigheden aanduiden, uitloting, wedstrijden samenstellen, score-invoer, match-complete-visualisatie
-- Donker thema / grote knoppen (tablet-UX zoals nu met MDB dark)
-- Build naar `app/public/zaal/`
+### Fase 5 — Zaal-app in Angular ✅ (afgerond 26-08)
+- [x] Angular 22 in `/zaal` (standalone, signals, Signal Forms), build naar `app/public/zaal/` met `baseHref=/zaal/`; dev via `ng serve` met proxy naar `:8000`
+- [x] Sessie-login op dezelfde origin (`/api/login`, CSRF via Angular's XSRF-ondersteuning); route-guard herstelt de sessie, het zaaltoestel blijft ingelogd
+- [x] Donker thema, raakvlakken van minstens 56px, zoekveld en tabs (Aanwezig / Matches)
+- [x] Aanwezigheden aanduiden, loting opvragen, matches bevestigen, scores invoeren, nieuwe speler toevoegen (staat meteen aanwezig, basispunten 19 zoals legacy)
+- [x] Zaal-API achter authenticatie: `/api/zaal/round`, `rounds/{id}/attendance|draw|games|players`, `PUT games/{id}` — 13 tests
+- [x] End-to-end getest in de browser: login, aanwezigheden, loting, bevestigen, scores, automatische herberekening, laatkomer-scenario
+
+**Uitgeloot — nieuwe regels (vervangen legacy-gedrag):**
+- Uitgeloot wordt **bewaard** in `player_round_statistics.is_drawn_out` (overleeft refresh, weegt mee in latere lotingen).
+- **Een uitgelote speeldag telt niet mee** voor het gemiddelde van die speler: hij was er wél, maar mocht niet spelen. Legacy gaf hem het verliezersgemiddelde, net als een afwezige. Effect op historische data: 2 spelers in seizoen 2023-2024 (30 waarden); `intraclub:verify-calculation` rapporteert die apart als *verwachte* afwijking, alle andere waarden blijven bit-identiek.
+- **Beschermingsvenster:** wie uitgeloot werd, blijft de volgende `DrawService::PROTECTED_ROUNDS` (= 4) speeldagen buiten schot. Moet er tóch iemand beschermd aan de kant, dan valt de keuze op wie het langst geleden zat.
+- **Laatkomers:** een nieuwe loting deelt enkel spelers in die nog geen match hebben. Belanden uitgelote spelers alsnog in een match, dan wist `GameObserver` hun vlag en telt de speeldag weer mee.
+- Er zitten er nooit meer aan de kant dan `aantal aanwezigen mod 4`.
+
+**Bewust weggelaten:** de zaal-app kan een match niet verwijderen — eenmaal aangemaakt blijft ze bestaan (de DELETE-route is uit de API gehaald). Corrigeren gebeurt in het beheerspaneel.
+
+**Aandachtspunt voor go-live:** onder `php artisan serve` matcht de Laravel-route `/zaal/{path?}` niet, omdat de map `public/zaal` bestaat en Symfony dat als base-path afsplitst. In productie (Apache) is dat geen probleem, en `public/zaal/.htaccess` vangt diepe links sowieso statisch op. Voor lokale ontwikkeling: `ng serve` gebruiken.
 
 ### Fase 6 — CI/CD + go-live (±1 dag)
 - GitHub Actions: build (composer, ng) → FTPS-deploy naar subdomein

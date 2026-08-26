@@ -35,7 +35,9 @@ class VerifyCalculation extends Command
         $calculator->calculate($season);
         $after = $this->snapshot($season);
 
+        $expectedPlayers = $this->playersAffectedByDrawnOutRule($season);
         $mismatches = 0;
+        $expected = 0;
         $maxDelta = 0.0;
 
         foreach ($before as $dataset => $rows) {
@@ -49,11 +51,19 @@ class VerifyCalculation extends Command
                 foreach ($values as $column => $legacyValue) {
                     $newValue = $after[$dataset][$key][$column];
                     $delta = abs((float) $legacyValue - (float) $newValue);
-                    $maxDelta = max($maxDelta, $delta);
-                    if ($delta > $tolerance) {
-                        $this->error(sprintf('[%s] %s.%s: legacy %.10f ≠ nieuw %.10f (Δ %.2e)', $dataset, $key, $column, $legacyValue, $newValue, $delta));
-                        $mismatches++;
+                    if ($delta <= $tolerance) {
+                        continue;
                     }
+                    // Afwijkingen bij uitgelote spelers zijn gewenst: bij hen telt de
+                    // speeldag waarop ze niet mochten spelen niet meer mee.
+                    if ($this->belongsToAffectedPlayer($key, $expectedPlayers)) {
+                        $expected++;
+
+                        continue;
+                    }
+                    $maxDelta = max($maxDelta, $delta);
+                    $this->error(sprintf('[%s] %s.%s: legacy %.10f ≠ nieuw %.10f (Δ %.2e)', $dataset, $key, $column, $legacyValue, $newValue, $delta));
+                    $mismatches++;
                 }
             }
             $added = array_diff_key($after[$dataset], $rows);
@@ -65,7 +75,15 @@ class VerifyCalculation extends Command
         }
 
         $this->newLine();
-        $this->line(sprintf('Grootste afwijking: %.3e', $maxDelta));
+        $this->line(sprintf('Grootste onverwachte afwijking: %.3e', $maxDelta));
+        if ($expected > 0) {
+            $this->line(sprintf(
+                '%d verwachte afwijkingen bij %d uitgelote speler(s): %s',
+                $expected,
+                count($expectedPlayers),
+                implode(', ', $expectedPlayers) ?: '-',
+            ));
+        }
 
         if ($mismatches > 0) {
             $this->error("REGRESSIE: {$mismatches} verschillen. Herstel de data met intraclub:import-legacy.");
@@ -126,5 +144,44 @@ class VerifyCalculation extends Command
             'player_round_statistics' => $roundStatistics,
             'player_season_statistics' => $seasonStatistics,
         ];
+    }
+
+    /**
+     * Spelers voor wie de uitgeloot-regel een afwijking t.o.v. legacy veroorzaakt:
+     * ze waren uitgeloot én speelden die speeldag niet.
+     *
+     * @return list<int>
+     */
+    private function playersAffectedByDrawnOutRule(Season $season): array
+    {
+        return DB::table('player_round_statistics as statistic')
+            ->join('rounds', 'rounds.id', '=', 'statistic.round_id')
+            ->where('rounds.season_id', $season->id)
+            ->where('statistic.is_drawn_out', true)
+            ->whereNotExists(fn ($query) => $query
+                ->select(DB::raw(1))
+                ->from('games')
+                ->whereColumn('games.round_id', 'statistic.round_id')
+                ->where(fn ($inner) => $inner
+                    ->orWhereColumn('games.player1_id', 'statistic.player_id')
+                    ->orWhereColumn('games.player2_id', 'statistic.player_id')
+                    ->orWhereColumn('games.player3_id', 'statistic.player_id')
+                    ->orWhereColumn('games.player4_id', 'statistic.player_id')))
+            ->distinct()
+            ->pluck('statistic.player_id')
+            ->map(fn ($id): int => (int) $id)
+            ->all();
+    }
+
+    /** @param list<int> $players */
+    private function belongsToAffectedPlayer(string $key, array $players): bool
+    {
+        foreach ($players as $playerId) {
+            if (str_contains($key, "player:{$playerId}")) {
+                return true;
+            }
+        }
+
+        return false;
     }
 }

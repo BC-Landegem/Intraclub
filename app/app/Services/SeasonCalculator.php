@@ -20,6 +20,9 @@ use Illuminate\Support\Facades\DB;
  *   álle games volledig zijn ingevuld. Er wordt gerekend tot de eerste speeldag die daar
  *   niet aan voldoet, zodat de tussenstand nooit een half ingevulde speeldag toont.
  * - Afwezig op een speeldag ⇒ de speler krijgt het verliezersgemiddelde van die speeldag.
+ * - Uitgeloot zonder game ⇒ die speeldag telt niet mee voor die speler (hij was er wél,
+ *   maar mocht niet spelen). Dit wijkt bewust af van de legacy-API, die uitgelote spelers
+ *   het verliezersgemiddelde gaf, net als afwezigen.
  * - Meerdere games op één speeldag ⇒ enkel de eerste (laagste id) telt.
  * - De stand na speeldag N = gemiddelde van (basispunten + resultaat speeldag 1..N).
  * - Enkel leden mét een seizoensstatistiek-record worden berekend.
@@ -36,6 +39,7 @@ class SeasonCalculator
 
             $averageLosersPerRound = $this->calculateRoundAverages($rounds);
             $lastRoundPosition = count($averageLosersPerRound);
+            $drawnOut = $this->drawnOutPositions($rounds);
 
             $playerStatistics = PlayerSeasonStatistic::query()
                 ->join('players', 'players.id', '=', 'player_season_statistics.player_id')
@@ -47,7 +51,7 @@ class SeasonCalculator
                 ->get();
 
             foreach ($playerStatistics as $playerStatistic) {
-                $this->calculatePlayer($rounds, $playerStatistic, $averageLosersPerRound, $lastRoundPosition);
+                $this->calculatePlayer($rounds, $playerStatistic, $averageLosersPerRound, $lastRoundPosition, $drawnOut);
             }
         });
     }
@@ -56,7 +60,7 @@ class SeasonCalculator
      * De aaneengesloten reeks speeldagen vanaf het begin van het seizoen die volledig
      * gespeeld zijn. Bij de eerste onafgewerkte (of lege) speeldag stopt de telling.
      *
-     * @param Collection<int, Round> $rounds
+     * @param  Collection<int, Round>  $rounds
      * @return Collection<int, Round>
      */
     private function completedRounds(Collection $rounds): Collection
@@ -71,7 +75,7 @@ class SeasonCalculator
      * Wis de berekende waarden van speeldagen die (nog) niet meetellen, zodat de
      * publieke tussenstand niet op verouderde cijfers blijft staan.
      *
-     * @param Collection<int, Round> $rounds
+     * @param  Collection<int, Round>  $rounds
      */
     private function resetUncountedRounds(Collection $rounds): void
     {
@@ -94,7 +98,7 @@ class SeasonCalculator
     /**
      * Bepaal per speeldag het gemiddelde van de verliezende teams en sla het op.
      *
-     * @param Collection<int, Round> $rounds
+     * @param  Collection<int, Round>  $rounds
      * @return array<int, float> verliezersgemiddelde per speeldagpositie (1-based, volgorde = oplopend round-id)
      */
     private function calculateRoundAverages(Collection $rounds): array
@@ -118,14 +122,15 @@ class SeasonCalculator
     }
 
     /**
-     * @param Collection<int, Round> $rounds
-     * @param array<int, float> $averageLosersPerRound
+     * @param  Collection<int, Round>  $rounds
+     * @param  array<int, float>  $averageLosersPerRound
      */
     private function calculatePlayer(
         Collection $rounds,
         PlayerSeasonStatistic $playerStatistic,
         array $averageLosersPerRound,
         int $lastRoundPosition,
+        array $drawnOut,
     ): void {
         $playerId = $playerStatistic->player_id;
 
@@ -156,8 +161,7 @@ class SeasonCalculator
 
         foreach ($games as $game) {
             while ($game->round_number > $position) {
-                // Afwezig op deze speeldag: verliezersgemiddelde toekennen.
-                $results[$position] = $averageLosersPerRound[$position];
+                $results[$position] = $this->resultWithoutGame($position, $averageLosersPerRound, $drawnOut, $playerId);
                 $position++;
             }
             if ($position !== (int) $game->round_number) {
@@ -179,9 +183,9 @@ class SeasonCalculator
             $position++;
         }
 
-        // Afwezig op de laatste speeldagen.
+        // Geen game (meer) op de resterende speeldagen.
         while ($position <= $lastRoundPosition) {
-            $results[$position] = $averageLosersPerRound[$position];
+            $results[$position] = $this->resultWithoutGame($position, $averageLosersPerRound, $drawnOut, $playerId);
             $position++;
         }
 
@@ -191,7 +195,11 @@ class SeasonCalculator
             $sum = 0.0;
             $total = 0;
             for ($index = 0; $index <= $round->number; $index++) {
-                $sum += $results[$index] ?? 0;
+                // null = uitgeloot zonder game: die speeldag telt niet mee voor deze speler.
+                if (($results[$index] ?? null) === null) {
+                    continue;
+                }
+                $sum += $results[$index];
                 $total++;
             }
 
@@ -214,5 +222,51 @@ class SeasonCalculator
         );
 
         $playerStatistic->update($counters);
+    }
+
+    /**
+     * Resultaat voor een speeldag waarop de speler geen game heeft.
+     *
+     * Afwezig ⇒ het verliezersgemiddelde van die speeldag. Uitgeloot ⇒ null: hij was
+     * er wél maar mocht niet spelen, dus die speeldag telt niet mee in zijn gemiddelde.
+     * Wie later alsnog in een match belandt (bv. een laatkomer vult de match aan) heeft
+     * een game en komt hier dus niet terecht — de vlag is daar niet bepalend.
+     *
+     * @param  array<int, float>  $averageLosersPerRound
+     * @param  array<int, array<int, true>>  $drawnOut
+     */
+    private function resultWithoutGame(int $position, array $averageLosersPerRound, array $drawnOut, int $playerId): ?float
+    {
+        if (isset($drawnOut[$playerId][$position])) {
+            return null;
+        }
+
+        return $averageLosersPerRound[$position];
+    }
+
+    /**
+     * Wie was op welke speeldagpositie uitgeloot?
+     *
+     * @param  Collection<int, Round>  $rounds
+     * @return array<int, array<int, true>> speler-id => speeldagpositie => true
+     */
+    private function drawnOutPositions(Collection $rounds): array
+    {
+        $positionByRoundId = [];
+        foreach ($rounds->values() as $index => $round) {
+            $positionByRoundId[$round->id] = $index + 1;
+        }
+
+        $drawnOut = [];
+        $rows = DB::table('player_round_statistics')
+            ->whereIn('round_id', array_keys($positionByRoundId))
+            ->where('is_drawn_out', true)
+            ->get(['player_id', 'round_id']);
+
+        foreach ($rows as $row) {
+            $drawnOut[$row->player_id][$positionByRoundId[$row->round_id]] = true;
+        }
+
+        return $drawnOut;
     }
 }

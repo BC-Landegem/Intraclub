@@ -1,0 +1,115 @@
+/*
+ * Zaal-app: donker thema met grote raakvlakken. Bedoeld voor een tablet die in
+ * de sporthal staat, vaak bediend met een vinger en van een halve meter afstand.
+ */
+
+:root {
+  color-scheme: dark;
+
+  --achtergrond: #0f1115;
+  --paneel: #191d24;
+  --paneel-rand: #2a3039;
+  --tekst: #f2f4f7;
+  --tekst-zacht: #9aa4b2;
+  --accent: #f5a524;
+  --accent-tekst: #1a1204;
+  --goed: #17a34a;
+  --fout: #dc2626;
+  --straal: 12px;
+
+  /* Minimale raakoppervlakte voor een vinger. */
+  --raakhoogte: 56px;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+  min-height: 100%;
+  background: var(--achtergrond);
+  color: var(--tekst);
+  font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  font-size: 17px;
+  -webkit-text-size-adjust: 100%;
+}
+
+h1,
+h2,
+h3 {
+  margin: 0 0 0.5rem;
+  line-height: 1.2;
+}
+
+button {
+  font: inherit;
+  min-height: var(--raakhoogte);
+  padding: 0 1.25rem;
+  border: 1px solid var(--paneel-rand);
+  border-radius: var(--straal);
+  background: var(--paneel);
+  color: var(--tekst);
+  cursor: pointer;
+  touch-action: manipulation;
+}
+
+button:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+button.primair {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--accent-tekst);
+  font-weight: 700;
+}
+
+button.gevaar {
+  border-color: var(--fout);
+  color: #fca5a5;
+}
+
+input,
+select {
+  font: inherit;
+  min-height: var(--raakhoogte);
+  width: 100%;
+  padding: 0 0.9rem;
+  border: 1px solid var(--paneel-rand);
+  border-radius: var(--straal);
+  background: #0c0f14;
+  color: var(--tekst);
+}
+
+input:focus-visible,
+select:focus-visible,
+button:focus-visible {
+  outline: 3px solid var(--accent);
+  outline-offset: 2px;
+}
+
+label {
+  display: block;
+  margin-bottom: 0.35rem;
+  color: var(--tekst-zacht);
+  font-size: 0.9rem;
+}
+
+.paneel {
+  background: var(--paneel);
+  border: 1px solid var(--paneel-rand);
+  border-radius: var(--straal);
+  padding: 1rem;
+}
+
+.foutmelding {
+  padding: 0.85rem 1rem;
+  border: 1px solid var(--fout);
+  border-radius: var(--straal);
+  background: rgb(220 38 38 / 0.12);
+  color: #fecaca;
+}

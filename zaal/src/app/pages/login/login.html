@@ -1,0 +1,35 @@
+<main class="aanmeldscherm">
+  <form class="paneel kaart" (submit)="onSubmit($event)">
+    <h1>Intraclub</h1>
+    <p class="ondertitel">Meld je aan om de speeldag te beheren.</p>
+
+    @if (errorMessage()) {
+      <p class="foutmelding">{{ errorMessage() }}</p>
+    }
+
+    <div class="veld">
+      <label for="email">E-mailadres</label>
+      <input id="email" type="email" autocomplete="username" [formField]="loginForm.email" />
+      @if (loginForm.email().touched() && loginForm.email().invalid()) {
+        <p class="veldfout">{{ loginForm.email().errors()[0]?.message }}</p>
+      }
+    </div>
+
+    <div class="veld">
+      <label for="wachtwoord">Wachtwoord</label>
+      <input
+        id="wachtwoord"
+        type="password"
+        autocomplete="current-password"
+        [formField]="loginForm.password"
+      />
+      @if (loginForm.password().touched() && loginForm.password().invalid()) {
+        <p class="veldfout">{{ loginForm.password().errors()[0]?.message }}</p>
+      }
+    </div>
+
+    <button type="submit" class="primair" [disabled]="busy()">
+      {{ busy() ? 'Bezig…' : 'Aanmelden' }}
+    </button>
+  </form>
+</main>

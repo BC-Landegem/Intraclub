@@ -18,12 +18,12 @@ class GameObserver
         'set3_home', 'set3_away',
     ];
 
-    public function __construct(private readonly SeasonCalculator $calculator)
-    {
-    }
+    public function __construct(private readonly SeasonCalculator $calculator) {}
 
     public function saved(Game $game): void
     {
+        $this->clearDrawnOutForParticipants($game);
+
         if ($game->wasRecentlyCreated || $game->wasChanged(self::SCORE_COLUMNS)) {
             $this->calculator->calculate($game->round->season);
         }
@@ -32,5 +32,18 @@ class GameObserver
     public function deleted(Game $game): void
     {
         $this->calculator->calculate($game->round->season);
+    }
+
+    /**
+     * Wie in een game staat, speelt dus mee en is niet (langer) uitgeloot. Dit dekt
+     * de situatie waarin een laatkomer de onvolledige match aanvult: de eerder
+     * uitgelote spelers spelen dan toch en die speeldag telt weer voor hen mee.
+     */
+    private function clearDrawnOutForParticipants(Game $game): void
+    {
+        $game->round->playerStatistics()
+            ->whereIn('player_id', $game->playerIds())
+            ->where('is_drawn_out', true)
+            ->update(['is_drawn_out' => false]);
     }
 }
