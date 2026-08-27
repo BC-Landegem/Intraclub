@@ -5,3 +5,6 @@
 /zaal/node_modules
 /zaal/dist
 /zaal/.angular
+
+# Gegenereerde mappingtabel (bevat ledengegevens)
+/app/database/legacy/player-map.csv

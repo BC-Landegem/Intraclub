@@ -98,6 +98,21 @@ return [
             'strict' => true,
         ],
 
+        // Alleen-lezen connectie naar de oudste generaties (comp_* en intra_*, 2009-2023),
+        // geladen uit de volledige sitedump met intraclub:load-archive-dump.
+        'archive' => [
+            'driver' => 'mariadb',
+            'host' => env('ARCHIVE_DB_HOST', '127.0.0.1'),
+            'port' => env('ARCHIVE_DB_PORT', '3306'),
+            'database' => env('ARCHIVE_DB_DATABASE', 'intraclub_oud'),
+            'username' => env('ARCHIVE_DB_USERNAME', 'root'),
+            'password' => env('ARCHIVE_DB_PASSWORD', ''),
+            'charset' => 'utf8mb4',
+            'collation' => 'utf8mb4_unicode_ci',
+            'prefix' => '',
+            'strict' => false,
+        ],
+
         'pgsql' => [
             'driver' => 'pgsql',
             'url' => env('DB_URL'),

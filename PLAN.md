@@ -15,6 +15,7 @@
 | Rekenlogica | 1:1 porten, geborgd met regressietest op een productie-dump (oude vs. nieuwe output diffen tot 0 verschillen). Daarna: automatisch herberekenen na score-invoer + handmatige force-knop in Filament |
 | Admin-scope | CRUD spelers/speeldagen/wedstrijden/seizoenen, gebruikersbeheer, klassement-inzage + herberekening. Aanwezigheden/uitloting blijven een zaal-app-feature |
 | Publieke site | Joomla blijft. De pagina’s worden in een **apart project** beheerd; daar volstaat het wijzigen van de API-base-URL, want het contract is identiek gebleven. `web/` in deze repo is enkel een referentiekopie — niet aanpassen. |
+| Archief oude jaargangen | De jaargangen 2009-2023 uit de volledige sitedump gaan naar aparte, alleen-lezen `archive_`-tabellen — **niet** in `games`. Het oude format speelde met vaste teams in best-of-3 (derde set bleef leeg zodra een team er twee had), terwijl `games` vier spelers met per set roterende teams veronderstelt. Zie fase 7 |
 | Deploy | GitHub Actions: `composer install --no-dev` + `ng build` in CI, FTPS-sync van gewijzigde bestanden. Migrations via beveiligde web-route na deploy |
 | Cutover | Big bang vóór seizoensstart. Fallback: oude systeem blijft staan; datamigratie is herhaalbaar, dus omschakelen kan desnoods ook na speeldag 1 |
 
@@ -112,6 +113,32 @@ Daarbij ook de basis opgeschoond: getekende SVG-iconen in plaats van unicode-vin
 - Finale datamigratie draaien, regressietest nogmaals op verse dump
 - Joomla-pagina's omzetten, zaaltoestel naar nieuwe URL
 - Oude `api/` read-only zetten of uitschakelen; `legacy/` opruimen na een paar stabiele speelweken
+
+### Fase 7 — Archief oude jaargangen (2009-2023) ✅ (afgerond 27-08)
+
+De volledige sitedump bevat twee generaties van vóór het huidige systeem, die nooit mee gemigreerd waren:
+
+| Generatie | Periode | Inhoud |
+|---|---|---|
+| `comp_*` | 2009-2010 t/m 2012-2013 | 68 speeldagen, 557 wedstrijden, 79 spelers. `comp_seizoen` mist 2010-2011 (afgeleid uit de datums), eindstanden voor 3 van de 4 seizoenen, geen klassementsevolutie per speeldag |
+| `intra_*` | 2013-2014 t/m 2022-2023 | 155 speeldagen, 1528 wedstrijden, 166 spelers, 1003 seizoensstatistieken en ~11.800 rijen klassementsevolutie per speeldag |
+
+**Waarom apart en niet in `games`:** het oude format speelde met **vaste teams in best-of-3** — team 1 speelt alle sets tegen team 2, en de derde set bleef leeg zodra een team er twee had (72% van de intra-wedstrijden, 69% van de comp-wedstrijden). Het huidige `games` gaat uit van vier spelers met per set roterende teams, en `GameStatistics` telt een lege set als winst voor het away-team. Oude uitslagen daarin schuiven zou elke herberekening stilzwijgend fout maken. Vastgesteld door beide interpretaties door te rekenen tegen de opgeslagen seizoenstotalen: vaste teams reproduceert 85-98% van de spelers per seizoen, roterende teams nauwelijks iets. Waar het afwijkt ligt de herberekening altijd hóger — de legacy-aggregaten misten wedstrijden. De statistieken worden daarom overgenomen zoals het oude systeem ze publiceerde; dit is een archief, geen herberekening.
+
+- [x] Migration `archive_players`, `archive_seasons`, `archive_rounds`, `archive_games` (team1/team2-semantiek, lege derde set = `null`), `archive_player_season_statistics`, `archive_player_round_statistics`. Setkolommen zijn *signed*, in tegenstelling tot `games`: de oude data bevat een wedstrijd met `-1` als setstand en een archief bewaart dat zoals het was
+- [x] `archive_players.player_id` is een nullable link naar `players`. Zo hoeven de 114 vertrokken spelers geen rij in het levende ledenbestand, en blijft `players.birth_date` (NOT NULL) ongemoeid
+- [x] `php artisan intraclub:load-archive-dump <dump.sql>`: streamt de volledige sitedump en houdt enkel `comp_*` en `intra_*` over; maakt de databank `intraclub_oud` zelf aan. Vereist `sql_mode=''` (het `klassement`-enum bevat een lege waarde) en negeert `LOCK TABLES` bewust
+- [x] `App\Services\Legacy\ArchivePlayerMatcher`: unificeert de drie generaties tot 192 personen op genormaliseerde naam + naamgelijkenis. Handmatig nagekeken beslissingen staan in `database/legacy/player-map-overrides.php`
+- [x] `php artisan intraclub:player-map`: schrijft de mapping naar CSV om na te kijken (ge-gitignored, bevat ledengegevens). Nagekeken 27-08: 78 spelers bestaan nog, 114 zijn vertrokken, 0 openstaande beslissingen
+- [x] `php artisan intraclub:import-archive`: 192 spelers, 14 seizoenen, 223 speeldagen, 2064 wedstrijden, 1191 seizoensstatistieken, 11831 klassementsrijen. Weigert te draaien zolang een koppeling niet beslist is
+- [x] Feature tests op een sqlite-miniatuur van het oude schema
+- [x] **Aanwezigheden en matchen worden uit de uitslagen berekend**, niet overgenomen. Geen van beide oude systemen hield ze betrouwbaar bij: `intra_*` begon er pas in 2019-2020 mee (daarvóór stond overal nul) en `comp_*` telde "gewonnen spelletjes", wat niet met gewonnen matchen overeenkomt. De berekening reproduceert de bewaarde intra-cijfers exact waar die bestaan — het importcommando controleert dat bij elke run en rapporteert elke afwijking. Zo geldt één definitie over alle veertien seizoenen
+- [x] Filament: navigatiegroep **Archief** met Seizoenen (eindstand + speeldagen), Speeldagen (uitslagen met team1/team2 en de setstand) en Spelers (geschiedenis per seizoen, met link naar de huidige spelersfiche). Alles alleen-lezen; browser-getest op de echte data
+- [x] Publieke API onder `/api/archive`: `seasons`, `seasons/{id}/rounds`, `seasons/{id}/standings`, `rounds/{id}`, `players` (filterbaar met `?playerId=`) en `players/{id}` (`?withMatches=1` voor de wedstrijden). Aparte paden, zodat het geverifieerde contract van de bestaande endpoints ongemoeid blijft. 6 contracttests
+- [ ] Optioneel: 2010-2011 heeft wél uitslagen maar geen bewaarde eindstand. Uit de wedstrijden valt een gedeeltelijke stand af te leiden (sets, punten, matchen) — zonder klassementsgemiddelde, want dat vraagt de rekenlogica van toen
+- **Gevonden in de oude data** (het importcommando rapporteert ze bij elke run): 1 wedstrijd met setstand `-1`, 1 dubbel ingevoerde seizoensstatistiek (de oude tabel had geen unique key), 21 comp-wedstrijden + 21 comp-statistieken die naar verwijderde spelers verwijzen, en 19 comp-seizoensstatistieken zonder bijhorende uitslagen — `comp_historie` bewaarde daar een eindstand terwijl `comp_uitslagen` geen enkele wedstrijd van die speler in dat seizoen bevat. Die staan in de eindstand dus op nul speeldagen mét sets en punten; dat is een gat in de bron, niet in de import.
+- **Los hiervan gevonden:** David Inghels en Lieselot Van Haute staan **dubbel in de huidige `players`**, met wedstrijden verdeeld over beide id's (36/132 en 72/145). Zolang die niet samengevoegd zijn, rekent het systeem hun gemiddelde op een deel van hun wedstrijden. `intraclub:player-map` herinnert er bij elke run aan.
+- **Volgorde bij cutover:** `intraclub:import-legacy` truncate `players`, dus daarna altijd opnieuw `intraclub:import-archive` draaien.
 
 ## Lokale dev-omgeving (opgezet 26-08-2026)
 

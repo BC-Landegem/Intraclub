@@ -1,5 +1,8 @@
 <?php
 
+use App\Http\Controllers\Api\Archive\ArchivePlayerController;
+use App\Http\Controllers\Api\Archive\ArchiveRoundController;
+use App\Http\Controllers\Api\Archive\ArchiveSeasonController;
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\PlayerController;
 use App\Http\Controllers\Api\RankingController;
@@ -28,6 +31,23 @@ Route::get('players/{player}', [PlayerController::class, 'show']);
 Route::get('seasons', [SeasonController::class, 'index']);
 Route::get('seasons/latest/statistics', [SeasonController::class, 'statistics']);
 Route::get('seasons/{season}/statistics', [SeasonController::class, 'statistics']);
+
+/*
+ * Archief van de jaargangen vóór het huidige systeem (2009-2023). Aparte paden, zodat
+ * het contract van de bestaande endpoints ongemoeid blijft. Let op: het oude format
+ * speelde met vaste teams in best-of-3, dus een wedstrijd heeft hier `team1`/`team2`
+ * en soms maar twee sets.
+ */
+Route::prefix('archive')->group(function (): void {
+    Route::get('seasons', [ArchiveSeasonController::class, 'index']);
+    Route::get('seasons/{season}/rounds', [ArchiveSeasonController::class, 'rounds']);
+    Route::get('seasons/{season}/standings', [ArchiveSeasonController::class, 'standings']);
+
+    Route::get('rounds/{round}', [ArchiveRoundController::class, 'show']);
+
+    Route::get('players', [ArchivePlayerController::class, 'index']);
+    Route::get('players/{player}', [ArchivePlayerController::class, 'show']);
+});
 
 /*
  * Zaal-app: alles achter authenticatie (sessiecookie, zelfde origin).
