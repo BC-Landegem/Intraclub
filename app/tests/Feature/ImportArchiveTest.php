@@ -87,8 +87,10 @@ class ImportArchiveTest extends TestCase
         $this->assertSame(2, DB::table('archive_rounds')->where('source', 'comp')->count());
     }
 
-    public function test_het_slaat_wedstrijden_met_een_verwijderde_speler_over(): void
+    public function test_een_verwijderde_speler_wordt_een_onbekende_speler(): void
     {
+        // De uitslag is wel degelijk gespeeld; alleen wie er speelde is niet meer te
+        // achterhalen. De wedstrijd hoort dus bewaard te blijven.
         $this->gegevenCompData();
         DB::connection('archive')->table('comp_uitslagen')->insert([
             'ID' => 99, 'speeldag' => 1,
@@ -99,7 +101,31 @@ class ImportArchiveTest extends TestCase
 
         $this->artisan('intraclub:import-archive', ['--force' => true])->assertSuccessful();
 
-        $this->assertNull(DB::table('archive_games')->where('source_id', 99)->first());
+        $game = DB::table('archive_games')->where('source_id', 99)->first();
+        $this->assertNotNull($game);
+
+        $onbekend = DB::table('archive_players')->where('id', $game->team2_player2_id)->first();
+        $this->assertSame('Onbekende speler', $onbekend->last_name);
+        $this->assertSame(404, (int) $onbekend->comp_id);
+        $this->assertNull($onbekend->player_id);
+    }
+
+    public function test_elke_verwijderde_speler_krijgt_een_eigen_fiche(): void
+    {
+        // Twee onbekenden in dezelfde wedstrijd mogen niet als dezelfde persoon eindigen.
+        $this->gegevenCompData();
+        DB::connection('archive')->table('comp_uitslagen')->insert([
+            'ID' => 98, 'speeldag' => 1,
+            'team1_speler1' => 1, 'team1_speler2' => 501, 'team2_speler1' => 3, 'team2_speler2' => 502,
+            'set1_team1' => 21, 'set1_team2' => 10, 'set2_team1' => 21, 'set2_team2' => 12,
+            'set3_team1' => 0, 'set3_team2' => 0,
+        ]);
+
+        $this->artisan('intraclub:import-archive', ['--force' => true])->assertSuccessful();
+
+        $game = DB::table('archive_games')->where('source_id', 98)->first();
+        $this->assertNotSame($game->team1_player2_id, $game->team2_player2_id);
+        $this->assertSame(2, DB::table('archive_players')->whereIn('comp_id', [501, 502])->count());
     }
 
     public function test_het_weigert_te_draaien_zolang_een_koppeling_niet_beslist_is(): void

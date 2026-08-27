@@ -31,8 +31,9 @@ class ArchivePlayer extends Model
         return $this->hasMany(ArchivePlayerRoundStatistic::class);
     }
 
+    /** Getrimd, want een "Onbekende speler" heeft geen voornaam. */
     protected function fullName(): Attribute
     {
-        return Attribute::get(fn (): string => "{$this->first_name} {$this->last_name}");
+        return Attribute::get(fn (): string => trim("{$this->first_name} {$this->last_name}"));
     }
 }

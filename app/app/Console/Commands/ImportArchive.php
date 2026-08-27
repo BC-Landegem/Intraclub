@@ -56,6 +56,9 @@ class ImportArchive extends Command
     /** @var array<string, true> reeds geschreven (seizoen, speler)-combinaties */
     private array $gezien = [];
 
+    /** Aantal archiefspelers dat als "Onbekende speler" aangemaakt is. */
+    private int $onbekendeSpelers = 0;
+
     public function handle(ArchivePlayerMatcher $matcher): int
     {
         $archive = DB::connection('archive');
@@ -93,6 +96,7 @@ class ImportArchive extends Command
             }
 
             $this->importeerSpelers($personen);
+            $this->importeerOnbekendeCompSpelers($archive);
             $this->importeerIntraSeizoenen($archive);
             $this->importeerIntraSpeeldagen($archive);
             $this->importeerIntraWedstrijden($archive);
@@ -139,6 +143,48 @@ class ImportArchive extends Command
             if ($rij->intra_id !== null) {
                 $this->spelerPerIntraId[$rij->intra_id] = $rij->id;
             }
+        }
+    }
+
+    /**
+     * De comp-generatie verwijst naar spelers die later uit `comp_spelers` verwijderd zijn.
+     * Hun uitslagen zijn wél echt gespeeld, dus die willen we niet weggooien: elk onbekend
+     * bron-id krijgt een eigen archiefspeler "Onbekende speler".
+     *
+     * Eén per bron-id, niet één gedeelde: twee wedstrijden hebben méér dan één onbekende
+     * speler, en die zouden anders als dezelfde persoon in dezelfde match belanden.
+     */
+    private function importeerOnbekendeCompSpelers(ConnectionInterface $archive): void
+    {
+        $gekend = $archive->table('comp_spelers')->pluck('ID')->all();
+
+        $gebruikt = $archive->query()->fromSub(
+            $archive->table('comp_uitslagen')->select('team1_speler1 as speler_id')
+                ->unionAll($archive->table('comp_uitslagen')->select('team1_speler2'))
+                ->unionAll($archive->table('comp_uitslagen')->select('team2_speler1'))
+                ->unionAll($archive->table('comp_uitslagen')->select('team2_speler2'))
+                ->unionAll($archive->table('comp_historie')->select('speler_id')),
+            'gebruikt'
+        )->distinct()->pluck('speler_id');
+
+        $onbekend = $gebruikt->reject(fn ($id): bool => in_array($id, $gekend))->sort()->values();
+
+        foreach ($onbekend as $compId) {
+            $this->spelerPerCompId[$compId] = DB::table('archive_players')->insertGetId([
+                'player_id' => null,
+                'first_name' => '',
+                'last_name' => 'Onbekende speler',
+                'gender' => null,
+                'ranking' => null,
+                'comp_id' => $compId,
+                'intra_id' => null,
+                'created_at' => now(),
+                'updated_at' => now(),
+            ]);
+        }
+
+        if ($onbekend->isNotEmpty()) {
+            $this->onbekendeSpelers = $onbekend->count();
         }
     }
 
@@ -438,8 +484,7 @@ class ImportArchive extends Command
             ], $this->spelerPerCompId);
 
             if ($speeldag === null || $spelers === null) {
-                // Een handvol wedstrijden verwijst naar spelers die later verwijderd zijn.
-                $this->tel('comp-wedstrijden overgeslagen (onbekende speler)');
+                $this->tel('comp-wedstrijden overgeslagen');
 
                 continue;
             }
@@ -617,6 +662,13 @@ class ImportArchive extends Command
             $gekoppeld,
             count($personen) - $gekoppeld,
         ));
+
+        if ($this->onbekendeSpelers > 0) {
+            $this->line(sprintf(
+                'Daarnaast %d× "Onbekende speler" aangemaakt voor comp-id\'s die uit het oude ledenbestand verdwenen zijn.',
+                $this->onbekendeSpelers,
+            ));
+        }
 
         foreach ($this->overgeslagen as $reden => $aantal) {
             $this->warn(sprintf('%s: %d', $reden, $aantal));

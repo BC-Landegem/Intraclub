@@ -111,6 +111,51 @@ Daarbij ook de basis opgeschoond: getekende SVG-iconen in plaats van unicode-vin
 - GitHub Actions: build (composer, ng) → FTPS-deploy naar subdomein
 - Migrations-route (secret-token-beveiligd) of migratie bij eerste request
 - Finale datamigratie draaien, regressietest nogmaals op verse dump
+
+**Datamigratie — herhaalbare keten** (volledig geverifieerd 27-08, ±20 s vanaf lege databanken). De volgorde ligt vast: stap 4 wist `players`, en `archive_players.player_id` hangt daaraan.
+
+```bash
+# 1. huidige dump (bevat geen DROP TABLE, dus databank eerst weg)
+mysql -u root -e "DROP DATABASE IF EXISTS intraclub_legacy;
+  CREATE DATABASE intraclub_legacy CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;"
+mysql -u root intraclub_legacy < bclandegem_intraclub.sql
+
+cd app
+php artisan intraclub:load-archive-dump ../bclandegem_database_*.sql   # 2. sitedump → intraclub_oud
+php artisan migrate --force                                            # 3. schema (of migrate:fresh + make:filament-user)
+php artisan intraclub:import-legacy --force                            # 4. huidige data
+php artisan intraclub:player-map                                       # 5. controle: AMBIGU 0, VOORSTEL 0
+php artisan intraclub:import-archive --force                           # 6. archief
+php artisan intraclub:verify-calculation --season=1                    # 7. regressietest, per seizoen
+php artisan intraclub:merge-duplicates --force                         # 8. dubbels samenvoegen
+```
+
+Stap 8 staat bewust ná de regressietest: die vergelijkt met de opgeslagen legacy-waarden, en na een samenvoeging wijken die voor de samengevoegde speler terecht af. Het commando leest `player_dubbels` uit hetzelfde `player-map-overrides.php`, houdt de fiche met de meeste wedstrijden over, zet wedstrijden en aanwezigheden over (bij een botsing op dezelfde speeldag wint aanwezig/uitgeloot van één van beide), herberekent de betrokken seizoenen en weigert als de fiche die zou verdwijnen er méér heeft. `--dry-run` toont het plan.
+
+Acceptatie is geen rijaantal (dat groeit mee met de dump) maar: nul openstaande koppelingen in stap 5, nul verschil in stap 7 op de 30 gedocumenteerde uitloot-afwijkingen na, en dezelfde vijf brondata-meldingen in stap 6. Stap 1 is de enige zonder artisan-commando. `migrate:fresh` wist ook `users` — dan opnieuw een Filament-gebruiker aanmaken.
+
+**Naar productie via phpMyAdmin.** Er is geen SSH, geen `mysql`-CLI en geen artisan op de host, dus de keten hierboven draait lokaal en het *resultaat* gaat als één bestand naar boven. Geverifieerd 27-08 met een round-trip in een lege databank.
+
+```bash
+DUMP="mysqldump -u root --single-transaction --no-tablespaces --default-character-set=utf8mb4"
+DATA="players seasons rounds games player_round_statistics player_season_statistics
+  archive_players archive_seasons archive_rounds archive_games
+  archive_player_season_statistics archive_player_round_statistics"
+
+# cutover: structuur van álle tabellen, daarna enkel de data die telt  → 1,66 MB / 0,26 MB gezipt
+$DUMP --no-data --add-drop-table intraclub > cutover.sql
+$DUMP --no-create-info --skip-add-locks --complete-insert intraclub $DATA migrations users >> cutover.sql
+
+# refresh vóór go-live: enkel de datatabellen, users en sessies op productie blijven staan
+$DUMP --add-drop-table --complete-insert intraclub $DATA > refresh.sql
+```
+
+- Zet vóór de cutover-export het echte wachtwoord lokaal met `php artisan intraclub:set-password [e-mail]` (vraagt het wachtwoord tweemaal, verborgen) — op productie kan `make:filament-user` niet draaien, dus het account moet mét de juiste hash mee in de dump.
+- In phpMyAdmin eerst de doeldatabank selecteren: de dump bevat bewust geen `CREATE DATABASE`/`USE`, dus hetzelfde bestand werkt ongeacht hoe DirectAdmin de databank noemde. `.sql.gz` wordt zelf uitgepakt.
+- Werkt omdat: `FOREIGN_KEY_CHECKS=0` staat in de kop (21 constraints, volgorde irrelevant), alles op `utf8mb4_unicode_ci` staat — dat bestaat op de MariaDB 10.6 van de host, terwijl lokaal 12.3 draait met nieuwere `uca1400`-collations die daar zouden falen — en `migrations` meegaat, zodat de migrations-route bij de cutover niets meer hoeft te doen.
+- **Herhaalbaar tot en met de cutover, niet erna.** Zodra er in de zaal ingevoerd wordt is productie de bron van waarheid; een refresh-import is dan dataverlies.
+
+Uitgeschreven runbook met verwachte uitvoer per stap: zie de gedeelde link in de projectnotities.
 - Joomla-pagina's omzetten, zaaltoestel naar nieuwe URL
 - Oude `api/` read-only zetten of uitschakelen; `legacy/` opruimen na een paar stabiele speelweken
 
@@ -136,8 +181,9 @@ De volledige sitedump bevat twee generaties van vóór het huidige systeem, die 
 - [x] Filament: navigatiegroep **Archief** met Seizoenen (eindstand + speeldagen), Speeldagen (uitslagen met team1/team2 en de setstand) en Spelers (geschiedenis per seizoen, met link naar de huidige spelersfiche). Alles alleen-lezen; browser-getest op de echte data
 - [x] Publieke API onder `/api/archive`: `seasons`, `seasons/{id}/rounds`, `seasons/{id}/standings`, `rounds/{id}`, `players` (filterbaar met `?playerId=`) en `players/{id}` (`?withMatches=1` voor de wedstrijden). Aparte paden, zodat het geverifieerde contract van de bestaande endpoints ongemoeid blijft. 6 contracttests
 - [ ] Optioneel: 2010-2011 heeft wél uitslagen maar geen bewaarde eindstand. Uit de wedstrijden valt een gedeeltelijke stand af te leiden (sets, punten, matchen) — zonder klassementsgemiddelde, want dat vraagt de rekenlogica van toen
-- **Gevonden in de oude data** (het importcommando rapporteert ze bij elke run): 1 wedstrijd met setstand `-1`, 1 dubbel ingevoerde seizoensstatistiek (de oude tabel had geen unique key), 21 comp-wedstrijden + 21 comp-statistieken die naar verwijderde spelers verwijzen, en 19 comp-seizoensstatistieken zonder bijhorende uitslagen — `comp_historie` bewaarde daar een eindstand terwijl `comp_uitslagen` geen enkele wedstrijd van die speler in dat seizoen bevat. Die staan in de eindstand dus op nul speeldagen mét sets en punten; dat is een gat in de bron, niet in de import.
-- **Los hiervan gevonden:** David Inghels en Lieselot Van Haute staan **dubbel in de huidige `players`**, met wedstrijden verdeeld over beide id's (36/132 en 72/145). Zolang die niet samengevoegd zijn, rekent het systeem hun gemiddelde op een deel van hun wedstrijden. `intraclub:player-map` herinnert er bij elke run aan.
+- [x] **Verwijderde comp-spelers worden "Onbekende speler"** in plaats van overgeslagen. De uitslagen zijn wel degelijk gespeeld; alleen wie er speelde is niet meer te achterhalen. Elk onbekend bron-id krijgt een eigen archiefspeler (8 stuks) — niet één gedeelde, want twee wedstrijden hebben méér dan één onbekende en die zouden anders als dezelfde persoon in dezelfde match belanden. Levert 21 wedstrijden en 21 seizoensstatistieken extra op.
+- [x] **`php artisan intraclub:merge-duplicates`**: voegt dubbel aangemaakte spelers samen op basis van `player_dubbels` uit `player-map-overrides.php`. David Inghels (36 ← 132) en Lieselot Van Haute (72 ← 145) hebben nu 15 en 22 wedstrijden op één fiche in plaats van 12+3 en 21+1.
+- **Gevonden in de oude data** (het importcommando rapporteert ze bij elke run): 1 wedstrijd met setstand `-1`, 1 dubbel ingevoerde seizoensstatistiek (de oude tabel had geen unique key), en 22 comp-seizoensstatistieken zonder bijhorende uitslagen — `comp_historie` bewaarde daar een eindstand terwijl `comp_uitslagen` geen enkele wedstrijd van die speler in dat seizoen bevat. Die staan in de eindstand dus op nul speeldagen mét sets en punten; dat is een gat in de bron, niet in de import.
 - **Volgorde bij cutover:** `intraclub:import-legacy` truncate `players`, dus daarna altijd opnieuw `intraclub:import-archive` draaien.
 
 ## Lokale dev-omgeving (opgezet 26-08-2026)
@@ -145,7 +191,7 @@ De volledige sitedump bevat twee generaties van vóór het huidige systeem, die 
 - PHP 8.4.24 via winget (`%LOCALAPPDATA%\Microsoft\WinGet\Packages\PHP.PHP.8.4_...`), php.ini met pdo_mysql/mbstring/intl/curl/zip/gd/opcache. Oude PHP 7.4 staat nog op `C:\tools\php74` maar is uit de PATH gehaald. **VS Code/terminal herstarten om de nieuwe PATH op te pikken.**
 - MariaDB 12.3 als Windows-service `MariaDB` (root, geen wachtwoord — enkel lokaal). Client-tools in PATH.
 - Databases: `intraclub` (nieuwe app) en `intraclub_legacy` (import van productie-dump `bclandegem_intraclub.sql`; dumps staan in de root en zijn ge-gitignored).
-- Laravel 12 + Filament 5 in `/app`, `.env` wijst naar `intraclub`. Start: `cd app && php artisan serve` → admin op http://localhost:8000/admin (login: lmartens@metanous.be / intraclub-dev).
+- Laravel 12 + Filament 5 in `/app`, `.env` wijst naar `intraclub`. Start: `cd app && php artisan serve` → admin op http://localhost:8000/admin (login: lenmartens@gmail.com / intraclub-dev). Wachtwoord wijzigen: `php artisan intraclub:set-password`.
 
 ## Risico's
 
