@@ -3,9 +3,10 @@
 use Illuminate\Http\Response;
 use Illuminate\Support\Facades\Route;
 
-Route::get('/', function () {
-    return view('welcome');
-});
+/*
+ * Het subdomein is in de praktijk het zaaltoestel; beheerders typen /admin.
+ */
+Route::redirect('/', '/zaal');
 
 /*
  * Zaal-app (Angular): de gebouwde bestanden staan statisch in public/zaal en

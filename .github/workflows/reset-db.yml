@@ -1,0 +1,60 @@
+name: Databank resetten
+
+# Zet de databank op de host terug naar de snapshot die met app/cutover.sh
+# gemaakt is en handmatig in storage/app/private/ staat.
+#
+# Drie remmen, onafhankelijk van elkaar:
+#   1. je moet hieronder letterlijk RESET typen;
+#   2. INTRACLUB_ALLOW_RESET=true moet in de .env op de server staan;
+#   3. het snapshotbestand moet daar staan — verwijder je het, dan is de knop
+#      definitief dood, ook als de configuratiecache nog oude waarden bevat.
+# Daarbovenop kopieert de server elke tabel naar bak_<tijdstip>_<tabel> vóór
+# hij iets wist.
+#
+# NA DE CUTOVER: zet INTRACLUB_ALLOW_RESET=false, draai de deploy opnieuw (of
+# de taak 'optimize'), en verwijder de snapshot via FTP. Vanaf het moment dat er
+# in de zaal ingevoerd wordt is een reset dataverlies.
+
+on:
+  workflow_dispatch:
+    inputs:
+      bevestiging:
+        description: 'Typ RESET om te bevestigen dat de databank gewist mag worden'
+        required: true
+        default: ''
+
+concurrency:
+  group: hosting
+  cancel-in-progress: false
+
+jobs:
+  reset:
+    name: Snapshot herladen
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      # De invoer gaat via env en niet via ${{ }} in het script: anders kan je
+      # er shell-commando's in smokkelen.
+      - name: Bevestiging controleren
+        env:
+          BEVESTIGING: ${{ inputs.bevestiging }}
+        run: |
+          if [ "$BEVESTIGING" != "RESET" ]; then
+            echo "::error::De bevestiging moet exact 'RESET' zijn. Er is niets gewist."
+            exit 1
+          fi
+
+      - name: Databank herladen uit de snapshot
+        env:
+          URL: ${{ secrets.DEPLOY_URL }}
+          TOKEN: ${{ secrets.DEPLOY_TOKEN }}
+        run: bash .github/scripts/deploy-task.sh reset
+
+      - name: Rooktest op /api/rankings
+        env:
+          URL: ${{ secrets.DEPLOY_URL }}
+        run: bash .github/scripts/health-check.sh
+
+      - name: Herinnering
+        run: echo "::notice::De sessies zijn gewist (SESSION_DRIVER=database) — je moet opnieuw inloggen. Het wachtwoord is dat uit de snapshot."

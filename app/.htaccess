@@ -1,0 +1,41 @@
+# De document root van het subdomein staat op deze map (public_html) in plaats van
+# op public/, omdat DirectAdmin hier geen document root laat verzetten. Dit bestand
+# vult dat op: het blokkeert alles wat niet publiek hoort te zijn en stuurt de rest
+# naar de front controller van Laravel.
+#
+# Wordt door de deploy meegesynchroniseerd (app/ -> public_html/). Kan je later tóch
+# de document root op public_html/public zetten, verwijder dit bestand dan: Laravel's
+# eigen public/.htaccess doet dan het werk.
+#
+# Bewust rechtstreeks naar public/index.php en niet "alles doorschuiven naar public/":
+# dat laatste laat public/.htaccess en mod_dir 301'en naar URL's met /public/ erin
+# (bij een afsluitende slash, en bij /zaal).
+
+Options -MultiViews -Indexes
+
+# Authorization gebruikt het deploy-endpoint (Bearer-token), X-XSRF-Token de
+# zaal-app. Onder CGI/FastCGI bereiken die PHP anders niet.
+<IfModule mod_setenvif.c>
+    SetEnvIf Authorization "(.*)" HTTP_AUTHORIZATION=$1
+    SetEnvIf X-XSRF-Token "(.*)" HTTP_X_XSRF_TOKEN=$1
+</IfModule>
+
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+
+    # Al naar public/ gestuurd: niet opnieuw behandelen, anders belandt elk asset
+    # alsnog bij index.php.
+    RewriteRule ^public/ - [L]
+
+    # Niets buiten public/ is bereikbaar.
+    RewriteRule ^(app|bootstrap|config|database|resources|routes|storage|tests|vendor)(/|$) - [F,L]
+    RewriteRule ^(\.env.*|artisan|composer\.(json|lock)|phpunit\.xml|package(-lock)?\.json|vite\.config\.js)$ - [F,L]
+
+    # Bestaat het als bestand in public/ (assets, de gebouwde zaal-app)?
+    # Dan rechtstreeks serveren.
+    RewriteCond %{DOCUMENT_ROOT}/public/$1 -f
+    RewriteRule ^(.+)$ public/$1 [L]
+
+    # Al de rest naar Laravel.
+    RewriteRule ^ public/index.php [L]
+</IfModule>

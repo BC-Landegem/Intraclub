@@ -9,6 +9,7 @@ use App\Http\Controllers\Api\RankingController;
 use App\Http\Controllers\Api\RoundController;
 use App\Http\Controllers\Api\SeasonController;
 use App\Http\Controllers\Api\ZaalController;
+use App\Http\Controllers\DeployController;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -71,4 +72,22 @@ Route::middleware('web')->group(function (): void {
             Route::put('games/{game}', [ZaalController::class, 'updateGame']);
         });
     });
+});
+
+/*
+ * Deploy-endpoints, aangeroepen door GitHub Actions (.github/workflows/). Ze
+ * staan hier en niet in web.php omdat de api-groep geen sessie en geen CSRF
+ * gebruikt — server-naar-server dus. Zonder DEPLOY_TOKEN in .env geven ze 404.
+ */
+/*
+ * Bewust géén throttle-middleware: die gebruikt de cache, en met
+ * CACHE_STORE=database vraagt dat de `cache`-tabel — die bestaat pas ná migrate.
+ * Het endpoint dat migrations draait mag niet afhangen van een gemigreerde
+ * databank. De beveiliging is het token; zonder geldig token bestaat de route
+ * niet (404), wat ook geen orakel geeft om op te brute-forcen.
+ */
+Route::prefix('deploy')->group(function (): void {
+    Route::post('reset', [DeployController::class, 'reset']);
+    Route::post('{task}', [DeployController::class, 'run'])
+        ->whereIn('task', ['migrate', 'optimize', 'clear']);
 });

@@ -1,0 +1,7 @@
+# Kopieer naar .deploy.local (ge-gitignored) voor .github/scripts/local-sync.sh.
+# Zelfde waarden als de GitHub-secrets/variables.
+FTP_SERVER=
+FTP_USERNAME=
+FTP_PASSWORD=
+FTP_SERVER_DIR=domains/intraclub.bclandegem.be/public_html/
+FTP_PORT=21
