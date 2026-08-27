@@ -3,5 +3,5 @@
 FTP_SERVER=
 FTP_USERNAME=
 FTP_PASSWORD=
-FTP_SERVER_DIR=domains/intraclub.bclandegem.be/public_html/
+FTP_SERVER_DIR=domains/intra.bclandegem.be/public_html/
 FTP_PORT=21

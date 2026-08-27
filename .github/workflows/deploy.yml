@@ -54,6 +54,12 @@ jobs:
         working-directory: app
         run: composer install --no-interaction --no-progress --prefer-dist
 
+      # phpunit.xml zet geen APP_KEY, dus zonder deze stap falen alle tests die
+      # een sessie of het Filament-paneel aanraken met MissingAppKeyException.
+      - name: Applicatiesleutel
+        working-directory: app
+        run: php artisan key:generate
+
       - name: Testsuite
         working-directory: app
         run: php artisan test

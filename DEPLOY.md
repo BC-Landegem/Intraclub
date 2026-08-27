@@ -30,14 +30,14 @@ host, dus je ziet het in de Actions-log staan.
 | `FTP_SERVER` | hostnaam of IP van de FTP-server |
 | `FTP_USERNAME` | FTP-gebruiker — **maak hier een apart account voor** dat enkel in de subdomeinmap mag, niet je hoofdaccount |
 | `FTP_PASSWORD` | wachtwoord van dat account |
-| `DEPLOY_URL` | `https://intraclub.bclandegem.be` (zonder slash op het einde) |
+| `DEPLOY_URL` | `https://intra.bclandegem.be` (zonder slash op het einde) |
 | `DEPLOY_TOKEN` | lang willekeurig token, bv. `openssl rand -hex 32` — zelfde waarde als in de `.env` |
 
 ### 2. GitHub — variables (zelfde pagina, tabblad Variables)
 
 | Variable | Waarde |
 |---|---|
-| `FTP_SERVER_DIR` | doelmap van de sync, mét slash op het einde, bv. `domains/intraclub.bclandegem.be/public_html/` |
+| `FTP_SERVER_DIR` | doelmap van de sync, mét slash op het einde, bv. `domains/intra.bclandegem.be/public_html/` |
 | `FTP_PROTOCOL` | `ftp` (zet op `ftps` zodra de host expliciete TLS aanvaardt; bij een certificaatfout `ftps-legacy`) |
 | `FTP_PORT` | `21` |
 
@@ -45,7 +45,7 @@ host, dus je ziet het in de Actions-log staan.
 
 1. `app/.env.production.example` uploaden als `.env` in de app-map (naast `artisan`), aanvullen met databank­gegevens en `DEPLOY_TOKEN`.
 2. `APP_KEY` zetten: genereer lokaal met `php artisan key:generate --show` en plak de waarde.
-3. Document root van het subdomein op `.../public_html/public` zetten (DirectAdmin).
+3. Document root: DirectAdmin laat die hier **niet** verzetten (geen Custom HTTPD Configurations op gebruikersniveau, en Subdomain Management heeft geen veld ervoor). Daarom staat de docroot op `public_html` en vangt [app/.htaccess](app/.htaccess) dat op: het blokkeert alles buiten `public/` en stuurt de rest naar `public/index.php`. Dat bestand gaat mee met de sync, dus er is geen handwerk. Kan je later tóch de docroot verzetten, verwijder het dan — Laravel's eigen `public/.htaccess` neemt over.
 4. Snapshot voor de reset: lokaal `bash app/cutover.sh` draaien en `app/cutover.sql.gz` uploaden naar `storage/app/private/cutover.sql.gz`. Die map staat in de exclude-lijst van de sync, dus een deploy raakt hem niet.
 
 ### 4. Eerste deploy
@@ -135,7 +135,7 @@ waarheid en is een reset dataverlies. Doe dan alle drie:
 ## Handmatig een taak draaien
 
 ```bash
-URL=https://intraclub.bclandegem.be TOKEN=<het token> \
+URL=https://intra.bclandegem.be TOKEN=<het token> \
   bash .github/scripts/deploy-task.sh migrate     # of optimize / clear / reset
 ```
 
