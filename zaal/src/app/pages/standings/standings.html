@@ -36,7 +36,7 @@
           <span class="meter" [style.width.%]="barWidth(entry)" aria-hidden="true"></span>
 
           <span class="plaats">{{ entry.rank }}</span>
-          <span class="speler">{{ entry.firstName }} {{ entry.name }}</span>
+          <span class="speler">{{ entry.full_name }}</span>
 
           <span class="verschil">
             @if (entry.difference > 0) {

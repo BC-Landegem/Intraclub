@@ -7,15 +7,24 @@ use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
 /**
- * Speler in lijstvorm.
+ * Speler met zijn tellers voor één seizoen, en op vraag zijn wedstrijden en
+ * rankingverloop.
  *
- * Geboortedatum blijft er bewust af: de site heeft alleen `is_veteran` nodig en
- * dat is de afgeleide die niemands verjaardag publiceert.
+ * De sub-resources bestaan ook los (/players/{player}/games en
+ * /players/{player}/ranking-history). `?include=` bestaat omdat de
+ * spelerspagina alle drie tegelijk nodig heeft en dat geen drie requests hoeft
+ * te zijn.
  *
  * @mixin Player
  */
-class PlayerResource extends JsonResource
+class PlayerDetailResource extends JsonResource
 {
+    /** @param array<string, mixed> $extra */
+    public function __construct(Player $player, private readonly array $statistics, private readonly array $extra = [])
+    {
+        parent::__construct($player);
+    }
+
     /** @return array<string, mixed> */
     public function toArray(Request $request): array
     {
@@ -31,6 +40,7 @@ class PlayerResource extends JsonResource
             'is_recreant' => $this->is_recreant,
             'is_member' => (bool) $this->is_member,
             'bonus_points' => $this->bonus_points,
-        ];
+            'statistics' => $this->statistics,
+        ] + $this->extra;
     }
 }

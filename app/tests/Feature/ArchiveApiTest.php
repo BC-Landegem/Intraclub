@@ -7,9 +7,11 @@ use Illuminate\Support\Facades\DB;
 use Tests\TestCase;
 
 /**
- * Contract van de archief-endpoints. Deze staan los van de bestaande publieke API:
- * het oude format kende vaste teams en soms maar twee sets, dus een gearchiveerde
- * wedstrijd ziet er anders uit dan een huidige.
+ * Contract van de archief-endpoints. Deze staan los van de publieke API van het
+ * huidige format: het oude format kende vaste teams en soms maar twee sets, dus
+ * een gearchiveerde wedstrijd ziet er anders uit dan een huidige.
+ *
+ * De conventies zijn wel dezelfde: snake_case, `data` en `meta`.
  */
 class ArchiveApiTest extends TestCase
 {
@@ -24,77 +26,84 @@ class ArchiveApiTest extends TestCase
 
     public function test_het_geeft_de_seizoenen_met_hun_omvang(): void
     {
-        $response = $this->getJson('/api/archive/seasons');
-
-        $response->assertOk()->assertJson([
-            ['name' => '2013 - 2014', 'source' => 'intra', 'rounds' => 1, 'players' => 2],
-        ]);
+        $this->getJson('/api/archive/seasons')
+            ->assertOk()
+            ->assertJsonPath('data.0.name', '2013 - 2014')
+            ->assertJsonPath('data.0.source', 'intra')
+            ->assertJsonPath('data.0.rounds_count', 1)
+            ->assertJsonPath('data.0.players_count', 2);
     }
 
     public function test_de_eindstand_staat_op_gemiddelde_gesorteerd(): void
     {
-        $response = $this->getJson('/api/archive/seasons/1/standings');
-
-        $response->assertOk()
-            ->assertJsonPath('afterRound.number', 1)
-            ->assertJsonPath('standings.0.name', 'Bollaert')
-            ->assertJsonPath('standings.0.average', 19.5)
-            ->assertJsonPath('standings.1.name', 'Janssens')
-            ->assertJsonPath('standings.1.average', 17.25);
+        $this->getJson('/api/archive/seasons/1/standings')
+            ->assertOk()
+            ->assertJsonPath('meta.season.name', '2013 - 2014')
+            ->assertJsonPath('meta.after_round.number', 1)
+            ->assertJsonPath('data.0.last_name', 'Bollaert')
+            ->assertJsonPath('data.0.full_name', 'Jan Bollaert')
+            ->assertJsonPath('data.0.average', 19.5)
+            ->assertJsonPath('data.0.games.won', 1)
+            ->assertJsonPath('data.1.last_name', 'Janssens')
+            ->assertJsonPath('data.1.average', 17.25);
     }
 
     public function test_de_eindstand_verwijst_naar_het_huidige_lid(): void
     {
-        $response = $this->getJson('/api/archive/seasons/1/standings');
-
-        $response->assertOk()
-            ->assertJsonPath('standings.0.currentPlayerId', 7)
+        $this->getJson('/api/archive/seasons/1/standings')
+            ->assertOk()
+            ->assertJsonPath('data.0.player_id', 7)
             // Wie gestopt is heeft geen huidige spelersfiche meer.
-            ->assertJsonPath('standings.1.currentPlayerId', null);
+            ->assertJsonPath('data.1.player_id', null);
     }
 
     public function test_een_wedstrijd_toont_beide_teams_en_enkel_de_gespeelde_sets(): void
     {
-        $response = $this->getJson('/api/archive/rounds/1');
-
-        $response->assertOk()
-            ->assertJsonPath('round.seasonName', '2013 - 2014')
-            ->assertJsonCount(1, 'games')
-            ->assertJsonCount(2, 'games.0.team1')
-            ->assertJsonPath('games.0.team1.0.name', 'Bollaert')
+        $this->getJson('/api/archive/rounds/1')
+            ->assertOk()
+            ->assertJsonPath('data.season_name', '2013 - 2014')
+            ->assertJsonCount(1, 'data.games')
+            ->assertJsonCount(2, 'data.games.0.team1')
+            ->assertJsonPath('data.games.0.team1.0.last_name', 'Bollaert')
             // De derde set werd niet gespeeld en hoort er dus niet bij te staan.
-            ->assertJsonCount(2, 'games.0.sets')
-            ->assertJsonPath('games.0.setsWon', ['team1' => 2, 'team2' => 0]);
+            ->assertJsonCount(2, 'data.games.0.sets')
+            ->assertJsonPath('data.games.0.sets_won', ['team1' => 2, 'team2' => 0]);
     }
 
     public function test_spelers_zijn_op_huidig_lid_te_filteren(): void
     {
-        $this->getJson('/api/archive/players?playerId=7')
+        $this->getJson('/api/archive/players?player_id=7')
             ->assertOk()
-            ->assertJsonCount(1)
-            ->assertJsonPath('0.name', 'Bollaert');
+            ->assertJsonCount(1, 'data')
+            ->assertJsonPath('data.0.last_name', 'Bollaert');
 
-        $this->getJson('/api/archive/players?playerId=999')
+        $this->getJson('/api/archive/players?player_id=999')
             ->assertOk()
-            ->assertJsonCount(0);
+            ->assertJsonCount(0, 'data');
     }
 
     public function test_een_speler_toont_zijn_seizoenen_en_klassementsverloop(): void
     {
-        $response = $this->getJson('/api/archive/players/1');
-
-        $response->assertOk()
-            ->assertJsonPath('player.playerId', 7)
-            ->assertJsonCount(1, 'seasons')
-            ->assertJsonPath('seasons.0.seasonName', '2013 - 2014')
-            ->assertJsonCount(1, 'rankingHistory')
-            ->assertJsonPath('rankingHistory.0.average', 19.5)
-            // Wedstrijden zijn er enkel op aanvraag: de lijst kan lang zijn.
-            ->assertJsonCount(0, 'matches');
-
-        $this->getJson('/api/archive/players/1?withMatches=1')
+        $this->getJson('/api/archive/players/1')
             ->assertOk()
-            ->assertJsonCount(1, 'matches');
+            ->assertJsonPath('data.player_id', 7)
+            ->assertJsonCount(1, 'data.seasons')
+            ->assertJsonPath('data.seasons.0.season_name', '2013 - 2014')
+            ->assertJsonPath('data.seasons.0.games.won', 1)
+            ->assertJsonCount(1, 'data.ranking_history')
+            ->assertJsonPath('data.ranking_history.0.average', 19.5)
+            ->assertJsonPath('data.ranking_history.0.date', '2013-10-02')
+            // Wedstrijden staan er enkel op aanvraag: de lijst kan lang zijn.
+            ->assertJsonMissingPath('data.games');
+
+        $this->getJson('/api/archive/players/1?include=games')
+            ->assertOk()
+            ->assertJsonCount(1, 'data.games');
+    }
+
+    public function test_een_onbekende_include_geeft_422(): void
+    {
+        $this->getJson('/api/archive/players/1?include=onzin')->assertStatus(422);
     }
 
     private function seedArchief(): void

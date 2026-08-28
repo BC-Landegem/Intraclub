@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Enums\Gender;
 use App\Models\Player;
 use App\Models\Round;
 use App\Models\Season;
@@ -32,8 +33,8 @@ class RankingService
     ];
 
     /**
-     * @param list<string> $categories
-     * @return array{seasonId: int|null, categories: array<string, list<array{id: int, firstName: string, name: string, average: float, rank: int, difference: int}>>}
+     * @param  list<string>  $categories
+     * @return array{season: Season|null, round: Round|null, categories: array<string, list<array<string, mixed>>>}
      */
     public function get(
         ?int $seasonId = null,
@@ -43,7 +44,7 @@ class RankingService
     ): array {
         $season = $seasonId ? Season::find($seasonId) : Season::current();
         if ($season === null) {
-            return ['seasonId' => null, 'categories' => array_fill_keys($categories, [])];
+            return ['season' => null, 'round' => null, 'categories' => array_fill_keys($categories, [])];
         }
 
         $round = $roundId
@@ -67,7 +68,7 @@ class RankingService
             $result[$category] = $this->buildCategory($ranking, $previousRanking, $category, $limit);
         }
 
-        return ['seasonId' => $season->id, 'categories' => $result];
+        return ['season' => $season, 'round' => $round, 'categories' => $result];
     }
 
     /**
@@ -107,9 +108,9 @@ class RankingService
     }
 
     /**
-     * @param Collection<int, array{player: Player, average: float}> $ranking
-     * @param Collection<int, array{player: Player, average: float}> $previousRanking
-     * @return list<array{id: int, firstName: string, name: string, average: float, rank: int, difference: int}>
+     * @param  Collection<int, array{player: Player, average: float}>  $ranking
+     * @param  Collection<int, array{player: Player, average: float}>  $previousRanking
+     * @return list<array<string, mixed>>
      */
     private function buildCategory(Collection $ranking, Collection $previousRanking, string $category, ?int $limit): array
     {
@@ -135,8 +136,9 @@ class RankingService
 
                 return [
                     'id' => $entry['player']->id,
-                    'firstName' => $entry['player']->first_name,
-                    'name' => $entry['player']->last_name,
+                    'first_name' => $entry['player']->first_name,
+                    'last_name' => $entry['player']->last_name,
+                    'full_name' => $entry['player']->full_name,
                     'average' => round($entry['average'], 2),
                     'rank' => $rank,
                     'difference' => $difference,
@@ -149,7 +151,7 @@ class RankingService
     {
         return match ($category) {
             self::CATEGORY_GENERAL => fn (Player $player): bool => true,
-            self::CATEGORY_WOMEN => fn (Player $player): bool => $player->gender === \App\Enums\Gender::Female,
+            self::CATEGORY_WOMEN => fn (Player $player): bool => $player->gender === Gender::Female,
             self::CATEGORY_VETERANS => fn (Player $player): bool => $player->is_veteran,
             self::CATEGORY_RECREANTS => fn (Player $player): bool => $player->is_recreant,
         };

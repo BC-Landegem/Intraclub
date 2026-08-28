@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Api\Archive;
 
+use App\Http\Controllers\Api\Concerns\ParsesIncludes;
 use App\Http\Controllers\Controller;
 use App\Http\Resources\Archive\ArchiveGameResource;
 use App\Http\Resources\Archive\ArchivePlayerResource;
@@ -10,20 +11,26 @@ use App\Models\Archive\ArchivePlayer;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
+use Illuminate\Support\Carbon;
 
 /**
  * Spelers uit de oude jaargangen, met hun geschiedenis per seizoen.
  */
 class ArchivePlayerController extends Controller
 {
+    use ParsesIncludes;
+
+    /** Zelfde include-mechaniek als de publieke spelersroute. */
+    private const INCLUDES = ['games'];
+
     /**
-     * Filter met `?playerId=` om te vinden wat het archief weet over iemand die
+     * Filter met `?player_id=` om te vinden wat het archief weet over iemand die
      * vandaag nog lid is — de sleutel om beide geschiedenissen aan elkaar te hangen.
      */
     public function index(Request $request): AnonymousResourceCollection
     {
         $spelers = ArchivePlayer::query()
-            ->when($request->integer('playerId'), fn ($query, int $id) => $query->where('player_id', $id))
+            ->when($request->integer('player_id'), fn ($query, int $id) => $query->where('player_id', $id))
             ->orderBy('first_name')
             ->orderBy('last_name')
             ->get();
@@ -38,25 +45,24 @@ class ArchivePlayerController extends Controller
             ->sortBy(fn ($stat): string => $stat->season->name)
             ->values();
 
-        return [
-            'player' => (new ArchivePlayerResource($player))->resolve($request),
+        $data = (new ArchivePlayerResource($player))->resolve($request) + [
             'seasons' => $seizoenen->map(fn ($stat): array => [
-                'seasonId' => $stat->archive_season_id,
-                'seasonName' => $stat->season->name,
-                'basePoints' => $stat->base_points === null ? null : (float) $stat->base_points,
-                'setsPlayed' => $stat->sets_played,
-                'setsWon' => $stat->sets_won,
-                'pointsPlayed' => $stat->points_played,
-                'pointsWon' => $stat->points_won,
-                'gamesPlayed' => $stat->games_played,
-                'gamesWon' => $stat->games_won,
-                'roundsPresent' => $stat->rounds_present,
+                'season_id' => (int) $stat->archive_season_id,
+                'season_name' => $stat->season->name,
+                'base_points' => $stat->base_points === null ? null : (float) $stat->base_points,
+                'sets' => ['won' => (int) $stat->sets_won, 'total' => (int) $stat->sets_played],
+                'points' => ['won' => (int) $stat->points_won, 'total' => (int) $stat->points_played],
+                'games' => ['won' => (int) $stat->games_won, 'total' => (int) $stat->games_played],
+                'rounds' => ['present' => (int) $stat->rounds_present],
             ])->all(),
-            'rankingHistory' => $this->rankingHistory($player),
-            'matches' => $request->boolean('withMatches')
-                ? ArchiveGameResource::collection($this->games($player))->resolve($request)
-                : [],
+            'ranking_history' => $this->rankingHistory($player),
         ];
+
+        if (in_array('games', $this->includes($request, self::INCLUDES), true)) {
+            $data['games'] = ArchiveGameResource::collection($this->games($player))->resolve($request);
+        }
+
+        return ['data' => $data];
     }
 
     /**
@@ -78,10 +84,10 @@ class ArchivePlayerController extends Controller
                 'archive_player_round_statistics.average',
             ])
             ->map(fn ($rij): array => [
-                'roundId' => $rij->round_id,
-                'seasonId' => $rij->season_id,
-                'number' => $rij->number,
-                'date' => $rij->date,
+                'round_id' => (int) $rij->round_id,
+                'season_id' => (int) $rij->season_id,
+                'number' => (int) $rij->number,
+                'date' => Carbon::parse($rij->date)->format('Y-m-d'),
                 'average' => (float) $rij->average,
             ])
             ->all();

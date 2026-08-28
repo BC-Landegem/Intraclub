@@ -26,8 +26,9 @@ class ArchiveRoundController extends Controller
         return [
             // resolve() en niet toArray(): dat laatste laat voorwaardelijke velden
             // (whenCounted, whenLoaded) als lege waarden in de response staan.
-            'round' => (new ArchiveRoundResource($round))->resolve($request),
-            'games' => ArchiveGameResource::collection($games)->resolve($request),
+            'data' => (new ArchiveRoundResource($round))->resolve($request) + [
+                'games' => ArchiveGameResource::collection($games)->resolve($request),
+            ],
         ];
     }
 }

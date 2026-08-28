@@ -53,7 +53,58 @@ class SeasonCalculator
             foreach ($playerStatistics as $playerStatistic) {
                 $this->calculatePlayer($rounds, $playerStatistic, $averageLosersPerRound, $lastRoundPosition, $drawnOut);
             }
+
+            $this->writeRanks($rounds, $playerStatistics->pluck('player_id')->all());
         });
+    }
+
+    /**
+     * Bevriest per speeldag de plaats in het algemene klassement.
+     *
+     * Dit gebeurt na de spelerslus omdat een rank pas te bepalen is wanneer alle
+     * gemiddeldes van die speeldag geschreven zijn. Enkel de spelers die deze
+     * berekening meenam krijgen een rank; rijen van wie ondertussen geen lid meer
+     * is houden hun oude gemiddelde maar krijgen rank null, zodat een ex-lid geen
+     * plaats meer inneemt in de historiek van de anderen.
+     *
+     * @param  Collection<int, Round>  $rounds
+     * @param  list<int>  $playerIds
+     */
+    private function writeRanks(Collection $rounds, array $playerIds): void
+    {
+        if ($rounds->isEmpty() || $playerIds === []) {
+            return;
+        }
+
+        $roundIds = $rounds->pluck('id')->all();
+
+        DB::table('player_round_statistics')->whereIn('round_id', $roundIds)->update(['rank' => null]);
+
+        foreach ($roundIds as $roundId) {
+            $ids = DB::table('player_round_statistics')
+                ->where('round_id', $roundId)
+                ->whereIn('player_id', $playerIds)
+                ->whereNotNull('average')
+                ->orderByDesc('average')
+                ->pluck('id')
+                ->all();
+
+            if ($ids === []) {
+                continue;
+            }
+
+            // Eén query per speeldag. De id's komen uit de databank en worden hier
+            // hard naar int gecast, dus er valt niets in te smokkelen.
+            $cases = '';
+            foreach ($ids as $position => $id) {
+                $cases .= ' WHEN '.(int) $id.' THEN '.($position + 1);
+            }
+
+            DB::statement(
+                'UPDATE player_round_statistics SET `rank` = CASE id'.$cases.' END WHERE id IN ('
+                .implode(',', array_map('intval', $ids)).')'
+            );
+        }
     }
 
     /**
@@ -92,7 +143,7 @@ class SeasonCalculator
 
         DB::table('player_round_statistics')
             ->whereIn('round_id', $roundIds)
-            ->update(['average' => null]);
+            ->update(['average' => null, 'rank' => null]);
     }
 
     /**

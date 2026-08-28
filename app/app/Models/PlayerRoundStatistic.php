@@ -13,6 +13,7 @@ class PlayerRoundStatistic extends Model
         'is_present',
         'is_drawn_out',
         'average',
+        'rank',
     ];
 
     protected function casts(): array
@@ -20,6 +21,7 @@ class PlayerRoundStatistic extends Model
         return [
             'is_present' => 'boolean',
             'is_drawn_out' => 'boolean',
+            'rank' => 'integer',
         ];
     }
 

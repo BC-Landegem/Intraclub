@@ -63,14 +63,14 @@
 - Opmerking: relation managers zijn read-only op de "bekijken"-pagina van een speeldag (Filament-standaard); games bewerken gebeurt via "Bewerken".
 
 ### Fase 4 — Publieke API ✅ (afgerond 26-08)
-- [x] Alle legacy read-endpoints geport: `rankings` (+ `/general|women|veterans|recreants`, met `$top`), `rounds` (+ `latest`, `latestCalculated`, `{id}`, `{id}/matches`), `players` (+ `{id}` met seizoensinfo, wedstrijden en rankinggeschiedenis), `seasons`, `seasons/latest/statistics`
+- [x] Alle legacy read-endpoints geport: `rankings` (+ `/general|women|veterans|recreants`, met `$top`), `rounds` (+ `latest`, `latestCalculated`, `{id}`, `{id}/matches`), `players` (+ `{id}` met seizoensinfo, wedstrijden en rankinggeschiedenis), `seasons`, `seasons/latest/statistics` → **routetabel herzien in fase 8**
 - [x] **Contract geverifieerd tegen de live legacy-API** (https://www.bclandegem.be/intra-app/api/index.php/): response-voor-response identiek op alle endpoints. Vergelijkscript: zie git-historie van deze fase.
-- [x] `JsonResource::withoutWrapping()` — de site verwacht kale arrays, geen `data`-wrapper
-- [x] `gender` blijft `Man`/`Woman` in de API (intern een enum met `male`/`female`), want consumenten vergelijken er strikt op
+- [x] `JsonResource::withoutWrapping()` — de site verwacht kale arrays, geen `data`-wrapper → **teruggedraaid in fase 8**
+- [x] `gender` blijft `Man`/`Woman` in de API (intern een enum met `male`/`female`), want consumenten vergelijken er strikt op → **teruggedraaid in fase 8**
 - [x] CORS in `config/cors.php`, origins instelbaar via `CORS_ALLOWED_ORIGINS`; `supports_credentials` aan voor de zaal-app (Sanctum SPA-cookie)
 - [x] 10 contracttests in `tests/Feature/PublicApiTest.php`; volledige suite: 22 tests groen
 - **Legacy-bug gevonden:** `GET /rounds/{id}` gaf per wedstrijd de *speeldag*-id terug als `matches[].id` en `round: {id: 0, number: 0}` (de query selecteert `RND.id` en haalt `MT.id`/roundnummer niet op). Onze versie geeft de juiste waarden. De speeldagpagina gebruikt die velden niet, dus dit breekt niets.
-- **Joomla-pagina's worden apart beheerd** (ander project) — het omzetten naar de nieuwe base-URL gebeurt daar. Omdat het contract identiek is, volstaat het wijzigen van de basis-URL; verder is geen enkele aanpassing nodig.
+- **Joomla-pagina's worden apart beheerd** (ander project) — het omzetten naar de nieuwe base-URL gebeurt daar. Omdat het contract identiek is, volstaat het wijzigen van de basis-URL; verder is geen enkele aanpassing nodig. → **achterhaald na fase 8**: de Joomla-site wordt vervangen door de nieuwe Astro-site, en die vraagt wél aanpassingen. Zie fase 8 en `docs/website-migratie.md`.
 
 ### Fase 5 — Zaal-app in Angular ✅ (afgerond 26-08)
 - [x] Angular 22 in `/zaal` (standalone, signals, Signal Forms), build naar `app/public/zaal/` met `baseHref=/zaal/`; dev via `ng serve` met proxy naar `:8000`
@@ -179,12 +179,43 @@ De volledige sitedump bevat twee generaties van vóór het huidige systeem, die 
 - [x] Feature tests op een sqlite-miniatuur van het oude schema
 - [x] **Aanwezigheden en matchen worden uit de uitslagen berekend**, niet overgenomen. Geen van beide oude systemen hield ze betrouwbaar bij: `intra_*` begon er pas in 2019-2020 mee (daarvóór stond overal nul) en `comp_*` telde "gewonnen spelletjes", wat niet met gewonnen matchen overeenkomt. De berekening reproduceert de bewaarde intra-cijfers exact waar die bestaan — het importcommando controleert dat bij elke run en rapporteert elke afwijking. Zo geldt één definitie over alle veertien seizoenen
 - [x] Filament: navigatiegroep **Archief** met Seizoenen (eindstand + speeldagen), Speeldagen (uitslagen met team1/team2 en de setstand) en Spelers (geschiedenis per seizoen, met link naar de huidige spelersfiche). Alles alleen-lezen; browser-getest op de echte data
-- [x] Publieke API onder `/api/archive`: `seasons`, `seasons/{id}/rounds`, `seasons/{id}/standings`, `rounds/{id}`, `players` (filterbaar met `?playerId=`) en `players/{id}` (`?withMatches=1` voor de wedstrijden). Aparte paden, zodat het geverifieerde contract van de bestaande endpoints ongemoeid blijft. 6 contracttests
+- [x] Publieke API onder `/api/archive`: `seasons`, `seasons/{id}/rounds`, `seasons/{id}/standings`, `rounds/{id}`, `players` (filterbaar met `?playerId=`) en `players/{id}` (`?withMatches=1` voor de wedstrijden). Aparte paden, zodat het geverifieerde contract van de bestaande endpoints ongemoeid blijft. 6 contracttests → **in fase 8 op snake_case gezet**: `?player_id=` en `?include=games`, en `data`/`meta` zoals de rest
 - [ ] Optioneel: 2010-2011 heeft wél uitslagen maar geen bewaarde eindstand. Uit de wedstrijden valt een gedeeltelijke stand af te leiden (sets, punten, matchen) — zonder klassementsgemiddelde, want dat vraagt de rekenlogica van toen
 - [x] **Verwijderde comp-spelers worden "Onbekende speler"** in plaats van overgeslagen. De uitslagen zijn wel degelijk gespeeld; alleen wie er speelde is niet meer te achterhalen. Elk onbekend bron-id krijgt een eigen archiefspeler (8 stuks) — niet één gedeelde, want twee wedstrijden hebben méér dan één onbekende en die zouden anders als dezelfde persoon in dezelfde match belanden. Levert 21 wedstrijden en 21 seizoensstatistieken extra op.
 - [x] **`php artisan intraclub:merge-duplicates`**: voegt dubbel aangemaakte spelers samen op basis van `player_dubbels` uit `player-map-overrides.php`. David Inghels (36 ← 132) en Lieselot Van Haute (72 ← 145) hebben nu 15 en 22 wedstrijden op één fiche in plaats van 12+3 en 21+1.
 - **Gevonden in de oude data** (het importcommando rapporteert ze bij elke run): 1 wedstrijd met setstand `-1`, 1 dubbel ingevoerde seizoensstatistiek (de oude tabel had geen unique key), en 22 comp-seizoensstatistieken zonder bijhorende uitslagen — `comp_historie` bewaarde daar een eindstand terwijl `comp_uitslagen` geen enkele wedstrijd van die speler in dat seizoen bevat. Die staan in de eindstand dus op nul speeldagen mét sets en punten; dat is een gat in de bron, niet in de import.
 - **Volgorde bij cutover:** `intraclub:import-legacy` truncate `players`, dus daarna altijd opnieuw `intraclub:import-archive` draaien.
+
+### Fase 8 — API-standaardisatie voor de nieuwe site ✅ (afgerond 28-08)
+
+De nieuwe Astro-site (`bc-landegem.github.io/Website`) hing nog aan de legacy Slim-API op `www.bclandegem.be/intra-app/api/index.php`. Fase 4 hield bewust het legacy-contract aan omdat de oude Joomla-pagina's eraan hingen; die gaan mee met de legacy-API. Nu de nieuwe site nog in ontwikkeling is, is dit het laatste goedkope moment om het contract recht te trekken.
+
+- [x] Conventies overal gelijk: veldnamen in `snake_case`, booleans als échte booleans, collecties in `data` met `meta` voor seizoen en speeldag, filters als queryparameters. `JsonResource::withoutWrapping()` is weg.
+- [x] `?season=` slikt een id of `current`; weglaten = het lopende seizoen (`ResolvesSeason`). Een onbekend seizoen geeft 404 in plaats van stil op het huidige terug te vallen — anders lijkt een typefout in een build-script gewoon te werken.
+- [x] Routes weg: `/rounds/latest`, `/rounds/latestCalculated`, `/seasons/latest/statistics` en `?$top=`. In de plaats: `meta.round` op `/rankings` (de speeldag waarop de stand geldt, null bij seizoensstart), `/rounds?calculated=1`, `/seasons/{id|current}/statistics`, `?limit=`.
+- [x] `/rounds/{round}/matches` → `/rounds/{round}/games`; het model heet `Game`.
+- [x] `GameResource`: de rotatie staat server-side. Per set `home`/`away` met `player_ids`, `score` en `bonus`, plus `is_played` en `winner`. De frontend leidde set 1 = 1+2 vs 3+4 enz. zelf af — domeinlogica die op één plek hoort. `player_ids` verwijst naar `players` in dezelfde payload in plaats van vier spelerobjecten zes keer te herhalen.
+- [x] `RoundResource`: `games_count`, `players_present`, `players_drawn_out`. De site rekende "aanwezigen" uit als `games * 4`, wat fout is zodra er iemand uitgeloot is.
+- [x] `RoundDetailResource`: `availabilityData` → `attendances`, mét de spelersnaam erbij, zodat een aanwezigheidslijst geen tweede call naar `/players` vraagt.
+- [x] `gender` geeft de enum-waarde (`male`/`female`) in plaats van het legacy `Man`/`Woman`; `Gender::apiValue()` is verwijderd. De zaal-app gebruikte al `male`/`female`.
+- [x] `?include=games,ranking_history` op `/players/{player}`, met `/players/{player}/games` en `/players/{player}/ranking-history` ook als eigen sub-resource (`ParsesIncludes`). Een onbekende include geeft 422 met de toegelaten lijst erbij.
+- [x] `?members=0` op `/players` en `/seasons/{season}/statistics`. Nodig voor een pagina over een afgesloten seizoen: wie toen meedeed hoort in die eindstand, ook al is hij nu geen lid meer.
+- [x] Archief-API mee omgezet (`?playerId=` → `?player_id=`, `?withMatches=1` → `?include=games`, `data`/`meta` overal), want die gaat de historiek-pagina's voeden.
+- [x] `PublicCacheHeaders`: `Cache-Control: public, max-age=60` op de publieke GET's. De service worker van de site werkt network-first, dus dit vangt enkel herhaald opvragen binnen dezelfde minuut.
+- [x] `bc-landegem.github.io` bij de CORS-origins; mag eruit zodra de site op het eigen domein staat.
+- [x] Zaal-app: de tussenstand doet één call naar `/api/rankings` in plaats van twee. De `zaal/*`-payloads blijven bewust camelCase — interne vorm, één consument, moet woensdagavond werken, en levert de site niets op.
+- [x] 24 contracttests in `PublicApiTest`, 7 in `ArchiveApiTest`; volledige suite 103 tests groen.
+
+**Bevroren rank (`player_round_statistics.rank`).** De historische plaats werd bij elke opvraging opnieuw geteld uit de gemiddeldes, op twee plaatsen met verschillende filters: `RankingHistory` nam ook niet-leden mee, `RankingService` niet. Daarbovenop schoof ieders rank in álle voorbije speeldagen op zodra iemand de club verliet — "vijfde na speeldag 17" was geen vast cijfer. `SeasonCalculator::writeRanks()` bevriest nu de plaats op het moment van berekenen (één update per speeldag, want dit draait via `/api/deploy/migrate` op shared hosting); de migratie reconstrueert de bestaande speeldagen uit de opgeslagen gemiddeldes. Sindsdien zijn het twee scherp onderscheiden dingen: `/api/rankings` is de stand van vandaag en mag meebewegen met het ledenbestand, `rank` is wat het toen was.
+
+**Beslissingen over de site zelf** (die repo staat elders, `bc-landegem/Website`):
+- Huidig seizoen blijft **client-side** ophalen. Een hybride met build-time spelerspagina's vraagt een rebuild-trigger vanuit Laravel; dat is ducttape op een host zonder queue-worker, en de winst (mooiere URL's, SEO op spelerspagina's) weegt daar niet tegen op.
+- Het **archief is bevroren** en mag dus wél build-time: 16 seizoenen als platte HTML, nul fetches, en de enige "trigger" is een gewone `git push`.
+- Klassement en speeldagoverzicht blijven indexeerbaar; **spelerspagina's en speeldagdetail krijgen `noindex`** — wie de link heeft ziet ze, maar Google zet geen clublid met naam en aanwezigheidspercentage in de zoekresultaten.
+
+**Tweede ronde (nog te doen):** afgeleide statistiek — partner- en tegenstanderbalans, dagscores per speeldag, clubrecords over 17 seizoenen — plus de pagina's die daarop leunen (historiek, erelijst, records). Vraagt eerst definities: telt een duo dat één set samen speelde als "samen gespeeld"?
+
+`GameStatistics::averages` geeft de dagscore per speler per game, dus records als "hoogste dagscore" zijn berekenbaar zonder nieuwe kolom — maar wel met een pass over alle games, dus build-time voor het archief.
 
 ## Lokale dev-omgeving (opgezet 26-08-2026)
 

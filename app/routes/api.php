@@ -10,48 +10,66 @@ use App\Http\Controllers\Api\RoundController;
 use App\Http\Controllers\Api\SeasonController;
 use App\Http\Controllers\Api\ZaalController;
 use App\Http\Controllers\DeployController;
+use App\Http\Middleware\PublicCacheHeaders;
 use Illuminate\Support\Facades\Route;
 
 /*
  * Publieke, alleen-lezen API voor de clubwebsite. Schrijfacties gebeuren in het
- * beheerspaneel of (later) in de zaal-app achter authenticatie.
+ * beheerspaneel of in de zaal-app achter authenticatie.
+ *
+ * Conventies, overal hetzelfde:
+ *   - veldnamen in snake_case, booleans als echte booleans;
+ *   - collecties in `data`, met `meta` voor het seizoen en de speeldag waarop de
+ *     gegevens staan;
+ *   - filters als queryparameters, niet als aparte routes;
+ *   - `?season=` slikt een id of `current`; weglaten = het lopende seizoen;
+ *   - een onbekend seizoen, speeldag of speler geeft 404, geen stille terugval.
+ *
+ * Er is bewust geen /v1/-prefix: deze API heeft twee consumenten (de clubwebsite
+ * en de zaal-app) en die staan beide in eigen beheer. Een versie ernaast zetten
+ * kost meer dan hem samen met de consumenten aanpassen.
  */
+Route::middleware(PublicCacheHeaders::class)->group(function (): void {
+    // ?category= mag ook op /rankings; het pad is de kortere vorm daarvan.
+    Route::get('rankings', [RankingController::class, 'index']);
+    Route::get('rankings/{category}', [RankingController::class, 'category']);
 
-Route::get('rankings', [RankingController::class, 'index']);
-Route::get('rankings/{category}', [RankingController::class, 'category']);
+    Route::get('rounds', [RoundController::class, 'index']);
+    Route::get('rounds/{round}', [RoundController::class, 'show']);
+    Route::get('rounds/{round}/games', [RoundController::class, 'games']);
 
-Route::get('rounds', [RoundController::class, 'index']);
-Route::get('rounds/latest', [RoundController::class, 'latest']);
-Route::get('rounds/latestCalculated', [RoundController::class, 'latestCalculated']);
-Route::get('rounds/{round}', [RoundController::class, 'show']);
-Route::get('rounds/{round}/matches', [RoundController::class, 'games']);
+    Route::get('players', [PlayerController::class, 'index']);
+    Route::get('players/{player}', [PlayerController::class, 'show']);
+    Route::get('players/{player}/games', [PlayerController::class, 'games']);
+    Route::get('players/{player}/ranking-history', [PlayerController::class, 'rankingHistory']);
 
-Route::get('players', [PlayerController::class, 'index']);
-Route::get('players/{player}', [PlayerController::class, 'show']);
+    Route::get('seasons', [SeasonController::class, 'index']);
+    Route::get('seasons/{season}/statistics', [SeasonController::class, 'statistics']);
 
-Route::get('seasons', [SeasonController::class, 'index']);
-Route::get('seasons/latest/statistics', [SeasonController::class, 'statistics']);
-Route::get('seasons/{season}/statistics', [SeasonController::class, 'statistics']);
+    /*
+     * Archief van de jaargangen vóór het huidige systeem (2009-2023). Aparte paden
+     * omdat het oude format met vaste teams in best-of-3 speelde: een wedstrijd
+     * heeft hier `team1`/`team2` in plaats van duo's die per set wisselen, en soms
+     * maar twee sets.
+     */
+    Route::prefix('archive')->group(function (): void {
+        Route::get('seasons', [ArchiveSeasonController::class, 'index']);
+        Route::get('seasons/{season}/rounds', [ArchiveSeasonController::class, 'rounds']);
+        Route::get('seasons/{season}/standings', [ArchiveSeasonController::class, 'standings']);
 
-/*
- * Archief van de jaargangen vóór het huidige systeem (2009-2023). Aparte paden, zodat
- * het contract van de bestaande endpoints ongemoeid blijft. Let op: het oude format
- * speelde met vaste teams in best-of-3, dus een wedstrijd heeft hier `team1`/`team2`
- * en soms maar twee sets.
- */
-Route::prefix('archive')->group(function (): void {
-    Route::get('seasons', [ArchiveSeasonController::class, 'index']);
-    Route::get('seasons/{season}/rounds', [ArchiveSeasonController::class, 'rounds']);
-    Route::get('seasons/{season}/standings', [ArchiveSeasonController::class, 'standings']);
+        Route::get('rounds/{round}', [ArchiveRoundController::class, 'show']);
 
-    Route::get('rounds/{round}', [ArchiveRoundController::class, 'show']);
-
-    Route::get('players', [ArchivePlayerController::class, 'index']);
-    Route::get('players/{player}', [ArchivePlayerController::class, 'show']);
+        Route::get('players', [ArchivePlayerController::class, 'index']);
+        Route::get('players/{player}', [ArchivePlayerController::class, 'show']);
+    });
 });
 
 /*
  * Zaal-app: alles achter authenticatie (sessiecookie, zelfde origin).
+ *
+ * Deze payloads staan bewust nog in camelCase. Het is een interne vorm met één
+ * consument, hij moet op een speeldagavond werken, en hij levert de site niets
+ * op. Omzetten kan later, samen met de Angular-app.
  */
 Route::middleware('web')->group(function (): void {
     Route::post('login', [AuthController::class, 'login']);

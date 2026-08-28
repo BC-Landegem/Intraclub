@@ -20,10 +20,10 @@ class ArchiveRoundResource extends JsonResource
             'id' => $this->id,
             'number' => $this->number,
             'date' => $this->date->format('Y-m-d'),
-            'averageAbsent' => $this->average_absent,
-            'seasonId' => $this->archive_season_id,
-            'seasonName' => $this->whenLoaded('season', fn (): string => $this->season->name),
-            'games' => $this->whenCounted('games'),
+            'average_absent' => $this->average_absent,
+            'season_id' => $this->archive_season_id,
+            'season_name' => $this->whenLoaded('season', fn (): string => $this->season->name),
+            'games_count' => $this->whenCounted('games'),
         ];
     }
 }

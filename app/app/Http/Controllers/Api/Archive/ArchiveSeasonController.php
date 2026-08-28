@@ -27,12 +27,12 @@ class ArchiveSeasonController extends Controller
     {
         return ArchiveRoundResource::collection(
             $season->rounds()->withCount('games')->orderBy('date')->get()
-        );
+        )->additional(['meta' => ['season' => ['id' => $season->id, 'name' => $season->name]]]);
     }
 
     /**
-     * De eindstand van het seizoen. Voor 2010-2011 is die leeg: dat seizoen werd
-     * destijds nooit gearchiveerd, enkel de uitslagen bleven bewaard.
+     * De eindstand van het seizoen. Voor 2010-2011 is `data` leeg: dat seizoen
+     * werd destijds nooit gearchiveerd, enkel de uitslagen bleven bewaard.
      *
      * @return array<string, mixed>
      */
@@ -41,28 +41,42 @@ class ArchiveSeasonController extends Controller
         $laatsteSpeeldag = $this->standings->laatsteSpeeldag($season);
 
         return [
-            'season' => new ArchiveSeasonResource($season),
-            'afterRound' => $laatsteSpeeldag === null ? null : [
-                'id' => $laatsteSpeeldag->id,
-                'number' => $laatsteSpeeldag->number,
-                'date' => $laatsteSpeeldag->date->format('Y-m-d'),
-            ],
-            'standings' => $this->standings->forSeason($season)->map(fn (object $rij): array => [
-                'playerId' => $rij->archive_player_id,
-                'currentPlayerId' => $rij->player_id,
-                'firstName' => $rij->first_name,
-                'name' => $rij->last_name,
+            'data' => $this->standings->forSeason($season)->map(fn (object $rij): array => [
+                'archive_player_id' => (int) $rij->archive_player_id,
+                'player_id' => $rij->player_id === null ? null : (int) $rij->player_id,
+                'first_name' => $rij->first_name,
+                'last_name' => $rij->last_name,
+                'full_name' => trim("{$rij->first_name} {$rij->last_name}"),
                 'ranking' => $rij->ranking,
-                'average' => $rij->average === null ? null : (float) $rij->average,
-                'basePoints' => $rij->base_points === null ? null : (float) $rij->base_points,
-                'setsPlayed' => $rij->sets_played,
-                'setsWon' => $rij->sets_won,
-                'pointsPlayed' => $rij->points_played,
-                'pointsWon' => $rij->points_won,
-                'gamesPlayed' => $rij->games_played,
-                'gamesWon' => $rij->games_won,
-                'roundsPresent' => $rij->rounds_present,
-            ])->all(),
+                // Op twee cijfers zoals elk ander gemiddelde in deze API. De
+                // sortering gebeurt in SQL op de ruwe waarde, dus dit raakt enkel
+                // wat er getoond wordt.
+                'average' => $rij->average === null ? null : round((float) $rij->average, 2),
+                'base_points' => $rij->base_points === null ? null : (float) $rij->base_points,
+                'sets' => [
+                    'won' => (int) $rij->sets_won,
+                    'total' => (int) $rij->sets_played,
+                ],
+                'points' => [
+                    'won' => (int) $rij->points_won,
+                    'total' => (int) $rij->points_played,
+                ],
+                'games' => [
+                    'won' => (int) $rij->games_won,
+                    'total' => (int) $rij->games_played,
+                ],
+                'rounds' => [
+                    'present' => (int) $rij->rounds_present,
+                ],
+            ])->values()->all(),
+            'meta' => [
+                'season' => ['id' => $season->id, 'name' => $season->name, 'source' => $season->source],
+                'after_round' => $laatsteSpeeldag === null ? null : [
+                    'id' => $laatsteSpeeldag->id,
+                    'number' => $laatsteSpeeldag->number,
+                    'date' => $laatsteSpeeldag->date->format('Y-m-d'),
+                ],
+            ],
         ];
     }
 }

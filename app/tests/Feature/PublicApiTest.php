@@ -12,8 +12,14 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
 /**
- * Legt het publieke API-contract vast: de clubwebsite consumeert deze vorm,
- * die identiek moet blijven aan de legacy-API.
+ * Legt het publieke API-contract vast: dit is de vorm die de clubwebsite
+ * consumeert.
+ *
+ * De conventies, en ze gelden overal:
+ *   - veldnamen in snake_case, booleans als echte booleans;
+ *   - collecties in `data`, met `meta` voor seizoen en speeldag;
+ *   - filters als queryparameters, niet als aparte routes;
+ *   - een onbekend seizoen, speeldag of include faalt, met een status die zegt wat.
  */
 class PublicApiTest extends TestCase
 {
@@ -52,6 +58,8 @@ class PublicApiTest extends TestCase
             ]);
         }
 
+        // Een volledige game laat de GameObserver het seizoen herberekenen, dus na
+        // deze regel is de speeldag berekend en staan de ranks in de databank.
         Game::create([
             'round_id' => $this->round->id,
             'player1_id' => $this->players[1]->id,
@@ -64,25 +72,50 @@ class PublicApiTest extends TestCase
         ]);
     }
 
-    public function test_klassement_bevat_de_vier_categorieen(): void
+    public function test_klassement_bevat_de_vier_categorieen_met_meta(): void
     {
         $this->getJson('/api/rankings')
             ->assertOk()
             ->assertJsonStructure([
-                'seasonId',
-                'general' => [['id', 'firstName', 'name', 'average', 'rank', 'difference']],
-                'women',
-                'veterans',
-                'recreants',
-            ]);
+                'data' => [
+                    'general' => [['id', 'first_name', 'last_name', 'full_name', 'average', 'rank', 'difference']],
+                    'women',
+                    'veterans',
+                    'recreants',
+                ],
+                'meta' => ['season' => ['id', 'name'], 'round' => ['id', 'number', 'date']],
+            ])
+            ->assertJsonPath('meta.season.name', '2026 - 2027')
+            // Dit verving /rounds/latestCalculated: de stand zegt zelf na welke
+            // speeldag ze geldt.
+            ->assertJsonPath('meta.round.id', $this->round->id)
+            ->assertJsonPath('meta.round.number', 1);
     }
 
-    public function test_klassementcategorie_kan_apart_opgevraagd_worden(): void
+    public function test_klassementcategorie_kan_via_pad_of_parameter(): void
     {
-        $response = $this->getJson('/api/rankings/women')->assertOk();
+        $viaPad = $this->getJson('/api/rankings/women')->assertOk();
 
-        $this->assertSame([$this->players[1]->id], array_column($response->json('women'), 'id'));
-        $this->assertNull($response->json('general'));
+        $this->assertSame([$this->players[1]->id], array_column($viaPad->json('data'), 'id'));
+        $this->assertSame('women', $viaPad->json('meta.category'));
+
+        $viaParameter = $this->getJson('/api/rankings?category=women')->assertOk();
+
+        $this->assertSame($viaPad->json('data'), $viaParameter->json('data'));
+    }
+
+    public function test_klassement_geeft_de_volledige_naam_mee(): void
+    {
+        $this->getJson('/api/rankings/general')
+            ->assertOk()
+            ->assertJsonPath('data.0.full_name', fn (string $naam): bool => str_ends_with($naam, ' Test'));
+    }
+
+    public function test_klassement_is_te_beperken_met_limit(): void
+    {
+        $this->getJson('/api/rankings/general?limit=2')
+            ->assertOk()
+            ->assertJsonCount(2, 'data');
     }
 
     public function test_onbekende_klassementcategorie_geeft_404(): void
@@ -90,74 +123,274 @@ class PublicApiTest extends TestCase
         $this->getJson('/api/rankings/onzin')->assertNotFound();
     }
 
-    public function test_speeldagen_zijn_een_kale_lijst_met_aantal_games(): void
+    public function test_onbekend_seizoen_geeft_404_en_niet_stil_het_huidige(): void
     {
+        $this->getJson('/api/rankings/general?season=999')->assertNotFound();
+        $this->getJson('/api/rounds?season=999')->assertNotFound();
+        $this->getJson('/api/seasons/999/statistics')->assertNotFound();
+    }
+
+    public function test_speeldagen_dragen_hun_eigen_tellingen(): void
+    {
+        PlayerRoundStatistic::where('round_id', $this->round->id)
+            ->where('player_id', $this->players[1]->id)
+            ->update(['is_present' => true]);
+
         $this->getJson('/api/rounds')
             ->assertOk()
-            ->assertJsonCount(1)
-            ->assertJsonPath('0.number', 1)
-            ->assertJsonPath('0.matches', 1)
-            ->assertJsonPath('0.date', '2026-09-01');
+            ->assertJsonCount(1, 'data')
+            ->assertJsonPath('data.0.number', 1)
+            ->assertJsonPath('data.0.date', '2026-09-01')
+            // Echte boolean, geen 1 of "1": de site vergeleek dit met een string.
+            ->assertJsonPath('data.0.is_calculated', true)
+            ->assertJsonPath('data.0.games_count', 1)
+            // De site rekende dit zelf uit als games * 4. Nu staat het hier.
+            ->assertJsonPath('data.0.players_present', 1)
+            ->assertJsonPath('data.0.players_drawn_out', 0)
+            ->assertJsonPath('meta.season.id', $this->season->id);
     }
 
-    public function test_speeldagdetail_bevat_wedstrijden_en_aanwezigheden(): void
+    public function test_speeldagen_zijn_op_berekend_te_filteren(): void
     {
-        $this->getJson("/api/rounds/{$this->round->id}")
+        $this->season->rounds()->create(['number' => 2, 'date' => '2026-09-15']);
+
+        $this->getJson('/api/rounds')->assertOk()->assertJsonCount(2, 'data');
+        $this->getJson('/api/rounds?calculated=1')->assertOk()->assertJsonCount(1, 'data');
+        $this->getJson('/api/rounds?calculated=0')
             ->assertOk()
-            ->assertJsonPath('matches.0.firstPlayer.firstName', 'Speler1')
-            ->assertJsonPath('matches.0.firstSet.home', 21)
-            ->assertJsonPath('matches.0.round.number', 1)
-            ->assertJsonStructure(['id', 'number', 'averageAbsent', 'date', 'matches', 'availabilityData']);
+            ->assertJsonCount(1, 'data')
+            ->assertJsonPath('data.0.number', 2);
     }
 
-    public function test_laatst_berekende_speeldag(): void
+    public function test_speeldagdetail_geeft_de_opstelling_per_set(): void
     {
-        $this->getJson('/api/rounds/latestCalculated')
-            ->assertOk()
-            ->assertJsonPath('id', $this->round->id)
-            ->assertJsonPath('calculated', 1);
+        $response = $this->getJson("/api/rounds/{$this->round->id}")->assertOk();
+
+        $spelers = array_column($response->json('data.games.0.players'), 'id');
+        $this->assertCount(4, $spelers);
+
+        // De rotatie staat in de API en niet meer in de frontend:
+        // set 1 = P1+P2 vs P3+P4, set 2 = P1+P3 vs P2+P4, set 3 = P1+P4 vs P2+P3.
+        $response
+            ->assertJsonPath('data.games.0.sets.0.home.player_ids', [$spelers[0], $spelers[1]])
+            ->assertJsonPath('data.games.0.sets.0.away.player_ids', [$spelers[2], $spelers[3]])
+            ->assertJsonPath('data.games.0.sets.1.home.player_ids', [$spelers[0], $spelers[2]])
+            ->assertJsonPath('data.games.0.sets.2.home.player_ids', [$spelers[0], $spelers[3]])
+            ->assertJsonPath('data.games.0.sets.0.home.score', 21)
+            ->assertJsonPath('data.games.0.sets.0.away.score', 15)
+            ->assertJsonPath('data.games.0.sets.0.is_played', true)
+            ->assertJsonPath('data.games.0.sets.0.winner', 'home')
+            ->assertJsonPath('data.games.0.is_complete', true)
+            ->assertJsonPath('data.games.0.round.number', 1);
     }
 
-    public function test_spelerslijst_gebruikt_de_legacy_geslachtswaarden(): void
+    public function test_een_ongespeelde_set_is_null_en_niet_nul(): void
+    {
+        $round = $this->season->rounds()->create(['number' => 2, 'date' => '2026-09-15']);
+        $game = Game::create([
+            'round_id' => $round->id,
+            'player1_id' => $this->players[1]->id,
+            'player2_id' => $this->players[2]->id,
+            'player3_id' => $this->players[3]->id,
+            'player4_id' => $this->players[4]->id,
+            'set1_home' => 21, 'set1_away' => 15,
+        ]);
+
+        $this->getJson("/api/rounds/{$round->id}")
+            ->assertOk()
+            ->assertJsonPath('data.games.0.sets.1.is_played', false)
+            ->assertJsonPath('data.games.0.sets.1.home.score', null)
+            ->assertJsonPath('data.games.0.sets.1.winner', null)
+            ->assertJsonPath('data.games.0.is_complete', false);
+
+        $this->assertSame($game->id, $this->getJson("/api/rounds/{$round->id}")->json('data.games.0.id'));
+    }
+
+    public function test_speeldagdetail_bevat_de_aanwezigheden_met_naam(): void
+    {
+        PlayerRoundStatistic::where('round_id', $this->round->id)
+            ->where('player_id', $this->players[2]->id)
+            ->update(['is_present' => true, 'is_drawn_out' => true]);
+
+        $response = $this->getJson("/api/rounds/{$this->round->id}")->assertOk();
+
+        // De site moest hiervoor eerst /players ophalen; nu staat de naam erbij.
+        $response->assertJsonStructure([
+            'data' => ['attendances' => [['player' => ['id', 'full_name'], 'is_present', 'is_drawn_out', 'average', 'rank']]],
+        ]);
+
+        $uitgeloot = collect($response->json('data.attendances'))->firstWhere('is_drawn_out', true);
+        $this->assertSame($this->players[2]->id, $uitgeloot['player']['id']);
+        $this->assertTrue($uitgeloot['is_present']);
+    }
+
+    public function test_wedstrijden_van_een_speeldag_zijn_apart_op_te_vragen(): void
+    {
+        $this->getJson("/api/rounds/{$this->round->id}/games")
+            ->assertOk()
+            ->assertJsonCount(1, 'data')
+            ->assertJsonPath('data.0.round.number', 1);
+    }
+
+    public function test_spelerslijst_gebruikt_de_enum_waarden(): void
     {
         $response = $this->getJson('/api/players')->assertOk();
 
-        $this->assertSame('Woman', $response->json('0.gender'));
-        $this->assertSame('Man', $response->json('1.gender'));
+        // Niet meer 'Woman'/'Man' uit de legacy-API: dit is de waarde die ook in
+        // de databank en in de zaal-app staat.
+        $this->assertSame('female', $response->json('data.0.gender'));
+        $this->assertSame('male', $response->json('data.1.gender'));
+
+        $response
+            ->assertJsonPath('data.1.is_veteran', true)
+            ->assertJsonPath('data.2.is_recreant', true)
+            ->assertJsonPath('data.0.plays_competition', true);
     }
 
-    public function test_spelerdetail_bevat_statistieken_en_rankinggeschiedenis(): void
+    public function test_spelerslijst_kan_ook_wie_gestopt_is_bevatten(): void
+    {
+        $this->players[4]->update(['is_member' => false]);
+
+        $this->getJson('/api/players')->assertOk()->assertJsonCount(3, 'data');
+        $this->getJson('/api/players?members=0')->assertOk()->assertJsonCount(4, 'data');
+    }
+
+    public function test_spelerdetail_geeft_enkel_de_tellers_zonder_include(): void
     {
         $this->getJson("/api/players/{$this->players[1]->id}")
             ->assertOk()
-            ->assertJsonPath('firstName', 'Speler1')
+            ->assertJsonPath('data.first_name', 'Speler1')
+            ->assertJsonPath('data.full_name', 'Speler1 Test')
             ->assertJsonStructure([
-                'id', 'firstName', 'name',
-                'statistics' => [
-                    'points' => ['won', 'lost', 'total'],
-                    'sets' => ['won', 'lost', 'total'],
-                    'matches' => ['total'],
-                    'rounds' => ['present'],
-                    'rankingHistory' => [['id', 'number', 'average', 'rank']],
+                'data' => [
+                    'id', 'first_name', 'last_name', 'full_name', 'gender', 'bonus_points',
+                    'statistics' => [
+                        'base_points',
+                        'points' => ['won', 'lost', 'total'],
+                        'sets' => ['won', 'lost', 'total'],
+                        'games' => ['total'],
+                        'rounds' => ['present'],
+                    ],
                 ],
-                'matches',
-            ]);
+                'meta' => ['season' => ['id', 'name']],
+            ])
+            ->assertJsonMissingPath('data.games')
+            ->assertJsonMissingPath('data.ranking_history');
     }
 
-    public function test_seizoensstatistieken_staan_op_aanwezigheid_gesorteerd(): void
+    public function test_spelerdetail_haalt_op_vraag_wedstrijden_en_verloop_mee(): void
+    {
+        $this->getJson("/api/players/{$this->players[1]->id}?include=games,ranking_history")
+            ->assertOk()
+            ->assertJsonCount(1, 'data.games')
+            ->assertJsonCount(1, 'data.ranking_history')
+            ->assertJsonStructure(['data' => ['ranking_history' => [['round_id', 'number', 'date', 'average', 'rank']]]]);
+    }
+
+    public function test_een_onbekende_include_geeft_422(): void
+    {
+        $this->getJson("/api/players/{$this->players[1]->id}?include=alles")->assertStatus(422);
+    }
+
+    public function test_wedstrijden_en_verloop_bestaan_ook_als_eigen_resource(): void
+    {
+        $this->getJson("/api/players/{$this->players[1]->id}/games")
+            ->assertOk()
+            ->assertJsonCount(1, 'data');
+
+        $this->getJson("/api/players/{$this->players[1]->id}/ranking-history")
+            ->assertOk()
+            ->assertJsonCount(1, 'data')
+            ->assertJsonPath('data.0.number', 1);
+    }
+
+    /**
+     * De rank in de historiek komt uit player_round_statistics.rank en moet
+     * dezelfde zijn als die in het klassement. Vroeger werd hij op twee plaatsen
+     * apart geteld, met verschillende filters.
+     */
+    public function test_de_rank_in_de_historiek_is_dezelfde_als_in_het_klassement(): void
+    {
+        $klassement = collect($this->getJson('/api/rankings/general')->json('data'));
+
+        foreach ($this->players as $player) {
+            $verwacht = $klassement->firstWhere('id', $player->id)['rank'];
+            $historiek = $this->getJson("/api/players/{$player->id}/ranking-history")->json('data');
+
+            $this->assertSame($verwacht, $historiek[0]['rank'], "rank van speler {$player->id}");
+        }
+    }
+
+    public function test_de_bevroren_rank_verschuift_niet_als_iemand_stopt(): void
+    {
+        $klassement = collect($this->getJson('/api/rankings/general')->json('data'));
+        $eerste = $klassement->first();
+        $laatste = $klassement->last();
+
+        $rankVoor = $this->getJson("/api/players/{$laatste['id']}/ranking-history")->json('data.0.rank');
+        $this->assertSame($klassement->count(), $rankVoor);
+
+        // De nummer één stopt. Het klassement van vandaag schuift op, de historiek
+        // van speeldag 1 blijft staan zoals ze toen was.
+        Player::findOrFail($eerste['id'])->update(['is_member' => false]);
+
+        $this->assertSame(
+            $rankVoor - 1,
+            collect($this->getJson('/api/rankings/general')->json('data'))->last()['rank'],
+        );
+        $this->assertSame(
+            $rankVoor,
+            $this->getJson("/api/players/{$laatste['id']}/ranking-history")->json('data.0.rank'),
+        );
+    }
+
+    public function test_seizoenen_zeggen_welk_het_lopende_is(): void
+    {
+        $this->getJson('/api/seasons')
+            ->assertOk()
+            ->assertJsonPath('data.0.name', '2026 - 2027')
+            ->assertJsonPath('data.0.rounds_count', 1)
+            ->assertJsonPath('meta.current_season_id', $this->season->id);
+    }
+
+    public function test_seizoensstatistieken_via_current_of_via_id(): void
     {
         PlayerRoundStatistic::where('player_id', $this->players[4]->id)->delete();
         PlayerSeasonStatistic::where('player_id', $this->players[1]->id)->update(['rounds_present' => 99]);
 
-        $response = $this->getJson('/api/seasons/latest/statistics')->assertOk();
+        $viaCurrent = $this->getJson('/api/seasons/current/statistics')->assertOk();
 
-        $this->assertSame($this->players[1]->id, $response->json('0.id'));
+        $this->assertSame($this->players[1]->id, $viaCurrent->json('data.0.player.id'));
+        $viaCurrent
+            ->assertJsonPath('meta.season.id', $this->season->id)
+            ->assertJsonStructure([
+                'data' => [['player' => ['id', 'full_name'], 'statistics' => ['sets' => ['won', 'lost', 'total']]]],
+            ]);
+
+        $this->assertSame(
+            $viaCurrent->json('data'),
+            $this->getJson("/api/seasons/{$this->season->id}/statistics")->json('data'),
+        );
     }
 
-    public function test_publieke_api_vereist_geen_login(): void
+    public function test_seizoensstatistieken_kunnen_ook_wie_gestopt_is_bevatten(): void
+    {
+        $this->players[4]->update(['is_member' => false]);
+
+        $this->getJson('/api/seasons/current/statistics')->assertOk()->assertJsonCount(3, 'data');
+        // Nodig voor een pagina over een afgesloten seizoen: wie toen meedeed hoort
+        // in die eindstand, ook al is hij nu geen lid meer.
+        $this->getJson('/api/seasons/current/statistics?members=0')->assertOk()->assertJsonCount(4, 'data');
+    }
+
+    public function test_publieke_api_vereist_geen_login_en_mag_een_minuut_gecachet_worden(): void
     {
         $this->assertGuest();
-        $this->getJson('/api/rankings')->assertOk();
+
+        $this->getJson('/api/rankings')
+            ->assertOk()
+            ->assertHeader('Cache-Control', 'max-age=60, public');
+
         $this->getJson('/api/players')->assertOk();
     }
 }

@@ -2,29 +2,36 @@ import { Component, computed, inject, signal } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { firstValueFrom } from 'rxjs';
 
+type Category = 'general' | 'women' | 'veterans' | 'recreants';
+
 interface RankingEntry {
   id: number;
-  firstName: string;
-  name: string;
+  first_name: string;
+  last_name: string;
+  full_name: string;
   average: number;
   rank: number;
   difference: number;
 }
 
-interface RankingResponse {
-  seasonId: number;
-  general: RankingEntry[];
-  women: RankingEntry[];
-  veterans: RankingEntry[];
-  recreants: RankingEntry[];
-}
-
-interface LatestRound {
+interface RankingRound {
+  id: number;
   number: number;
   date: string;
 }
 
-type Category = 'general' | 'women' | 'veterans' | 'recreants';
+/**
+ * Vorm van /api/rankings. `meta.round` is de speeldag waarop de stand staat, of
+ * null wanneer het seizoen nog geen berekende speeldag heeft — dan staat het
+ * klassement op de basispunten.
+ */
+interface RankingResponse {
+  data: Record<Category, RankingEntry[]>;
+  meta: {
+    season: { id: number; name: string } | null;
+    round: RankingRound | null;
+  };
+}
 
 /**
  * The current standings, for players who walk up to the tablet between matches.
@@ -54,9 +61,9 @@ export class Standings {
   protected readonly errorMessage = signal('');
 
   private readonly ranking = signal<RankingResponse | null>(null);
-  protected readonly latestRound = signal<LatestRound | null>(null);
+  protected readonly latestRound = computed(() => this.ranking()?.meta.round ?? null);
 
-  protected readonly entries = computed(() => this.ranking()?.[this.category()] ?? []);
+  protected readonly entries = computed(() => this.ranking()?.data[this.category()] ?? []);
 
   /** Lowest and highest average in this category, for scaling the bars. */
   protected readonly range = computed(() => {
@@ -73,7 +80,7 @@ export class Standings {
 
     return term === ''
       ? entries
-      : entries.filter((entry) => `${entry.firstName} ${entry.name}`.toLowerCase().includes(term));
+      : entries.filter((entry) => entry.full_name.toLowerCase().includes(term));
   });
 
   constructor() {
@@ -95,12 +102,10 @@ export class Standings {
   private async load(): Promise<void> {
     this.loading.set(true);
     try {
-      const [ranking, round] = await Promise.all([
-        firstValueFrom(this.http.get<RankingResponse>('/api/rankings')),
-        firstValueFrom(this.http.get<LatestRound | null>('/api/rounds/latestCalculated')),
-      ]);
-      this.ranking.set(ranking);
-      this.latestRound.set(round);
+      // Eén call in plaats van twee: /api/rankings geeft de vier categorieën én,
+      // in meta.round, na welke speeldag de stand geldt. Daarvoor was
+      // /api/rounds/latestCalculated nodig; die route bestaat niet meer.
+      this.ranking.set(await firstValueFrom(this.http.get<RankingResponse>('/api/rankings')));
     } catch {
       this.errorMessage.set('De tussenstand kon niet geladen worden.');
     } finally {
