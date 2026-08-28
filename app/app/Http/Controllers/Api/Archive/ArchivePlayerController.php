@@ -10,7 +10,6 @@ use App\Models\Archive\ArchiveGame;
 use App\Models\Archive\ArchivePlayer;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Http\Request;
-use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 use Illuminate\Support\Carbon;
 
 /**
@@ -20,33 +19,62 @@ class ArchivePlayerController extends Controller
 {
     use ParsesIncludes;
 
-    /** Zelfde include-mechaniek als de publieke spelersroute. */
-    private const INCLUDES = ['games'];
-
     /**
      * Filter met `?player_id=` om te vinden wat het archief weet over iemand die
      * vandaag nog lid is — de sleutel om beide geschiedenissen aan elkaar te hangen.
+     *
+     * `?include=seasons` geeft per speler dezelfde seizoensblokken als
+     * /archive/players/{id}. Een erelijst over veertien jaargangen heeft die van
+     * iedereen nodig: met de include is dat één call in plaats van tweehonderd.
+     *
+     * @return array<string, mixed>
      */
-    public function index(Request $request): AnonymousResourceCollection
+    public function index(Request $request): array
     {
+        $withSeasons = $this->wants($request, 'seasons');
+
         $spelers = ArchivePlayer::query()
             ->when($request->integer('player_id'), fn ($query, int $id) => $query->where('player_id', $id))
+            ->when($withSeasons, fn ($query) => $query->with('seasonStatistics.season'))
             ->orderBy('first_name')
             ->orderBy('last_name')
             ->get();
 
-        return ArchivePlayerResource::collection($spelers);
+        return [
+            'data' => $spelers->map(fn (ArchivePlayer $player): array => (new ArchivePlayerResource($player))->resolve($request)
+                + ($withSeasons ? ['seasons' => $this->seasons($player)] : []))->all(),
+        ];
     }
 
     /** @return array<string, mixed> */
     public function show(Request $request, ArchivePlayer $player): array
     {
-        $seizoenen = $player->seasonStatistics()->with('season')->get()
-            ->sortBy(fn ($stat): string => $stat->season->name)
-            ->values();
+        $player->load('seasonStatistics.season');
 
         $data = (new ArchivePlayerResource($player))->resolve($request) + [
-            'seasons' => $seizoenen->map(fn ($stat): array => [
+            'seasons' => $this->seasons($player),
+            'ranking_history' => $this->rankingHistory($player),
+        ];
+
+        if ($this->wants($request, 'games')) {
+            $data['games'] = ArchiveGameResource::collection($this->games($player))->resolve($request);
+        }
+
+        return ['data' => $data];
+    }
+
+    /**
+     * Wat een speler per gearchiveerd seizoen bijeenspeelde, op seizoensnaam
+     * gesorteerd. `seasonStatistics.season` moet ingeladen zijn.
+     *
+     * @return list<array<string, mixed>>
+     */
+    private function seasons(ArchivePlayer $player): array
+    {
+        return $player->seasonStatistics
+            ->sortBy(fn ($stat): string => $stat->season->name)
+            ->values()
+            ->map(fn ($stat): array => [
                 'season_id' => (int) $stat->archive_season_id,
                 'season_name' => $stat->season->name,
                 'base_points' => $stat->base_points === null ? null : (float) $stat->base_points,
@@ -54,15 +82,8 @@ class ArchivePlayerController extends Controller
                 'points' => ['won' => (int) $stat->points_won, 'total' => (int) $stat->points_played],
                 'games' => ['won' => (int) $stat->games_won, 'total' => (int) $stat->games_played],
                 'rounds' => ['present' => (int) $stat->rounds_present],
-            ])->all(),
-            'ranking_history' => $this->rankingHistory($player),
-        ];
-
-        if (in_array('games', $this->includes($request, self::INCLUDES), true)) {
-            $data['games'] = ArchiveGameResource::collection($this->games($player))->resolve($request);
-        }
-
-        return ['data' => $data];
+            ])
+            ->all();
     }
 
     /**

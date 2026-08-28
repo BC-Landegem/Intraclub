@@ -162,13 +162,17 @@ Vandaag toont de site alleen het lopende seizoen. In de databank zitten:
 Die data is bevroren, dus ze hoort **build-time** opgehaald te worden: `getStaticPaths()` over `/archive/seasons`, platte HTML, nul fetches in de browser, meteen indexeerbaar. De enige "rebuild-trigger" die je daarvoor nodig hebt is een `git push`.
 
 ```
-GET /archive/seasons                      → 14 seizoenen, met rounds_count en players_count
-GET /archive/seasons/{id}/standings       → eindstand, met badmintonranking en games.won
-GET /archive/seasons/{id}/rounds          → speeldagen
-GET /archive/rounds/{id}                  → uitslagen (team1/team2, best-of-3)
-GET /archive/players?player_id={huidig}   → wat het archief weet over een huidig lid
+GET /archive/seasons                        → 14 seizoenen, met rounds_count en players_count
+GET /archive/seasons/{id}/standings         → eindstand, met badmintonranking en games.won
+GET /archive/seasons/{id}/rounds            → speeldagen
+GET /archive/seasons/{id}/rounds?include=games  → speeldagen mét uitslagen, in één call
+GET /archive/rounds/{id}                    → uitslagen (team1/team2, best-of-3)
+GET /archive/players?player_id={huidig}     → wat het archief weet over een huidig lid
+GET /archive/players?include=seasons        → alle spelers mét hun seizoenen, in één call
 GET /archive/players/{id}?include=games
 ```
+
+De twee includes zijn er voor precies dit build-time-scenario: zonder `include=games` is een seizoen opbouwen een request per speeldag, en zonder `include=seasons` is een erelijst een request per speler. Zie ook §11.
 
 Twee dingen om te weten:
 
@@ -220,7 +224,29 @@ Drie velden die je op de pagina beter wél toont:
 
 Nodig voor de erelijst. Zonder deze parameter filtert een klassement op de huidige leden, ook dat van een afgesloten seizoen — en dan mist de eindstand van 2023-2024 er 36 van de 96.
 
-## 10. Checklist
+## 11. Includes op collecties
+
+`?include=` werkte eerst alleen op één resource. Op een collectie werd de parameter **stil genegeerd**: je kreeg de kale lijst terug en haalde de rest dan alsnog per speler op. Dat kostte een build-script 854 requests waar er 55 volstaan, zonder dat er iets waarschuwde.
+
+Twee dingen zijn daarom veranderd.
+
+**Drie includes op collecties.**
+
+```
+GET /rounds?season={id}&include=attendances     → aanwezigheden van élke speeldag
+GET /archive/seasons/{id}/rounds?include=games  → speeldagen mét uitslagen
+GET /archive/players?include=seasons            → spelers mét hun seizoenen
+```
+
+De vorm is per stuk identiek aan die van de losse resource: `attendances` is rij voor rij hetzelfde als op `/rounds/{id}` (met `is_present`, `is_drawn_out`, `day_score`, `average`, `rank`), `games` hetzelfde als op `/archive/rounds/{id}`, `seasons` hetzelfde als op `/archive/players/{id}`. Een contracttest vergelijkt de twee responses met elkaar, dus dat blijft zo.
+
+Aanwezigheid hoeft daarmee niet meer uit iemands wedstrijden afgeleid te worden: `is_present` staat er als echte boolean, ook voor wie afwezig of uitgeloot was.
+
+Alles wordt in één keer ingeladen, dus een seizoen van twintig speeldagen kost evenveel queries als één speeldag — ook dat staat in een test.
+
+**Een genegeerde include bestaat niet meer.** Elke publieke route zegt in `routes/api.php` welke includes ze kent; al de rest geeft **422** met de toegelaten lijst erbij, ook op een route die er geen enkele kent. Een typefout in een build-script faalt dus meteen, in plaats van stil de dubbele hoeveelheid requests te veroorzaken.
+
+## 12. Checklist
 
 - [ ] `PUBLIC_INTRA_API` in `.env` en in de build-omgeving van GitHub Actions
 - [ ] `intra.ts`: base-URL, `data`-wrapper, `full_name`, set-rotatiehelper weg
@@ -237,5 +263,6 @@ Nodig voor de erelijst. Zonder deze parameter filtert een klassement op de huidi
 - [ ] Speeldagpagina: `attendances` gebruiken, met `day_score` naast het gemiddelde
 - [ ] Spelerspagina: `day_score` in het klassementsverloop, en `/pairings` als tweede blok
 - [ ] Nieuwe pagina's: erelijst, historiek per seizoen (build-time), records
+- [ ] Build-scripts: `?include=` op de collecties gebruiken (§11) in plaats van een call per speler of per speeldag
 
 Die laatste verdient uitleg. De pagina bevat de 48 echte aanwezigen van 20 mei 2026 in een `<select>`, met een rekenmachine erbij — een build-time momentopname van één speeldag, geen live cijfers. Dat is een goede keuze: de prose eromheen ("48 spelers aanwezig") blijft kloppen omdat het voorbeeld niet beweegt. Maar het blijft ook op 20 mei 2026 staan tot iemand het aanpast. Twee opties: het voorbeeld bewust vastpinnen op één speeldag en dat in de tekst zeggen ("een voorbeeld van 20 mei 2026"), of de build altijd de laatst berekende speeldag nemen — `/rankings` geeft die in `meta.round`, en `/rounds/{id}` de bijhorende wedstrijden en aanwezigen. De tweede optie vraagt dat de tekst geen enkel concreet getal meer noemt buiten wat uit de data komt.

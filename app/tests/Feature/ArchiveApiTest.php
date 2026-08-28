@@ -101,9 +101,54 @@ class ArchiveApiTest extends TestCase
             ->assertJsonCount(1, 'data.games');
     }
 
+    public function test_de_speeldagen_van_een_seizoen_geven_op_vraag_hun_uitslagen(): void
+    {
+        $this->getJson('/api/archive/seasons/1/rounds')
+            ->assertOk()
+            ->assertJsonPath('meta.season.name', '2013 - 2014')
+            ->assertJsonPath('data.0.games_count', 1)
+            ->assertJsonMissingPath('data.0.games');
+
+        $lijst = $this->getJson('/api/archive/seasons/1/rounds?include=games')
+            ->assertOk()
+            ->assertJsonCount(1, 'data.0.games');
+
+        // Veertien bevroren seizoenen build-time ophalen hoort geen call per
+        // speeldag te zijn, en de wedstrijd moet er hetzelfde uitzien als op
+        // /archive/rounds/{id}.
+        $detail = $this->getJson('/api/archive/rounds/1')->assertOk();
+
+        $this->assertSame($detail->json('data.games'), $lijst->json('data.0.games'));
+    }
+
+    public function test_de_spelerslijst_geeft_op_vraag_de_seizoenen_mee(): void
+    {
+        $this->getJson('/api/archive/players')
+            ->assertOk()
+            ->assertJsonMissingPath('data.0.seasons');
+
+        $lijst = $this->getJson('/api/archive/players?include=seasons')
+            ->assertOk()
+            // Op voornaam gesorteerd: Ann, Els, Jan, Piet.
+            ->assertJsonPath('data.2.full_name', 'Jan Bollaert')
+            ->assertJsonPath('data.2.seasons.0.season_name', '2013 - 2014')
+            ->assertJsonPath('data.2.seasons.0.games.won', 1)
+            // Wie geen enkel seizoen volledig speelde, krijgt een lege lijst en
+            // geen ontbrekend veld.
+            ->assertJsonPath('data.0.seasons', []);
+
+        $detail = $this->getJson('/api/archive/players/1')->assertOk();
+
+        $this->assertSame($detail->json('data.seasons'), $lijst->json('data.2.seasons'));
+    }
+
     public function test_een_onbekende_include_geeft_422(): void
     {
         $this->getJson('/api/archive/players/1?include=onzin')->assertStatus(422);
+        // `seasons` bestaat op de lijst, `games` op de speler: elk endpoint zegt
+        // zelf wat het kent, in plaats van een onbekende naam te negeren.
+        $this->getJson('/api/archive/players?include=games')->assertStatus(422);
+        $this->getJson('/api/archive/seasons?include=rounds')->assertStatus(422);
     }
 
     private function seedArchief(): void

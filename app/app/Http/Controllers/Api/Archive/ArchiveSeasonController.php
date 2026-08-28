@@ -2,11 +2,15 @@
 
 namespace App\Http\Controllers\Api\Archive;
 
+use App\Http\Controllers\Api\Concerns\ParsesIncludes;
 use App\Http\Controllers\Controller;
+use App\Http\Resources\Archive\ArchiveGameResource;
 use App\Http\Resources\Archive\ArchiveRoundResource;
 use App\Http\Resources\Archive\ArchiveSeasonResource;
+use App\Models\Archive\ArchiveRound;
 use App\Models\Archive\ArchiveSeason;
 use App\Services\Legacy\ArchiveStandings;
+use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 
 /**
@@ -14,6 +18,8 @@ use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
  */
 class ArchiveSeasonController extends Controller
 {
+    use ParsesIncludes;
+
     public function __construct(private readonly ArchiveStandings $standings) {}
 
     public function index(): AnonymousResourceCollection
@@ -23,11 +29,39 @@ class ArchiveSeasonController extends Controller
         );
     }
 
-    public function rounds(ArchiveSeason $season): AnonymousResourceCollection
+    /**
+     * De speeldagen van een gearchiveerd seizoen.
+     *
+     * `?include=games` hangt de uitslagen er meteen aan. Een seizoen heeft een
+     * twintigtal speeldagen, dus zonder deze include is een historiekpagina
+     * bouwen een request per speeldag — voor data die toch bevroren is.
+     *
+     * @return array<string, mixed>
+     */
+    public function rounds(Request $request, ArchiveSeason $season): array
     {
-        return ArchiveRoundResource::collection(
-            $season->rounds()->withCount('games')->orderBy('date')->get()
-        )->additional(['meta' => ['season' => ['id' => $season->id, 'name' => $season->name]]]);
+        $rounds = $season->rounds()->withCount('games')->orderBy('date')->get();
+        $withGames = $this->wants($request, 'games');
+
+        if ($withGames) {
+            $rounds->load([
+                'games' => fn ($query) => $query->orderBy('id'),
+                'games.team1Player1',
+                'games.team1Player2',
+                'games.team2Player1',
+                'games.team2Player2',
+            ]);
+        }
+
+        return [
+            // resolve() en niet toArray(): dat laatste laat voorwaardelijke velden
+            // (whenCounted, whenLoaded) als lege waarden in de response staan.
+            'data' => $rounds->map(fn (ArchiveRound $round): array => (new ArchiveRoundResource($round))->resolve($request)
+                + ($withGames
+                    ? ['games' => ArchiveGameResource::collection($round->games)->resolve($request)]
+                    : []))->all(),
+            'meta' => ['season' => ['id' => $season->id, 'name' => $season->name]],
+        ];
     }
 
     /**

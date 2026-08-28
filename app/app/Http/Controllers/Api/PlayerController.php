@@ -27,15 +27,14 @@ use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
  * spelerspagina alle drie tegelijk nodig heeft; een build-script dat enkel de
  * wedstrijden wil, haalt de sub-resource op en sleept de rest niet mee.
  *
+ * Welke includes een route kent, staat in routes/api.php.
+ *
  * Queryparameters: season, members (op de lijst), include (op de speler).
  */
 class PlayerController extends Controller
 {
     use ParsesIncludes;
     use ResolvesSeason;
-
-    /** Wat ?include= mag bevatten. Al de rest geeft 422 en niet stilzwijgend niets. */
-    private const INCLUDES = ['games', 'ranking_history'];
 
     public function __construct(
         private readonly RankingHistory $rankingHistory,
@@ -62,15 +61,14 @@ class PlayerController extends Controller
     {
         $season = $this->seasonFromQuery($request);
         $statistic = $this->statistic($player, $season);
-        $includes = $this->includes($request, self::INCLUDES);
 
         $extra = [];
 
-        if (in_array('games', $includes, true)) {
+        if ($this->wants($request, 'games')) {
             $extra['games'] = GameResource::collection($this->gamesFor($player, $season));
         }
 
-        if (in_array('ranking_history', $includes, true)) {
+        if ($this->wants($request, 'ranking_history')) {
             $extra['ranking_history'] = $this->rankingHistory->forPlayer($player->id, (int) $season?->id);
         }
 

@@ -10,6 +10,7 @@ use App\Models\Round;
 use App\Models\Season;
 use App\Services\SeasonCalculator;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\DB;
 use Tests\TestCase;
 
 /**
@@ -161,6 +162,77 @@ class PublicApiTest extends TestCase
             ->assertOk()
             ->assertJsonCount(1, 'data')
             ->assertJsonPath('data.0.number', 2);
+    }
+
+    public function test_speeldagen_geven_op_vraag_hun_aanwezigheden_mee(): void
+    {
+        PlayerRoundStatistic::where('round_id', $this->round->id)
+            ->where('player_id', $this->players[1]->id)
+            ->update(['is_present' => true]);
+
+        $this->getJson('/api/rounds')
+            ->assertOk()
+            // Zonder include blijft de lijst kaal: de meeste pagina's hebben er
+            // enkel de tellingen van nodig.
+            ->assertJsonMissingPath('data.0.attendances');
+
+        $this->getJson('/api/rounds?include=attendances')
+            ->assertOk()
+            ->assertJsonCount(4, 'data.0.attendances')
+            ->assertJsonStructure([
+                'data' => [['attendances' => [[
+                    'player' => ['id', 'first_name', 'last_name', 'full_name'],
+                    'is_present', 'is_drawn_out', 'day_score', 'average', 'rank',
+                ]]]],
+            ])
+            // Aanwezigheid staat er als echte boolean in en hoeft dus niet uit
+            // iemands wedstrijden afgeleid te worden.
+            ->assertJsonPath('data.0.attendances.0.is_present', true);
+    }
+
+    public function test_de_aanwezigheden_op_de_lijst_zijn_dezelfde_als_op_de_speeldag(): void
+    {
+        $lijst = $this->getJson('/api/rounds?include=attendances')->assertOk();
+        $detail = $this->getJson("/api/rounds/{$this->round->id}")->assertOk();
+
+        // Eén vorm, twee endpoints: een consument die de lijst gebruikt in plaats
+        // van een call per speeldag mag geen andere velden krijgen.
+        $this->assertSame($detail->json('data.attendances'), $lijst->json('data.0.attendances'));
+    }
+
+    public function test_de_aanwezigheden_kosten_geen_query_per_speeldag(): void
+    {
+        $queries = function (): int {
+            DB::flushQueryLog();
+            DB::enableQueryLog();
+
+            $this->getJson('/api/rounds?include=attendances')->assertOk();
+
+            $aantal = count(DB::getQueryLog());
+            DB::disableQueryLog();
+
+            return $aantal;
+        };
+
+        $metEen = $queries();
+
+        $this->season->rounds()->create(['number' => 2, 'date' => '2026-09-15']);
+        $this->season->rounds()->create(['number' => 3, 'date' => '2026-09-22']);
+
+        // Dit is de hele reden dat de include bestaat: alles wordt in één keer
+        // ingeladen, dus drie speeldagen kosten evenveel queries als één.
+        $this->assertSame($metEen, $queries());
+    }
+
+    public function test_een_include_op_een_route_die_er_geen_kent_geeft_422(): void
+    {
+        // Stil negeren was hier de duurste fout: wie dit op een lijst zette kreeg
+        // de kale lijst terug en haalde de rest dan per speler op.
+        $this->getJson('/api/players?include=games')->assertStatus(422);
+        $this->getJson("/api/rounds/{$this->round->id}?include=attendances")->assertStatus(422);
+        $this->getJson('/api/seasons?include=rounds')->assertStatus(422);
+        // Een array in de querystring hoort ook een 422 te zijn, geen 500.
+        $this->getJson('/api/rounds?include[]=onzin')->assertStatus(422);
     }
 
     public function test_speeldagdetail_geeft_de_opstelling_per_set(): void

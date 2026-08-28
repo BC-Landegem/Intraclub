@@ -239,6 +239,22 @@ Drie dingen die pas uit de echte data bleken:
 
 **Nog te doen:** de pagina's zelf, in de `Website`-repo. Erelijst, historiek per seizoen, records, en de speeldag- en spelerspagina uitbreiden met wat de API nu geeft. Zie `docs/website-migratie.md`.
 
+### Fase 10 — Includes op collecties ✅ (afgerond 28-08)
+
+Terugkoppeling van de eerste echte consument (het build-script van de site): `?include=` werkte enkel op één resource. Op een collectie werd de parameter **stil genegeerd** — de kale lijst terug, en de rest dan alsnog per speler ophalen. Concreet 854 requests en ~175 s API-tijd waar 55 requests en ~20 s volstaan.
+
+**Drie includes op collecties**, elk met exact dezelfde vorm als de losse resource:
+
+- `/rounds?season={id}&include=attendances` — dezelfde `player_round_statistics`-rijen die `/rounds/{id}` al per speeldag serveert. Vervangt 325 spelerscalls door 3, en `is_present` staat er als echte boolean in, zodat aanwezigheid niet meer uit iemands wedstrijden afgeleid moet worden.
+- `/archive/seasons/{id}/rounds?include=games` — 223 calls worden 14.
+- `/archive/players?include=seasons` — 200 calls worden 1.
+
+`RoundDetailResource::attendances()` is nu de enige plaats waar die rijvorm staat; een contracttest vergelijkt lijst en detail met elkaar, zodat ze niet uiteen kunnen lopen. Alles wordt in één keer ingeladen: een test laat zien dat drie speeldagen evenveel queries kosten als één.
+
+**Stil negeren is weg.** `ValidateIncludes` hangt aan de hele publieke groep en kijkt `?include=` na tegen wat de route zelf opsomt (`->defaults('include', [...])` in `routes/api.php`). Onbekend geeft 422 met de toegelaten lijst erbij, ook op een route die géén includes kent. Dat is de eigenlijke fout die 800 requests kostte: niet dat de include ontbrak, maar dat niets waarschuwde. De toegelaten lijst staat daarmee op de route in plaats van als constante in de controller — één plaats, en die plaats leest als documentatie. `ParsesIncludes` leest alleen nog uit wat de middleware al goedkeurde.
+
+6 contracttests erbij (124 groen).
+
 ## Lokale dev-omgeving (opgezet 26-08-2026)
 
 - PHP 8.4.24 via winget (`%LOCALAPPDATA%\Microsoft\WinGet\Packages\PHP.PHP.8.4_...`), php.ini met pdo_mysql/mbstring/intl/curl/zip/gd/opcache. Oude PHP 7.4 staat nog op `C:\tools\php74` maar is uit de PATH gehaald. **VS Code/terminal herstarten om de nieuwe PATH op te pikken.**

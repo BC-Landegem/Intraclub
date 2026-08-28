@@ -8,33 +8,20 @@ use Illuminate\Http\Request;
  * `?include=games,ranking_history` — komma-gescheiden sub-resources die mee in
  * de response mogen.
  *
- * Een onbekende naam geeft 422 met de toegelaten lijst erbij. Stil negeren zou
- * een typefout in een build-script laten lijken op "die speler heeft geen
- * wedstrijden".
+ * Welke namen mogen, staat op de route (`->defaults('include', [...])`) en wordt
+ * door ValidateIncludes nagekeken vóór de controller aan de beurt is. Hier blijft
+ * alleen het uitlezen over: wat hier binnenkomt, is toegelaten.
  */
 trait ParsesIncludes
 {
-    /**
-     * @param  list<string>  $allowed
-     * @return list<string>
-     */
-    protected function includes(Request $request, array $allowed): array
+    /** @return list<string> */
+    protected function includes(Request $request): array
     {
-        $raw = (string) $request->query('include', '');
+        return $request->attributes->get('includes', []);
+    }
 
-        if (trim($raw) === '') {
-            return [];
-        }
-
-        $includes = array_values(array_filter(array_map('trim', explode(',', $raw))));
-        $unknown = array_diff($includes, $allowed);
-
-        abort_if(
-            $unknown !== [],
-            422,
-            'Onbekende include: '.implode(', ', $unknown).'. Toegelaten: '.implode(', ', $allowed).'.'
-        );
-
-        return $includes;
+    protected function wants(Request $request, string $include): bool
+    {
+        return in_array($include, $this->includes($request), true);
     }
 }

@@ -12,6 +12,7 @@ use App\Http\Controllers\Api\SeasonController;
 use App\Http\Controllers\Api\ZaalController;
 use App\Http\Controllers\DeployController;
 use App\Http\Middleware\PublicCacheHeaders;
+use App\Http\Middleware\ValidateIncludes;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -24,23 +25,31 @@ use Illuminate\Support\Facades\Route;
  *     gegevens staan;
  *   - filters als queryparameters, niet als aparte routes;
  *   - `?season=` slikt een id of `current`; weglaten = het lopende seizoen;
- *   - een onbekend seizoen, speeldag of speler geeft 404, geen stille terugval.
+ *   - een onbekend seizoen, speeldag of speler geeft 404, geen stille terugval;
+ *   - `?include=` mag enkel wat de route hieronder met `defaults('include', …)`
+ *     opsomt; al de rest geeft 422, ook op een route zonder includes. Een
+ *     genegeerde include kost een consument honderden requests zonder dat er
+ *     iets waarschuwt.
  *
  * Er is bewust geen /v1/-prefix: deze API heeft twee consumenten (de clubwebsite
  * en de zaal-app) en die staan beide in eigen beheer. Een versie ernaast zetten
  * kost meer dan hem samen met de consumenten aanpassen.
  */
-Route::middleware(PublicCacheHeaders::class)->group(function (): void {
+Route::middleware([PublicCacheHeaders::class, ValidateIncludes::class])->group(function (): void {
     // ?category= mag ook op /rankings; het pad is de kortere vorm daarvan.
     Route::get('rankings', [RankingController::class, 'index']);
     Route::get('rankings/{category}', [RankingController::class, 'category']);
 
-    Route::get('rounds', [RoundController::class, 'index']);
+    // `include=attendances` geeft de aanwezigheden van élke speeldag in één call:
+    // dezelfde rijen als op /rounds/{round}, waar een heel seizoen anders twintig
+    // requests voor nodig had — of, erger, één per speler.
+    Route::get('rounds', [RoundController::class, 'index'])->defaults('include', ['attendances']);
     Route::get('rounds/{round}', [RoundController::class, 'show']);
     Route::get('rounds/{round}/games', [RoundController::class, 'games']);
 
     Route::get('players', [PlayerController::class, 'index']);
-    Route::get('players/{player}', [PlayerController::class, 'show']);
+    Route::get('players/{player}', [PlayerController::class, 'show'])
+        ->defaults('include', ['games', 'ranking_history']);
     Route::get('players/{player}/games', [PlayerController::class, 'games']);
     Route::get('players/{player}/ranking-history', [PlayerController::class, 'rankingHistory']);
     Route::get('players/{player}/pairings', [PlayerController::class, 'pairings']);
@@ -62,13 +71,16 @@ Route::middleware(PublicCacheHeaders::class)->group(function (): void {
      */
     Route::prefix('archive')->group(function (): void {
         Route::get('seasons', [ArchiveSeasonController::class, 'index']);
-        Route::get('seasons/{season}/rounds', [ArchiveSeasonController::class, 'rounds']);
+        Route::get('seasons/{season}/rounds', [ArchiveSeasonController::class, 'rounds'])
+            ->defaults('include', ['games']);
         Route::get('seasons/{season}/standings', [ArchiveSeasonController::class, 'standings']);
 
         Route::get('rounds/{round}', [ArchiveRoundController::class, 'show']);
 
-        Route::get('players', [ArchivePlayerController::class, 'index']);
-        Route::get('players/{player}', [ArchivePlayerController::class, 'show']);
+        Route::get('players', [ArchivePlayerController::class, 'index'])
+            ->defaults('include', ['seasons']);
+        Route::get('players/{player}', [ArchivePlayerController::class, 'show'])
+            ->defaults('include', ['games']);
     });
 });
 
