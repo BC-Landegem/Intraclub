@@ -217,6 +217,28 @@ De nieuwe Astro-site (`bc-landegem.github.io/Website`) hing nog aan de legacy Sl
 
 `GameStatistics::averages` geeft de dagscore per speler per game, dus records als "hoogste dagscore" zijn berekenbaar zonder nieuwe kolom — maar wel met een pass over alle games, dus build-time voor het archief.
 
+### Fase 9 — Afgeleide statistiek ✅ (afgerond 28-08)
+
+De tweede ronde van fase 8. Twee stukken bleken géén definitie te vragen en zijn meteen gebouwd; voor de records zijn de keuzes expliciet gemaakt.
+
+**Dagscore (`day_score`), niet opgeslagen.** Wat een speeldag voor een speler opbracht: het herschaalde puntengemiddelde over zijn drie sets, of het verliezersgemiddelde als hij afwezig was, of null als hij uitgeloot was zonder game. Staat nu bij `attendances` op `/rounds/{id}` en per speeldag in `ranking-history`. Bewust géén kolom: het is een pure functie van de zes setstanden, dus een kolom zou alleen een tweede waarheid zijn — anders dan `rank`, die van álle spelers samen afhangt en dus wél bevroren moet worden. Het maakt de formule navolgbaar: nagerekend op echte data is `(19,0057 + som van 17 dagscores) / 18 = 19,37`, exact wat de API als gemiddelde meldt.
+
+**`?members=0` op `/rankings`.** Zonder dit filtert een klassement altijd op de huidige leden, ook dat van een afgesloten seizoen — en dan mist de erelijst van 2023-2024 36 van de 96 spelers die meededen. Bij de gelegenheid ook `whereNotNull('average')` in `rankingAfterRound`: met `members=0` komen er rijen bij van wie nooit berekend werd, en die hoorden niet met gemiddelde 0 onderaan te belanden.
+
+**`/players/{player}/pairings`.** Eén rij per andere speler: aantal avonden samen, de set als partner en de twee sets als tegenstander. Dit stond in de vorige fase als "vraagt eerst definities: telt een duo dat één set samen speelde als samen gespeeld?" — **die vraag was gebaseerd op een verkeerde aanname.** Door de rotatie in `Game::LINE_UPS` speelt elke speler precies één set mét elk van de andere drie en twee sets tégen elk van hen. "Vaakste partner" is dus identiek aan "vaakst op dezelfde baan", en er valt niets te kiezen. De rotatie staat nu als constante op `Game` in plaats van in `GameResource`, want ook `Pairings` en `Records` hebben ze nodig.
+
+**`/api/records`.** Vijf lijsten, alleen over het huidige format (2023-2024 →): `best_days`, `best_seasons`, `biggest_climbs`, `longest_streaks`, `most_played_duos`. De veertien oude jaargangen doen niet mee — vaste teams in best-of-3, dus een dagscore van toen is een ander getal. Dit is het enige endpoint waar `?season=` weglaten "alle seizoenen" betekent en niet het lopende; een clubrecord over één seizoen is er geen.
+
+Drie dingen die pas uit de echte data bleken:
+
+- **`best_days` heeft een tiebreak nodig.** Een dagscore van 21,00 betekent "alle drie de sets gewonnen" en komt vaak voor, dus de lijst was vijf keer 21,00 in willekeurige volgorde. Nu op puntensaldo: 63-28 boven 63-30 boven 63-31.
+- **`biggest_climbs` mat eerst iets anders dan het beloofde.** Wie afwezig is krijgt het verliezersgemiddelde en zakt naar de staart; de eerste avond dat hij wél kwam leverde dan automatisch tientallen plaatsen op. De hele top bestond uit zulke sprongen. Nu tellen enkel sprongen waarbij de speler op béide speeldagen aanwezig was.
+- **Vroeg in het seizoen ligt het veld op een kluitje**, dus de grootste sprongen komen structureel uit speeldag 1 → 2: +82 plaatsen met 0,55 punt erbij. Daar is geen willekeurige drempel voor verzonnen; `from_average`/`to_average` en `players_ranked` staan erbij zodat de site het getal in verhouding kan tonen.
+
+**Bug gevonden en gedekt: `Collection::sortBy()` met closures.** Bij een array van sorteersleutels behandelt Laravel een closure als vergelijkingsfunctie `$fn($a, $b)`, niet als sleutelfunctie. Twee sorteringen deden daardoor stilzwijgend niets: de aanwezighedenlijst op `/rounds/{id}` stond in databankvolgorde en de partnerlijst negeerde het aantal avonden. Overal `[sleutel, richting]` nu. De twee tests die dit dekken zijn gecontroleerd door de oude sortering tijdelijk terug te zetten — beide falen dan, dus ze discrimineren echt.
+
+**Nog te doen:** de pagina's zelf, in de `Website`-repo. Erelijst, historiek per seizoen, records, en de speeldag- en spelerspagina uitbreiden met wat de API nu geeft. Zie `docs/website-migratie.md`.
+
 ## Lokale dev-omgeving (opgezet 26-08-2026)
 
 - PHP 8.4.24 via winget (`%LOCALAPPDATA%\Microsoft\WinGet\Packages\PHP.PHP.8.4_...`), php.ini met pdo_mysql/mbstring/intl/curl/zip/gd/opcache. Oude PHP 7.4 staat nog op `C:\tools\php74` maar is uit de PATH gehaald. **VS Code/terminal herstarten om de nieuwe PATH op te pikken.**

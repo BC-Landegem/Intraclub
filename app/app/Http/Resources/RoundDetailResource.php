@@ -15,10 +15,20 @@ use Illuminate\Http\Resources\Json\JsonResource;
  * lezen. De spelersnaam zit erbij zodat de site geen tweede call naar /players
  * nodig heeft om er iets van te maken.
  *
+ * Per rij staat naast het voortschrijdend gemiddelde ook `day_score`: wat deze
+ * speeldag voor die speler opbracht. Zonder dat cijfer is de sprong in het
+ * gemiddelde op de site niet uit te leggen.
+ *
  * @mixin Round
  */
 class RoundDetailResource extends JsonResource
 {
+    /** @param array<int, float|null> $dayScores speler-id => dagscore */
+    public function __construct(Round $round, private readonly array $dayScores = [])
+    {
+        parent::__construct($round);
+    }
+
     /** @return array<string, mixed> */
     public function toArray(Request $request): array
     {
@@ -39,18 +49,29 @@ class RoundDetailResource extends JsonResource
             'players_drawn_out' => $statistics->where('is_drawn_out', true)->count(),
             'games' => GameResource::collection($this->games),
             'attendances' => $statistics
+                // [sleutel, richting] en geen closures: sortBy() roept een closure aan
+                // als vergelijkingsfunctie ($a, $b), niet als sleutelfunctie — met
+                // closures bleef deze lijst in databankvolgorde staan.
                 ->sortBy([
-                    fn (PlayerRoundStatistic $statistic): string => $statistic->player->first_name,
-                    fn (PlayerRoundStatistic $statistic): string => $statistic->player->last_name,
+                    ['player.first_name', 'asc'],
+                    ['player.last_name', 'asc'],
                 ])
                 ->map(fn (PlayerRoundStatistic $statistic): array => [
                     'player' => new PlayerSummaryResource($statistic->player),
                     'is_present' => (bool) $statistic->is_present,
                     'is_drawn_out' => (bool) $statistic->is_drawn_out,
+                    'day_score' => $this->dayScore($statistic->player_id),
                     'average' => $statistic->average === null ? null : round((float) $statistic->average, 2),
                     'rank' => $statistic->rank,
                 ])
                 ->values(),
         ];
+    }
+
+    private function dayScore(int $playerId): ?float
+    {
+        $score = $this->dayScores[$playerId] ?? null;
+
+        return $score === null ? null : round($score, 2);
     }
 }

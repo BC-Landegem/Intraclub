@@ -8,6 +8,7 @@ use App\Http\Resources\GameResource;
 use App\Http\Resources\RoundDetailResource;
 use App\Http\Resources\RoundResource;
 use App\Models\Round;
+use App\Services\DayScores;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 
@@ -23,6 +24,8 @@ use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 class RoundController extends Controller
 {
     use ResolvesSeason;
+
+    public function __construct(private readonly DayScores $dayScores) {}
 
     public function index(Request $request): AnonymousResourceCollection
     {
@@ -59,7 +62,7 @@ class RoundController extends Controller
             'playerStatistics.player',
         ]);
 
-        return new RoundDetailResource($round);
+        return new RoundDetailResource($round, $this->dayScores->forRound($round));
     }
 
     public function games(Round $round): AnonymousResourceCollection

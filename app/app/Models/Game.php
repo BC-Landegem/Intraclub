@@ -15,6 +15,20 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 #[ObservedBy(GameObserver::class)]
 class Game extends Model
 {
+    /**
+     * De opstelling per set, als spelerposities: [thuisduo, uitduo]. "home" in de
+     * setscores is het eerste duo van die set.
+     *
+     * Gevolg van deze rotatie, en de reden dat partner- en tegenstanderstatistiek
+     * geen keuzes vraagt: elke speler speelt precies één set mét elk van de andere
+     * drie, en precies twee sets tégen elk van hen.
+     */
+    public const LINE_UPS = [
+        1 => [[1, 2], [3, 4]],
+        2 => [[1, 3], [2, 4]],
+        3 => [[1, 4], [2, 3]],
+    ];
+
     protected $fillable = [
         'round_id',
         'player1_id',

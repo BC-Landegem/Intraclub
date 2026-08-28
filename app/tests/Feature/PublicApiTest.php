@@ -8,6 +8,7 @@ use App\Models\PlayerRoundStatistic;
 use App\Models\PlayerSeasonStatistic;
 use App\Models\Round;
 use App\Models\Season;
+use App\Services\SeasonCalculator;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
@@ -212,6 +213,12 @@ class PublicApiTest extends TestCase
             ->where('player_id', $this->players[2]->id)
             ->update(['is_present' => true, 'is_drawn_out' => true]);
 
+        // Laatst aangemaakt, dus achteraan in databankvolgorde, maar alfabetisch
+        // vooraan. Zonder die botsing zou de sorteercontrole hieronder ook slagen
+        // met een sortering die niets doet.
+        $this->extraSpeler('Aaron');
+        app(SeasonCalculator::class)->calculate($this->season);
+
         $response = $this->getJson("/api/rounds/{$this->round->id}")->assertOk();
 
         // De site moest hiervoor eerst /players ophalen; nu staat de naam erbij.
@@ -219,9 +226,169 @@ class PublicApiTest extends TestCase
             'data' => ['attendances' => [['player' => ['id', 'full_name'], 'is_present', 'is_drawn_out', 'average', 'rank']]],
         ]);
 
+        // Op naam gesorteerd, niet in databankvolgorde.
+        $namen = array_column(array_column($response->json('data.attendances'), 'player'), 'full_name');
+        $gesorteerd = $namen;
+        sort($gesorteerd);
+        $this->assertSame($gesorteerd, $namen);
+
         $uitgeloot = collect($response->json('data.attendances'))->firstWhere('is_drawn_out', true);
         $this->assertSame($this->players[2]->id, $uitgeloot['player']['id']);
         $this->assertTrue($uitgeloot['is_present']);
+    }
+
+    /**
+     * De setstanden zijn drie keer 21-15, dus speler 1 wint alle drie zijn sets
+     * (21,21,21 → 21,00) en de andere drie winnen er één (21,15,15 → 17,00). Het
+     * verliezersgemiddelde van de speeldag is daarmee 15,00.
+     */
+    public function test_speeldagdetail_geeft_de_dagscore_per_speler(): void
+    {
+        $aanwezigheden = collect($this->getJson("/api/rounds/{$this->round->id}")->json('data.attendances'))
+            ->keyBy('player.id');
+
+        // Cast naar float omdat JSON maar één getaltype heeft: 21,00 komt als 21 terug.
+        $this->assertSame(21.0, (float) $aanwezigheden[$this->players[1]->id]['day_score']);
+        $this->assertSame(17.0, (float) $aanwezigheden[$this->players[2]->id]['day_score']);
+    }
+
+    public function test_dagscore_van_een_afwezige_en_een_uitgelote(): void
+    {
+        $afwezig = $this->extraSpeler('Afwezig');
+        $uitgeloot = $this->extraSpeler('Uitgeloot');
+
+        // De vlag moet er staan vóór de herberekening: SeasonCalculator leest hem om
+        // te weten welke speeldag voor die speler niet meetelt.
+        PlayerRoundStatistic::create([
+            'round_id' => $this->round->id,
+            'player_id' => $uitgeloot->id,
+            'is_present' => true,
+            'is_drawn_out' => true,
+        ]);
+
+        app(SeasonCalculator::class)->calculate($this->season);
+
+        $response = $this->getJson("/api/rounds/{$this->round->id}")->assertOk();
+        $aanwezigheden = collect($response->json('data.attendances'))->keyBy('player.id');
+
+        $this->assertSame(15.0, (float) $response->json('data.average_absent'));
+        // Afwezig: het verliezersgemiddelde van die speeldag.
+        $this->assertSame(15.0, (float) $aanwezigheden[$afwezig->id]['day_score']);
+        // Uitgeloot zonder game: die speeldag telt niet mee, dus geen dagscore.
+        $this->assertNull($aanwezigheden[$uitgeloot->id]['day_score']);
+    }
+
+    /**
+     * Met de dagscore erbij is het gemiddelde na een speeldag na te rekenen:
+     * (basispunten + dagscore) / 2 na de eerste speeldag.
+     */
+    public function test_rankinggeschiedenis_maakt_de_formule_navolgbaar(): void
+    {
+        $verloop = $this->getJson("/api/players/{$this->players[1]->id}/ranking-history")->json('data.0');
+
+        $this->assertSame(21.0, (float) $verloop['day_score']);
+        $this->assertSame(20.05, $verloop['average']);
+        $this->assertSame(round((19.1 + 21.0) / 2, 2), $verloop['average']);
+    }
+
+    /**
+     * De rotatie geeft speler 2 één set mét elk van de anderen en twee sets tégen
+     * elk van hen. Hij speelt met speler 1 in set 1 (21-15 gewonnen) en staat in de
+     * sets 2 en 3 tegen hem, beide verloren.
+     */
+    public function test_partner_en_tegenstanderbalans(): void
+    {
+        $data = $this->getJson("/api/players/{$this->players[2]->id}/pairings")->assertOk()->json('data');
+        $rijen = collect($data)->keyBy('player.id');
+
+        $this->assertCount(3, $rijen);
+        // Op aantal avonden, dan gewonnen sets als partner, dan naam. Allemaal 1
+        // avond hier, dus speler 1 staat vooraan met 1 gewonnen set als partner.
+        $this->assertSame($this->players[1]->id, $data[0]['player']['id']);
+
+        $tegenSpeler1 = $rijen[$this->players[1]->id];
+        $this->assertSame(1, $tegenSpeler1['games']);
+        $this->assertSame(['sets' => 1, 'sets_won' => 1], $tegenSpeler1['as_partner']);
+        $this->assertSame(['sets' => 2, 'sets_won' => 0], $tegenSpeler1['as_opponent']);
+        $this->assertSame('Speler1 Test', $tegenSpeler1['player']['full_name']);
+    }
+
+    /**
+     * Pint de eigenschap van het format vast waardoor deze statistiek geen keuzes
+     * vraagt: per gespeelde avond één set met elke ander, en twee sets tegen elk.
+     */
+    public function test_elke_avond_levert_een_set_met_en_twee_tegen_elke_ander(): void
+    {
+        foreach ($this->players as $player) {
+            foreach ($this->getJson("/api/players/{$player->id}/pairings")->json('data') as $rij) {
+                $this->assertSame($rij['games'], $rij['as_partner']['sets']);
+                $this->assertSame($rij['games'] * 2, $rij['as_opponent']['sets']);
+            }
+        }
+    }
+
+    /**
+     * Speler 2 speelt een tweede avond met speler 3 erbij, niet met speler 1. Dan
+     * moet speler 3 bovenaan staan op aantal avonden — een sortering die niets doet
+     * zou speler 1 vooraan houden, want die kwam als eerste in de telling.
+     */
+    public function test_partnerbalans_staat_op_aantal_avonden_gesorteerd(): void
+    {
+        $round = $this->season->rounds()->create(['number' => 2, 'date' => '2026-09-15']);
+        Game::create([
+            'round_id' => $round->id,
+            'player1_id' => $this->players[2]->id,
+            'player2_id' => $this->players[3]->id,
+            'player3_id' => $this->extraSpeler('Zoe')->id,
+            'player4_id' => $this->extraSpeler('Yves')->id,
+            'set1_home' => 21, 'set1_away' => 15,
+            'set2_home' => 21, 'set2_away' => 15,
+            'set3_home' => 21, 'set3_away' => 15,
+        ]);
+
+        $data = $this->getJson("/api/players/{$this->players[2]->id}/pairings")->assertOk()->json('data');
+
+        $this->assertSame($this->players[3]->id, $data[0]['player']['id']);
+        $this->assertSame(2, $data[0]['games']);
+    }
+
+    public function test_partnerbalans_laat_onvolledige_wedstrijden_buiten_de_telling(): void
+    {
+        $round = $this->season->rounds()->create(['number' => 2, 'date' => '2026-09-15']);
+        Game::create([
+            'round_id' => $round->id,
+            'player1_id' => $this->players[1]->id,
+            'player2_id' => $this->players[2]->id,
+            'player3_id' => $this->players[3]->id,
+            'player4_id' => $this->players[4]->id,
+            'set1_home' => 21, 'set1_away' => 15,
+        ]);
+
+        $rijen = collect($this->getJson("/api/players/{$this->players[2]->id}/pairings")->json('data'))
+            ->keyBy('player.id');
+
+        // Nog steeds één avond: zonder alle drie de sets valt er niets te vergelijken.
+        $this->assertSame(1, $rijen[$this->players[1]->id]['games']);
+    }
+
+    public function test_klassement_kan_ook_wie_gestopt_is_bevatten(): void
+    {
+        $kampioen = $this->players[1];
+        $this->assertSame($kampioen->id, $this->getJson('/api/rankings/general')->json('data.0.id'));
+
+        $kampioen->update(['is_member' => false]);
+
+        $this->getJson('/api/rankings/general')
+            ->assertOk()
+            ->assertJsonCount(3, 'data')
+            ->assertJsonPath('data.0.id', fn (int $id): bool => $id !== $kampioen->id);
+
+        // Zonder dit zou de erelijst van een afgesloten seizoen de verkeerde
+        // kampioen tonen zodra die de club verlaat.
+        $this->getJson('/api/rankings/general?members=0')
+            ->assertOk()
+            ->assertJsonCount(4, 'data')
+            ->assertJsonPath('data.0.id', $kampioen->id);
     }
 
     public function test_wedstrijden_van_een_speeldag_zijn_apart_op_te_vragen(): void
@@ -381,6 +548,28 @@ class PublicApiTest extends TestCase
         // Nodig voor een pagina over een afgesloten seizoen: wie toen meedeed hoort
         // in die eindstand, ook al is hij nu geen lid meer.
         $this->getJson('/api/seasons/current/statistics?members=0')->assertOk()->assertJsonCount(4, 'data');
+    }
+
+    /** Lid met een seizoensstatistiek maar zonder wedstrijd op deze speeldag. */
+    private function extraSpeler(string $naam): Player
+    {
+        $player = Player::create([
+            'first_name' => $naam,
+            'last_name' => 'Test',
+            'gender' => 'male',
+            'birth_date' => '1995-01-01',
+            'double_ranking' => 100,
+            'plays_competition' => true,
+            'is_member' => true,
+        ]);
+
+        PlayerSeasonStatistic::create([
+            'season_id' => $this->season->id,
+            'player_id' => $player->id,
+            'base_points' => 19.0,
+        ]);
+
+        return $player;
     }
 
     public function test_publieke_api_vereist_geen_login_en_mag_een_minuut_gecachet_worden(): void

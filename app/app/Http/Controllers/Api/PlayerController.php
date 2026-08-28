@@ -13,6 +13,7 @@ use App\Models\Game;
 use App\Models\Player;
 use App\Models\PlayerSeasonStatistic;
 use App\Models\Season;
+use App\Services\Pairings;
 use App\Services\RankingHistory;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Http\Request;
@@ -36,7 +37,10 @@ class PlayerController extends Controller
     /** Wat ?include= mag bevatten. Al de rest geeft 422 en niet stilzwijgend niets. */
     private const INCLUDES = ['games', 'ranking_history'];
 
-    public function __construct(private readonly RankingHistory $rankingHistory) {}
+    public function __construct(
+        private readonly RankingHistory $rankingHistory,
+        private readonly Pairings $pairings,
+    ) {}
 
     /**
      * Standaard enkel de huidige leden. ?members=0 geeft ook wie gestopt is —
@@ -92,6 +96,23 @@ class PlayerController extends Controller
 
         return [
             'data' => $this->rankingHistory->forPlayer($player->id, (int) $season?->id),
+            'meta' => ['season' => $this->seasonMeta($season)],
+        ];
+    }
+
+    /**
+     * Met wie deze speler speelde en met welk resultaat. Eén rij per andere speler,
+     * met zowel de set als partner als de twee sets als tegenstander — dat is één
+     * pass over dezelfde wedstrijden, dus één endpoint in plaats van twee.
+     *
+     * @return array<string, mixed>
+     */
+    public function pairings(Request $request, Player $player): array
+    {
+        $season = $this->seasonFromQuery($request);
+
+        return [
+            'data' => $this->pairings->forPlayer($player, $season?->id),
             'meta' => ['season' => $this->seasonMeta($season)],
         ];
     }

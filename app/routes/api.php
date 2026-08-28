@@ -6,6 +6,7 @@ use App\Http\Controllers\Api\Archive\ArchiveSeasonController;
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\PlayerController;
 use App\Http\Controllers\Api\RankingController;
+use App\Http\Controllers\Api\RecordController;
 use App\Http\Controllers\Api\RoundController;
 use App\Http\Controllers\Api\SeasonController;
 use App\Http\Controllers\Api\ZaalController;
@@ -42,9 +43,16 @@ Route::middleware(PublicCacheHeaders::class)->group(function (): void {
     Route::get('players/{player}', [PlayerController::class, 'show']);
     Route::get('players/{player}/games', [PlayerController::class, 'games']);
     Route::get('players/{player}/ranking-history', [PlayerController::class, 'rankingHistory']);
+    Route::get('players/{player}/pairings', [PlayerController::class, 'pairings']);
 
     Route::get('seasons', [SeasonController::class, 'index']);
     Route::get('seasons/{season}/statistics', [SeasonController::class, 'statistics']);
+
+    /*
+     * Clubrecords. Enige endpoint waar '?season=' weglaten "alle seizoenen"
+     * betekent en niet het lopende: een clubrecord over één seizoen is er geen.
+     */
+    Route::get('records', [RecordController::class, 'index']);
 
     /*
      * Archief van de jaargangen vóór het huidige systeem (2009-2023). Aparte paden

@@ -21,15 +21,6 @@ use Illuminate\Http\Resources\Json\JsonResource;
  */
 class GameResource extends JsonResource
 {
-    /**
-     * Slots per set: [thuisduo, uitduo]. "home" is het eerste duo van die set.
-     */
-    private const LINE_UPS = [
-        1 => [[1, 2], [3, 4]],
-        2 => [[1, 3], [2, 4]],
-        3 => [[1, 4], [2, 3]],
-    ];
-
     /** @return array<string, mixed> */
     public function toArray(Request $request): array
     {
@@ -61,7 +52,7 @@ class GameResource extends JsonResource
     {
         $sets = [];
 
-        foreach (self::LINE_UPS as $number => [$homeSlots, $awaySlots]) {
+        foreach (Game::LINE_UPS as $number => [$homeSlots, $awaySlots]) {
             $home = $this->{"set{$number}_home"};
             $away = $this->{"set{$number}_away"};
             $isPlayed = $home !== null && $away !== null;

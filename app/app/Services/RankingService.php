@@ -41,6 +41,7 @@ class RankingService
         ?int $roundId = null,
         ?int $limit = null,
         array $categories = [self::CATEGORY_GENERAL],
+        bool $membersOnly = true,
     ): array {
         $season = $seasonId ? Season::find($seasonId) : Season::current();
         if ($season === null) {
@@ -52,14 +53,14 @@ class RankingService
             : $season->rounds()->where('is_calculated', true)->orderByDesc('number')->first();
 
         $ranking = $round === null
-            ? $this->rankingForNewSeason($season)
-            : $this->rankingAfterRound($round);
+            ? $this->rankingForNewSeason($season, $membersOnly)
+            : $this->rankingAfterRound($round, $membersOnly);
 
         $previousRanking = collect();
         if ($round !== null && $round->number > 1) {
             $previousRound = $season->rounds()->where('number', $round->number - 1)->first();
             if ($previousRound !== null) {
-                $previousRanking = $this->rankingAfterRound($previousRound);
+                $previousRanking = $this->rankingAfterRound($previousRound, $membersOnly);
             }
         }
 
@@ -74,12 +75,12 @@ class RankingService
     /**
      * @return Collection<int, array{player: Player, average: float}>
      */
-    private function rankingForNewSeason(Season $season): Collection
+    private function rankingForNewSeason(Season $season, bool $membersOnly = true): Collection
     {
         return $season->playerStatistics()
             ->with('player')
             ->join('players', 'players.id', '=', 'player_season_statistics.player_id')
-            ->where('players.is_member', true)
+            ->when($membersOnly, fn ($query) => $query->where('players.is_member', true))
             ->orderByDesc('player_season_statistics.base_points')
             ->select('player_season_statistics.*')
             ->get()
@@ -92,12 +93,15 @@ class RankingService
     /**
      * @return Collection<int, array{player: Player, average: float}>
      */
-    private function rankingAfterRound(Round $round): Collection
+    private function rankingAfterRound(Round $round, bool $membersOnly = true): Collection
     {
         return $round->playerStatistics()
             ->with('player')
             ->join('players', 'players.id', '=', 'player_round_statistics.player_id')
-            ->where('players.is_member', true)
+            ->when($membersOnly, fn ($query) => $query->where('players.is_member', true))
+            // Zonder gemiddelde geen plaats in het klassement. Voor leden bestaat die
+            // altijd; met ?members=0 komen er rijen bij van wie nooit berekend werd.
+            ->whereNotNull('player_round_statistics.average')
             ->orderByDesc('player_round_statistics.average')
             ->select('player_round_statistics.*')
             ->get()

@@ -58,7 +58,7 @@ Zonder deze wijziging valt de API-respons in de assetcache of nergens, en verlie
 | `/seasons` | `/seasons` |
 | `/seasons/latest/statistics` | `/seasons/current/statistics` |
 
-Nieuw beschikbaar: `/players/{id}/games`, `/players/{id}/ranking-history`, en het volledige archief onder `/archive/…`.
+Nieuw beschikbaar: `/players/{id}/games`, `/players/{id}/ranking-history`, `/players/{id}/pairings`, `/records`, en het volledige archief onder `/archive/…`.
 
 ## 4. Conventies die overal veranderen
 
@@ -177,7 +177,50 @@ Twee dingen om te weten:
 
 Voor de seizoenen in het huidige format: gebruik **`?members=0`**. Zonder die parameter geeft de API enkel de huidige leden, en dan valt de helft van de eindstand van 2023-2024 weg — dat seizoen had 96 spelers, waarvan er nu 60 nog lid zijn.
 
-## 9. Checklist
+## 9. Wat er sinds de omzetting bijgekomen is
+
+Drie dingen die er nog niet waren toen dit document geschreven werd.
+
+### `day_score` — de formule wordt navolgbaar
+
+Op `/rounds/{id}` staat per aanwezigheid, en in `ranking-history` per speeldag, wat die avond opbracht:
+
+```json
+{ "player": {…}, "is_present": true, "is_drawn_out": false,
+  "day_score": 19.67, "average": 19.37, "rank": 3 }
+```
+
+Gespeeld → het herschaalde puntengemiddelde over de drie sets. Afwezig → het verliezersgemiddelde van die speeldag (gelijk aan `average_absent`). Uitgeloot zonder wedstrijd → `null`, want die speeldag telt niet mee.
+
+Daarmee is op de spelerspagina na te rekenen waar een gemiddelde vandaan komt: het gemiddelde na speeldag N is het gemiddelde van de basispunten en alle dagscores tot en met N. Precies wat "zo werkt het" uitlegt, nu met echte cijfers per speler.
+
+### `/players/{id}/pairings` — met wie, en met welk resultaat
+
+```json
+{ "player": {…}, "games": 4,
+  "as_partner":  { "sets": 4, "sets_won": 3 },
+  "as_opponent": { "sets": 8, "sets_won": 4 } }
+```
+
+Eén rij per andere speler, gesorteerd op aantal avonden. `as_partner.sets` is altijd gelijk aan `games` en `as_opponent.sets` altijd het dubbele — dat is geen toeval maar de rotatie: op één baan speelt elke speler precies één set mét elk van de andere drie en twee sets tégen elk van hen. De noemers staan er expliciet bij zodat de site ze niet zelf moet afleiden.
+
+### `/records` — clubrecords
+
+Vijf lijsten in één call: `best_days`, `best_seasons`, `biggest_climbs`, `longest_streaks`, `most_played_duos`. Alleen over het huidige format; de veertien oude jaargangen krijgen hun eigen erelijst uit `/archive`.
+
+**Let op twee afwijkingen.** `?season=` weglaten betekent hier *alle* seizoenen, niet het lopende — een clubrecord over één seizoen is er geen. En `?limit=` geldt per lijst, standaard 10.
+
+Drie velden die je op de pagina beter wél toont:
+
+- `best_days` bestaat bijna volledig uit dagscores van 21,00 (alle drie de sets gewonnen). De lijst is op puntensaldo gesorteerd, dus zet `points_won`/`points_conceded` erbij — anders lijkt de volgorde willekeurig.
+- `biggest_climbs` geeft `from_average`/`to_average`. Vroeg in het seizoen ligt het veld op een kluitje, dus de grootste sprongen zijn +80 plaatsen met een halve punt erbij. Zonder die twee getallen leest het record veel groter dan het is.
+- `players_ranked` staat bij elke rij die over een plaats gaat: een sprong op een stand van 60 is een ander getal dan een sprong op een stand van 121.
+
+### `?members=0` geldt nu ook op `/rankings`
+
+Nodig voor de erelijst. Zonder deze parameter filtert een klassement op de huidige leden, ook dat van een afgesloten seizoen — en dan mist de eindstand van 2023-2024 er 36 van de 96.
+
+## 10. Checklist
 
 - [ ] `PUBLIC_INTRA_API` in `.env` en in de build-omgeving van GitHub Actions
 - [ ] `intra.ts`: base-URL, `data`-wrapper, `full_name`, set-rotatiehelper weg
@@ -191,5 +234,8 @@ Voor de seizoenen in het huidige format: gebruik **`?members=0`**. Zonder die pa
 - [ ] **Beide `calculated === '1'`-vergelijkingen weg**
 - [ ] `noindex` op speler- en speeldagpagina's, en uit de sitemap
 - [ ] "Zo werkt het": beslissen of het uitgewerkte voorbeeld op speeldag 17 van 2025-2026 blijft staan
+- [ ] Speeldagpagina: `attendances` gebruiken, met `day_score` naast het gemiddelde
+- [ ] Spelerspagina: `day_score` in het klassementsverloop, en `/pairings` als tweede blok
+- [ ] Nieuwe pagina's: erelijst, historiek per seizoen (build-time), records
 
 Die laatste verdient uitleg. De pagina bevat de 48 echte aanwezigen van 20 mei 2026 in een `<select>`, met een rekenmachine erbij — een build-time momentopname van één speeldag, geen live cijfers. Dat is een goede keuze: de prose eromheen ("48 spelers aanwezig") blijft kloppen omdat het voorbeeld niet beweegt. Maar het blijft ook op 20 mei 2026 staan tot iemand het aanpast. Twee opties: het voorbeeld bewust vastpinnen op één speeldag en dat in de tekst zeggen ("een voorbeeld van 20 mei 2026"), of de build altijd de laatst berekende speeldag nemen — `/rankings` geeft die in `meta.round`, en `/rounds/{id}` de bijhorende wedstrijden en aanwezigen. De tweede optie vraagt dat de tekst geen enkel concreet getal meer noemt buiten wat uit de data komt.

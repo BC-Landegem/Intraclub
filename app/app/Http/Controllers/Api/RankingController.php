@@ -16,7 +16,7 @@ use Illuminate\Http\Request;
  * krijgt er meteen bij na welke speeldag ze geldt. Is er nog geen berekende
  * speeldag, dan is `meta.round` null en staat het klassement op de basispunten.
  *
- * Queryparameters: season, round, limit, en op /rankings ook category.
+ * Queryparameters: season, round, limit, members, en op /rankings ook category.
  */
 class RankingController extends Controller
 {
@@ -74,6 +74,10 @@ class RankingController extends Controller
             roundId: $roundId,
             limit: $limit,
             categories: $categories,
+            // ?members=0 voor een afgesloten seizoen: wie toen meespeelde hoort in
+            // die stand, ook al is hij nu geen lid meer. Anders klopt de erelijst
+            // niet zodra een kampioen de club verlaat.
+            membersOnly: $request->boolean('members', true),
         );
     }
 
