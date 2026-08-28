@@ -13,18 +13,20 @@ on:
     paths-ignore:
       - '**.md'
       - '.vscode/**'
+  # Een PR draait enkel de testjob, niet de deploy. Zonder deze trigger krijgt
+  # werk-via-een-PR nul CI en is de enige keer dat de tests draaien de push die
+  # meteen ook naar productie gaat.
+  pull_request:
+    branches: [main]
+    paths-ignore:
+      - '**.md'
+      - '.vscode/**'
   workflow_dispatch:
     inputs:
       dry_run:
         description: 'Enkel tonen wat er zou geüpload worden (niets wijzigen)'
         type: boolean
         default: false
-
-# Deploy en reset raken dezelfde server: nooit twee tegelijk, en nooit een
-# lopende deploy halverwege afbreken.
-concurrency:
-  group: hosting
-  cancel-in-progress: false
 
 jobs:
   test:
@@ -67,7 +69,14 @@ jobs:
   deploy:
     name: Bouwen en uploaden
     needs: test
+    if: github.event_name != 'pull_request'
     runs-on: ubuntu-latest
+    # Deploy en reset raken dezelfde server: nooit twee tegelijk, en nooit een
+    # lopende deploy halverwege afbreken. Dit staat op de job en niet op de
+    # workflow, zodat een PR-testrun geen echte deploy in de wachtrij zet.
+    concurrency:
+      group: hosting
+      cancel-in-progress: false
     steps:
       - uses: actions/checkout@v4
 
