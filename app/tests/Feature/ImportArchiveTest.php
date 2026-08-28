@@ -87,6 +87,84 @@ class ImportArchiveTest extends TestCase
         $this->assertSame(2, DB::table('archive_rounds')->where('source', 'comp')->count());
     }
 
+    public function test_het_koppelt_comp_statistieken_op_volgorde_en_niet_op_het_bewaarde_label(): void
+    {
+        // De labels in `comp_seizoen` staan in de echte dump één seizoen te ver: de rij
+        // die "2011 - 2012" heet draagt de stand van 2010-2011. Er is maar één rij en
+        // maar één seizoen, dus die stand hoort op dat ene seizoen te landen — wat het
+        // label ook beweert.
+        $this->gegevenCompData();
+        DB::connection('archive')->table('comp_seizoen')->where('id', 6)->update(['seizoen' => '2010 - 2011']);
+
+        $this->artisan('intraclub:import-archive', ['--force' => true])->assertSuccessful();
+
+        $seizoen = DB::table('archive_seasons')->where('source', 'comp')->sole();
+        $this->assertSame('2009 - 2010', $seizoen->name);
+        $this->assertSame(1, DB::table('archive_player_season_statistics')
+            ->where('archive_season_id', $seizoen->id)->count());
+    }
+
+    public function test_het_laatste_comp_seizoen_krijgt_zijn_stand_uit_comp_spelers(): void
+    {
+        // Het oude systeem archiveerde een seizoen pas bij de start van het volgende.
+        // Voor het laatste seizoen is dat nooit gebeurd: die stand staat enkel nog in
+        // `comp_spelers`, de tabel met de lopende stand.
+        $this->gegevenCompData();
+        $this->gegevenEenTweedeCompSeizoen();
+
+        $this->artisan('intraclub:import-archive', ['--force' => true])->assertSuccessful();
+
+        $laatste = DB::table('archive_seasons')->where('name', '2010 - 2011')->sole();
+        $statistieken = DB::table('archive_player_season_statistics')
+            ->where('archive_season_id', $laatste->id)->get();
+
+        $this->assertCount(4, $statistieken, 'elke speler uit comp_spelers hoort in de eindstand');
+
+        $speler = DB::table('archive_players')->where('comp_id', 1)->value('id');
+        $eigen = $statistieken->firstWhere('archive_player_id', $speler);
+        $this->assertEqualsWithDelta(17.0, (float) $eigen->base_points, 1e-9);
+        // (17 basispunten + (21+21)/2) / 2 speeldagen-plus-één = 19, precies de stand
+        // die comp_spelers zelf bewaarde. De herberekening bevestigt ze dus.
+        $this->assertEqualsWithDelta(19.0, (float) $eigen->final_points, 1e-9);
+    }
+
+    public function test_het_herberekent_de_comp_eindstand_uit_de_uitslagen(): void
+    {
+        // Speler 1 speelt op de eerste speeldag 21-14, 18-21, 21-19, dus een gemiddelde
+        // van (21+18+21)/3 = 20. Op de tweede speeldag is hij afwezig en krijgt hij het
+        // verliezersgemiddelde 14. Met 19 basispunten wordt de eindstand
+        // (19 + 20 + 14) / 3 — het aantal speeldagen plus één.
+        $this->gegevenCompData();
+
+        $this->artisan('intraclub:import-archive', ['--force' => true])->assertSuccessful();
+
+        $speler = DB::table('archive_players')->where('comp_id', 1)->value('id');
+        $statistiek = DB::table('archive_player_season_statistics')
+            ->where('archive_player_id', $speler)->sole();
+
+        $this->assertEqualsWithDelta(53 / 3, (float) $statistiek->final_points, 1e-9);
+    }
+
+    public function test_een_set_voorbij_21_weegt_niet_zwaarder_dan_de_andere(): void
+    {
+        // 24-22 telt als 21-19,25: anders zou een lange set het gemiddelde optillen.
+        $this->gegevenCompData();
+        DB::connection('archive')->table('comp_uitslagen')->where('ID', 1)->update([
+            'set1_team1' => 24, 'set1_team2' => 22,
+            'set2_team1' => 21, 'set2_team2' => 15,
+            'set3_team1' => 0, 'set3_team2' => 0,
+        ]);
+
+        $this->artisan('intraclub:import-archive', ['--force' => true])->assertSuccessful();
+
+        $speler = DB::table('archive_players')->where('comp_id', 1)->value('id');
+        $statistiek = DB::table('archive_player_season_statistics')
+            ->where('archive_player_id', $speler)->sole();
+
+        // Speeldag 1 = (21 + 21) / 2 = 21, speeldag 2 afwezig = 14, basis 19.
+        $this->assertEqualsWithDelta(54 / 3, (float) $statistiek->final_points, 1e-9);
+    }
+
     public function test_een_verwijderde_speler_wordt_een_onbekende_speler(): void
     {
         // De uitslag is wel degelijk gespeeld; alleen wie er speelde is niet meer te
@@ -222,6 +300,30 @@ class ImportArchiveTest extends TestCase
         ]);
     }
 
+    /**
+     * Een tweede seizoen zonder rij in `comp_seizoen` en `comp_historie`: precies de
+     * situatie van het laatste comp-seizoen in de echte dump.
+     */
+    private function gegevenEenTweedeCompSeizoen(): void
+    {
+        $archive = DB::connection('archive');
+
+        $archive->table('comp_dagen')->insert([
+            'ID' => 3, 'speeldag' => 1, 'datum' => '2010-09-29', 'gemiddelde_verliezers' => 15.0,
+        ]);
+        $archive->table('comp_uitslagen')->insert([
+            'ID' => 2, 'speeldag' => 3,
+            'team1_speler1' => 1, 'team1_speler2' => 2, 'team2_speler1' => 3, 'team2_speler2' => 4,
+            'set1_team1' => 21, 'set1_team2' => 15, 'set2_team1' => 21, 'set2_team2' => 17,
+            'set3_team1' => 0, 'set3_team2' => 0,
+        ]);
+        $archive->table('comp_spelers')->where('ID', 1)->update([
+            'punten' => 19.0, 'basispunten' => 17.0,
+            'gespeelde_sets' => 2, 'gewonnen_sets' => 2,
+            'gespeelde_punten' => 74, 'gewonnen_punten' => 42, 'aanwezig' => 1,
+        ]);
+    }
+
     /** Miniatuur van het oude schema: enkel de kolommen die de import gebruikt. */
     private function maakOudSchema(): void
     {
@@ -285,6 +387,15 @@ class ImportArchiveTest extends TestCase
             $table->string('voornaam');
             $table->string('achternaam');
             $table->string('geslacht');
+            // De lopende stand van het laatste seizoen; `comp_historie` heeft dezelfde
+            // kolommen voor de seizoenen die het oude systeem wél afgesloten heeft.
+            $table->double('punten')->nullable();
+            $table->double('basispunten')->default(0);
+            $table->integer('gespeelde_sets')->default(0);
+            $table->integer('gewonnen_sets')->default(0);
+            $table->integer('gespeelde_punten')->default(0);
+            $table->integer('gewonnen_punten')->default(0);
+            $table->integer('aanwezig')->default(0);
         });
         $schema->create('comp_seizoen', function (Blueprint $table) {
             $table->integer('id')->primary();

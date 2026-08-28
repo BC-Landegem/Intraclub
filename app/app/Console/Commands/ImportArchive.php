@@ -2,6 +2,7 @@
 
 namespace App\Console\Commands;
 
+use App\Services\Legacy\ArchiveCompStandings;
 use App\Services\Legacy\ArchivePerson;
 use App\Services\Legacy\ArchivePlayerMatcher;
 use Illuminate\Console\Command;
@@ -18,6 +19,11 @@ use Illuminate\Support\Facades\Schema;
  * spelers met per set roterende teams veronderstelt. De opgeslagen statistieken worden
  * overgenomen zoals het oude systeem ze publiceerde — dit is een archief, geen
  * herberekening.
+ *
+ * Twee uitzonderingen, allebei omdat het oude systeem het zelf niet betrouwbaar
+ * bijhield: de aanwezigheden en matchen ({@see berekenTellers}) en de eindstand van de
+ * comp-generatie ({@see ArchiveCompStandings}). Beide worden uit de uitslagen afgeleid
+ * en tegen de bewaarde cijfers afgezet, zodat elke afwijking in het rapport verschijnt.
  *
  * Volgorde: eerst `intraclub:load-archive-dump`, dan `intraclub:import-legacy`
  * (die vult `players`, waar de koppeling op steunt), dan dit commando.
@@ -50,6 +56,12 @@ class ImportArchive extends Command
     /** @var array<string, int> "bron:id" => archive_rounds.id */
     private array $speeldagPerBron = [];
 
+    /** @var list<string> seizoensnamen van de comp-generatie, chronologisch */
+    private array $compSeizoenen = [];
+
+    /** @var array<int, string> comp_seizoen.id => seizoensnaam */
+    private array $compNaamPerBronId = [];
+
     /** @var array<string, int> */
     private array $overgeslagen = [];
 
@@ -59,7 +71,7 @@ class ImportArchive extends Command
     /** Aantal archiefspelers dat als "Onbekende speler" aangemaakt is. */
     private int $onbekendeSpelers = 0;
 
-    public function handle(ArchivePlayerMatcher $matcher): int
+    public function handle(ArchivePlayerMatcher $matcher, ArchiveCompStandings $standings): int
     {
         $archive = DB::connection('archive');
 
@@ -90,7 +102,7 @@ class ImportArchive extends Command
             return self::FAILURE;
         }
 
-        Schema::withoutForeignKeyConstraints(function () use ($archive, $personen): void {
+        Schema::withoutForeignKeyConstraints(function () use ($archive, $personen, $standings): void {
             foreach (self::TARGET_TABLES as $table) {
                 DB::table($table)->truncate();
             }
@@ -107,6 +119,10 @@ class ImportArchive extends Command
             $this->importeerCompWedstrijden($archive);
             $this->importeerCompSeizoenStatistieken($archive);
             $this->berekenTellers();
+
+            foreach ($standings->recalculate() as $reden => $aantal) {
+                $this->overgeslagen[$reden] = ($this->overgeslagen[$reden] ?? 0) + $aantal;
+            }
         });
 
         $this->rapporteer($personen);
@@ -158,7 +174,7 @@ class ImportArchive extends Command
     {
         $gekend = $archive->table('comp_spelers')->pluck('ID')->all();
 
-        $gebruikt = $archive->query()->fromSub(
+        $gebruikt = $archive->table(
             $archive->table('comp_uitslagen')->select('team1_speler1 as speler_id')
                 ->unionAll($archive->table('comp_uitslagen')->select('team1_speler2'))
                 ->unionAll($archive->table('comp_uitslagen')->select('team2_speler1'))
@@ -383,7 +399,14 @@ class ImportArchive extends Command
 
             // Enkel intra_* telde aanwezigheden op dezelfde manier, en enkel vanaf
             // 2019-2020. Wijkt daar iets af, dan klopt onze afleiding niet.
-            if ($rij->source === 'intra' && $rij->rounds_present > 0 && $rij->rounds_present !== $dagen) {
+            //
+            // Voor comp_* is dit meteen de controle op de seizoenskoppeling: die
+            // generatie draagt geen bruikbaar seizoenslabel, dus zit de koppeling op
+            // volgorde ernaast, dan slaan de bewaarde aanwezigheden op een ander jaar
+            // en loopt deze teller meteen vol.
+            $bewaardeTelling = $rij->source === 'comp' || $rij->rounds_present > 0;
+
+            if ($bewaardeTelling && (int) $rij->rounds_present !== $dagen) {
                 $this->tel('bewaarde aanwezigheid wijkt af van de uitslagen');
             }
 
@@ -427,28 +450,46 @@ class ImportArchive extends Command
     }
 
     /**
-     * De comp-generatie hield geen seizoen bij op de speeldag: `comp_seizoen` is
-     * onvolledig (2010-2011 ontbreekt). We leiden het seizoen af uit de datum —
-     * vanaf augustus start een nieuw seizoen — en hangen er de bewaarde naam aan
-     * wanneer die bestaat.
+     * De comp-generatie hield geen seizoen bij op de speeldag, dus leiden we het af uit
+     * de datum: vanaf augustus start een nieuw seizoen. Dat geeft vier seizoenen,
+     * 2009-2010 t/m 2012-2013.
+     *
+     * De labels in `comp_seizoen` zijn géén bruikbare bron: die tabel telt maar drie
+     * rijen (id 6, 8 en 9) en de namen erop staan één seizoen te ver. Dat is niet af te
+     * leiden uit de tabel zelf maar wel uit de cijfers: koppel je `comp_historie` op
+     * naam, dan wijken gespeelde sets en aanwezigheden van élke speler af, terwijl ze
+     * op volgorde voor alle drie de seizoenen exact kloppen (52/52, 58/58 en 61/61).
+     * De rij met id 8 draagt dus de stand van 2010-2011, niet van 2011-2012.
+     *
+     * We koppelen daarom op volgorde en negeren de opgeslagen naam. Het overblijvende
+     * seizoen — het laatste — heeft geen rij in `comp_historie`; zie
+     * {@see importeerCompSeizoenStatistieken}.
      */
     private function importeerCompSeizoenen(ConnectionInterface $archive): void
     {
-        $bewaardeIds = [];
-        foreach ($archive->table('comp_seizoen')->get() as $rij) {
-            $bewaardeIds[$this->normaliseerSeizoen($rij->seizoen)] = $rij->id;
-        }
-
         $namen = [];
         foreach ($archive->table('comp_dagen')->orderBy('datum')->get() as $rij) {
             $namen[$this->seizoenVanDatum($rij->datum)] = true;
         }
+        $this->compSeizoenen = array_keys($namen);
 
-        foreach (array_keys($namen) as $naam) {
+        $bronIds = $archive->table('comp_seizoen')->orderBy('id')->pluck('id')->all();
+
+        if (count($bronIds) > count($this->compSeizoenen)) {
+            $this->tel('comp_seizoen telt meer rijen dan er seizoenen zijn');
+        }
+
+        foreach ($this->compSeizoenen as $index => $naam) {
+            $bronId = $bronIds[$index] ?? null;
+
+            if ($bronId !== null) {
+                $this->compNaamPerBronId[$bronId] = $naam;
+            }
+
             $this->seizoenPerNaam[$naam] = DB::table('archive_seasons')->insertGetId([
                 'name' => $naam,
                 'source' => 'comp',
-                'source_id' => $bewaardeIds[$this->normaliseerSeizoen($naam)] ?? null,
+                'source_id' => $bronId,
                 'created_at' => now(),
                 'updated_at' => now(),
             ]);
@@ -514,54 +555,85 @@ class ImportArchive extends Command
         $this->schrijf('archive_games', $rijen);
     }
 
+    /**
+     * De seizoensstatistieken van de comp-generatie komen uit twee tabellen.
+     *
+     * `comp_historie` is het archief dat het oude systeem aanlegde bij de start van een
+     * nieuw seizoen — vandaar dat het laatste seizoen er niet in staat: daarna is er
+     * nooit nog een seizoen begonnen. Voor dat laatste seizoen staat de stand nog in
+     * `comp_spelers`, de tabel waarin het systeem de lopende stand bijhield. Dat die
+     * rijen wel degelijk het laatste seizoen beschrijven is na te rekenen: hun tellers
+     * komen exact overeen met de uitslagen van dat jaar, en hun `basispunten` zijn tot
+     * op de laatste decimaal de eindpunten van het seizoen ervoor.
+     */
     private function importeerCompSeizoenStatistieken(ConnectionInterface $archive): void
     {
-        $naamPerSeizoenId = [];
-        foreach ($archive->table('comp_seizoen')->get() as $rij) {
-            $naamPerSeizoenId[$rij->id] = $this->normaliseerSeizoen($rij->seizoen);
-        }
-
-        $seizoenPerGenormaliseerdeNaam = [];
-        foreach ($this->seizoenPerNaam as $naam => $id) {
-            $seizoenPerGenormaliseerdeNaam[$this->normaliseerSeizoen($naam)] = $id;
-        }
-
         $rijen = [];
+
         foreach ($archive->table('comp_historie')->orderBy('ID')->get() as $rij) {
-            $speler = $this->spelerPerCompId[$rij->speler_id] ?? null;
-            $naam = $naamPerSeizoenId[$rij->seizoen_id] ?? null;
-            $seizoen = $naam === null ? null : ($seizoenPerGenormaliseerdeNaam[$naam] ?? null);
+            $naam = $this->compNaamPerBronId[$rij->seizoen_id] ?? null;
+            $rij = $this->compSeizoenStatistiek($naam, (int) $rij->speler_id, $rij);
 
-            if ($speler === null || $seizoen === null) {
-                $this->tel('comp-seizoenstatistieken overgeslagen');
-
-                continue;
+            if ($rij !== null) {
+                $rijen[] = $rij;
             }
-            if (! $this->nogNietGezien("{$seizoen}:{$speler}", 'dubbele seizoenstatistieken overgeslagen')) {
-                continue;
-            }
+        }
 
-            $rijen[] = [
-                'archive_season_id' => $seizoen,
-                'archive_player_id' => $speler,
-                'base_points' => $rij->basispunten,
-                'final_points' => $rij->punten,
-                'sets_played' => $rij->gespeelde_sets,
-                'sets_won' => $rij->gewonnen_sets,
-                'points_played' => $rij->gespeelde_punten,
-                'points_won' => $rij->gewonnen_punten,
-                // Deze drie worden na de import uit de uitslagen herrekend. De comp-
-                // generatie telde "gewonnen spelletjes", wat niet met gewonnen matchen
-                // overeenkomt, dus die waarde nemen we niet over.
-                'games_played' => 0,
-                'games_won' => 0,
-                'rounds_present' => $rij->aanwezig,
-                'created_at' => now(),
-                'updated_at' => now(),
-            ];
+        $laatste = $this->compSeizoenen === [] ? null : end($this->compSeizoenen);
+
+        if ($laatste !== null && ! in_array($laatste, $this->compNaamPerBronId, true)) {
+            foreach ($archive->table('comp_spelers')->orderBy('ID')->get() as $rij) {
+                $rij = $this->compSeizoenStatistiek($laatste, (int) $rij->ID, $rij);
+
+                if ($rij !== null) {
+                    $rijen[] = $rij;
+                }
+            }
         }
 
         $this->schrijf('archive_player_season_statistics', $rijen);
+    }
+
+    /**
+     * Eén seizoensstatistiek uit `comp_historie` of `comp_spelers`; beide dragen
+     * dezelfde kolommen. null zodra de speler of het seizoen niet te plaatsen is.
+     *
+     * @return array<string, mixed>|null
+     */
+    private function compSeizoenStatistiek(?string $seizoensnaam, int $compSpelerId, object $bron): ?array
+    {
+        $speler = $this->spelerPerCompId[$compSpelerId] ?? null;
+        $seizoen = $seizoensnaam === null ? null : ($this->seizoenPerNaam[$seizoensnaam] ?? null);
+
+        if ($speler === null || $seizoen === null) {
+            $this->tel('comp-seizoenstatistieken overgeslagen');
+
+            return null;
+        }
+        if (! $this->nogNietGezien("{$seizoen}:{$speler}", 'dubbele seizoenstatistieken overgeslagen')) {
+            return null;
+        }
+
+        return [
+            'archive_season_id' => $seizoen,
+            'archive_player_id' => $speler,
+            'base_points' => $bron->basispunten,
+            // De stand zoals het oude systeem ze publiceerde. ArchiveCompStandings
+            // rekent ze na de import opnieuw uit en meldt elk verschil.
+            'final_points' => $bron->punten,
+            'sets_played' => $bron->gespeelde_sets,
+            'sets_won' => $bron->gewonnen_sets,
+            'points_played' => $bron->gespeelde_punten,
+            'points_won' => $bron->gewonnen_punten,
+            // Deze drie worden na de import uit de uitslagen herrekend. De comp-
+            // generatie telde "gewonnen spelletjes", wat niet met gewonnen matchen
+            // overeenkomt, dus die waarde nemen we niet over.
+            'games_played' => 0,
+            'games_won' => 0,
+            'rounds_present' => $bron->aanwezig,
+            'created_at' => now(),
+            'updated_at' => now(),
+        ];
     }
 
     // ------------------------------------------------------------ hulp
@@ -609,12 +681,6 @@ class ImportArchive extends Command
         $start = $maand >= 8 ? $jaar : $jaar - 1;
 
         return sprintf('%d - %d', $start, $start + 1);
-    }
-
-    /** "2009-2010" en "2009 - 2010" zijn hetzelfde seizoen. */
-    private function normaliseerSeizoen(string $naam): string
-    {
-        return preg_replace('/\s+/', '', $naam);
     }
 
     /** @param list<array<string, mixed>> $rijen */
