@@ -57,7 +57,7 @@ class DayScores
     {
         $perRound = $this->gamesOfPlayer($playerId, $seasonId);
         $drawnOut = $this->drawnOutPerRound($playerId, $seasonId);
-        $pointsPerSet = (int) Season::query()->whereKey($seasonId)->value('points_per_set');
+        $pointsPerSet = Season::query()->findOrFail($seasonId)->points_per_set->value;
 
         $scores = [];
 
