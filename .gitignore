@@ -1,0 +1,20 @@
+# Database dumps en snapshots (nooit committen — deze repo is publiek en de
+# dumps bevatten ledennamen, geboortedatums en wachtwoordhashes)
+*.sql
+*.sql.gz
+!api/resources/schema/schema.sql
+!api-experimental/resources/schema/schema.sql
+
+# Angular build-artefacten en afhankelijkheden
+/zaal/node_modules
+/zaal/dist
+/zaal/.angular
+
+# Gegenereerde mappingtabel (bevat ledengegevens)
+/app/database/legacy/player-map.csv
+
+# FTP-gegevens voor .github/scripts/local-sync.sh
+.deploy.local
+
+# Staging-map van .github/scripts/local-sync.sh
+/.deploy-staging

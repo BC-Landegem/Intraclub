@@ -1,0 +1,29 @@
+# Wat NIET naar de host mag. Eén bron van waarheid voor .github/workflows/deploy.yml
+# én .github/scripts/local-sync.sh — de FTP-tool VERWIJDERT server-bestanden die
+# niet in de bron staan, dus alles wat de server zelf bezit moet hier in.
+# Eén glob per regel; regels met # zijn commentaar.
+
+# Standaardexcludes van de tool (worden overschreven zodra we zelf een lijst geven)
+**/.git*
+**/.git*/**
+**/node_modules/**
+
+# De serverconfiguratie. Zonder deze regel overschrijft een lokale sync de
+# productie-.env met jouw dev-.env die naar localhost wijst.
+**/.env
+**/.env.*
+
+# De snapshot voor de reset-actie en de logs: eigendom van de server.
+storage/app/private/**
+storage/logs/**
+
+# Hoort niet op een productieserver
+tests/**
+phpunit.xml
+cutover.sh
+*.sql
+*.sql.gz
+AGENTS.md
+CLAUDE.md
+README.md
+boost.json

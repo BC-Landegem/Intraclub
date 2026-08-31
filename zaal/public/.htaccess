@@ -1,0 +1,12 @@
+# Client-side routing van de zaal-app: alles wat geen bestaand bestand is,
+# wordt door index.html afgehandeld.
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+    RewriteBase /zaal/
+
+    RewriteCond %{REQUEST_FILENAME} -f [OR]
+    RewriteCond %{REQUEST_FILENAME} -d
+    RewriteRule ^ - [L]
+
+    RewriteRule ^ index.html [L]
+</IfModule>

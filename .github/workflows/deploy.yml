@@ -1,0 +1,168 @@
+name: Deploy
+
+# De hosting heeft geen SSH, geen composer en geen artisan. Alles wordt hier
+# gebouwd, via FTP gesynchroniseerd en daarna aangezet via /api/deploy/*.
+#
+# De eerste sync kan je ook vanaf je laptop doen met
+# .github/scripts/local-sync.sh — zelfde tool, zelfde exclude-lijst, zelfde
+# state-bestand. Daarna neemt deze workflow het delta-gewijs over.
+
+on:
+  push:
+    branches: [main]
+    paths-ignore:
+      - '**.md'
+      - '.vscode/**'
+  # Een PR draait enkel de testjob, niet de deploy. Zonder deze trigger krijgt
+  # werk-via-een-PR nul CI en is de enige keer dat de tests draaien de push die
+  # meteen ook naar productie gaat.
+  pull_request:
+    branches: [main]
+    paths-ignore:
+      - '**.md'
+      - '.vscode/**'
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: 'Enkel tonen wat er zou geüpload worden (niets wijzigen)'
+        type: boolean
+        default: false
+
+jobs:
+  test:
+    name: Tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.4'
+          coverage: none
+
+      # Laravel wil een .env om te booten; deze blijft in CI en wordt nooit
+      # geüpload (staat in .github/ftp-exclude.txt).
+      - name: .env voor de build
+        working-directory: app
+        run: cp .env.example .env
+
+      - name: Composer-cache
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/composer/files
+          key: composer-dev-${{ hashFiles('app/composer.lock') }}
+
+      - name: Afhankelijkheden
+        working-directory: app
+        run: composer install --no-interaction --no-progress --prefer-dist
+
+      # phpunit.xml zet geen APP_KEY, dus zonder deze stap falen alle tests die
+      # een sessie of het Filament-paneel aanraken met MissingAppKeyException.
+      - name: Applicatiesleutel
+        working-directory: app
+        run: php artisan key:generate
+
+      - name: Testsuite
+        working-directory: app
+        run: php artisan test
+
+  deploy:
+    name: Bouwen en uploaden
+    needs: test
+    if: github.event_name != 'pull_request'
+    runs-on: ubuntu-latest
+    # Deploy en reset raken dezelfde server: nooit twee tegelijk, en nooit een
+    # lopende deploy halverwege afbreken. Dit staat op de job en niet op de
+    # workflow, zodat een PR-testrun geen echte deploy in de wachtrij zet.
+    concurrency:
+      group: hosting
+      cancel-in-progress: false
+    steps:
+      - uses: actions/checkout@v4
+
+      # PHP 8.4: de composer.lock vereist >= 8.4.1 (Symfony 8 via Laravel 13),
+      # ondanks de losser "^8.3" in composer.json. De host moet dus ook 8.4+ zijn.
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.4'
+          coverage: none
+
+      - name: .env voor de build
+        working-directory: app
+        run: cp .env.example .env
+
+      - name: Composer-cache
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/composer/files
+          key: composer-prod-${{ hashFiles('app/composer.lock') }}
+
+      - name: Afhankelijkheden (zonder dev)
+        working-directory: app
+        run: composer install --no-dev --optimize-autoloader --no-interaction --no-progress --prefer-dist
+
+      - name: Applicatiesleutel voor de build
+        working-directory: app
+        run: php artisan key:generate
+
+      - name: Filament-assets bijwerken
+        working-directory: app
+        run: php artisan filament:assets
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: zaal/package-lock.json
+
+      # ng build schrijft naar ../app/public/zaal met baseHref /zaal/
+      # (zie zaal/angular.json), dus dit landt in de map die straks gesynct wordt.
+      - name: Zaal-app bouwen
+        working-directory: zaal
+        run: |
+          npm ci
+          npm run build
+
+      - name: Buildresultaat controleren
+        run: test -f app/public/zaal/index.html
+
+      # Eén bron van waarheid, gedeeld met .github/scripts/local-sync.sh.
+      - name: Exclude-lijst inlezen
+        id: excludes
+        run: bash .github/scripts/read-excludes.sh >> "$GITHUB_OUTPUT"
+
+      - name: FTP-sync
+        uses: SamKirkland/FTP-Deploy-Action@v4.3.5
+        with:
+          server: ${{ secrets.FTP_SERVER }}
+          username: ${{ secrets.FTP_USERNAME }}
+          password: ${{ secrets.FTP_PASSWORD }}
+          # Zet FTP_PROTOCOL op 'ftps' zodra de host expliciete TLS aanvaardt
+          # (val bij een certificaatfout terug op 'ftps-legacy').
+          protocol: ${{ vars.FTP_PROTOCOL || 'ftp' }}
+          port: ${{ vars.FTP_PORT || 21 }}
+          local-dir: ./app/
+          server-dir: ${{ vars.FTP_SERVER_DIR }}
+          dry-run: ${{ inputs.dry_run == true }}
+          exclude: ${{ steps.excludes.outputs.list }}
+
+      - name: Migrations draaien
+        if: ${{ !inputs.dry_run }}
+        env:
+          URL: ${{ secrets.DEPLOY_URL }}
+          TOKEN: ${{ secrets.DEPLOY_TOKEN }}
+        run: bash .github/scripts/deploy-task.sh migrate
+
+      - name: Caches opbouwen
+        if: ${{ !inputs.dry_run }}
+        env:
+          URL: ${{ secrets.DEPLOY_URL }}
+          TOKEN: ${{ secrets.DEPLOY_TOKEN }}
+        run: bash .github/scripts/deploy-task.sh optimize
+
+      # Zonder deze stap kan de deploy groen zijn terwijl de site 500 geeft.
+      - name: Rooktest op /api/rankings
+        if: ${{ !inputs.dry_run }}
+        env:
+          URL: ${{ secrets.DEPLOY_URL }}
+        run: bash .github/scripts/health-check.sh

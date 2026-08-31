@@ -1,0 +1,28 @@
+.aanmeldscherm {
+  display: grid;
+  place-items: center;
+  min-height: 100dvh;
+  padding: 1.5rem;
+}
+
+.kaart {
+  display: grid;
+  gap: 1.25rem;
+  width: min(420px, 100%);
+  padding: 2rem;
+}
+
+.ondertitel {
+  margin: -0.75rem 0 0;
+  color: var(--tekst-zacht);
+}
+
+.veld {
+  display: grid;
+}
+
+.veldfout {
+  margin: 0.4rem 0 0;
+  color: #fca5a5;
+  font-size: 0.9rem;
+}

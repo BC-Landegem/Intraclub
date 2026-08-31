@@ -1,0 +1,69 @@
+<section class="stand">
+  <header class="kop">
+    <div>
+      <h2>Tussenstand</h2>
+      @if (latestRound(); as round) {
+        <p class="na">na speeldag {{ round.number }}</p>
+      }
+    </div>
+
+    <label class="visually-hidden" for="stand-zoek">Zoek jezelf</label>
+    <input
+      id="stand-zoek"
+      type="search"
+      placeholder="Zoek jezelf…"
+      [value]="searchTerm()"
+      (input)="searchTerm.set($any($event.target).value)"
+    />
+  </header>
+
+  <nav class="categorieen">
+    @for (item of categories; track item.key) {
+      <button type="button" [class.actief]="category() === item.key" (click)="category.set(item.key)">
+        {{ item.label }}
+      </button>
+    }
+  </nav>
+
+  @if (errorMessage()) {
+    <p class="foutmelding">{{ errorMessage() }}</p>
+  } @else if (loading()) {
+    <p class="melding">Tussenstand wordt geladen…</p>
+  } @else {
+    <ol class="lijst">
+      @for (entry of visibleEntries(); track entry.id) {
+        <li class="rij">
+          <span class="meter" [style.width.%]="barWidth(entry)" aria-hidden="true"></span>
+
+          <span class="plaats">{{ entry.rank }}</span>
+          <span class="speler">{{ entry.full_name }}</span>
+
+          <span class="verschil">
+            @if (entry.difference > 0) {
+              <svg viewBox="0 0 24 24" class="pijl op" aria-hidden="true">
+                <path d="M12 19V5M6 11l6-6 6 6" />
+              </svg>
+              <span>{{ entry.difference }}</span>
+              <span class="visually-hidden">plaatsen gestegen</span>
+            } @else if (entry.difference < 0) {
+              <svg viewBox="0 0 24 24" class="pijl neer" aria-hidden="true">
+                <path d="M12 5v14M6 13l6 6 6-6" />
+              </svg>
+              <span>{{ -entry.difference }}</span>
+              <span class="visually-hidden">plaatsen gezakt</span>
+            } @else {
+              <svg viewBox="0 0 24 24" class="pijl gelijk" aria-hidden="true">
+                <path d="M5 12h14" />
+              </svg>
+              <span class="visually-hidden">onveranderd</span>
+            }
+          </span>
+
+          <span class="gemiddelde">{{ formatAverage(entry.average) }}</span>
+        </li>
+      } @empty {
+        <li class="melding">Geen speler gevonden.</li>
+      }
+    </ol>
+  }
+</section>
