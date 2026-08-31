@@ -8,6 +8,7 @@ use App\Http\Controllers\Api\RecordController;
 use App\Http\Controllers\Api\RoundController;
 use App\Http\Controllers\Api\SeasonController;
 use App\Http\Controllers\Api\ZaalController;
+use App\Http\Controllers\ContactController;
 use App\Http\Controllers\DeployController;
 use App\Http\Middleware\CurrentSeasonOnly;
 use App\Http\Middleware\PublicCacheHeaders;
@@ -150,6 +151,17 @@ Route::middleware('web')->group(function (): void {
         });
     });
 });
+
+/*
+ * Contactformulier van de clubwebsite. Staat hier en niet in web.php omdat een
+ * cross-origin form-POST geen CSRF-token draagt: in web.php serveert
+ * VerifyCsrfToken de bezoeker af met een 419, en dat ziet die als een lege
+ * foutpagina op een vreemd domein. De api-groep heeft geen sessie en geen CSRF.
+ *
+ * De snelheidsbegrenzing zit in de controller en niet in throttle-middleware, om
+ * dezelfde reden: een 429 komt hier als rauwe JSON in de adresbalk terecht.
+ */
+Route::post('contact', ContactController::class);
 
 /*
  * Deploy-endpoints, aangeroepen door GitHub Actions (.github/workflows/). Ze

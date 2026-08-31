@@ -43,7 +43,7 @@ host, dus je ziet het in de Actions-log staan.
 
 ### 3. Op de server, met FTP
 
-1. `app/.env.production.example` uploaden als `.env` in de app-map (naast `artisan`), aanvullen met databank­gegevens en `DEPLOY_TOKEN`.
+1. `app/.env.production.example` uploaden als `.env` in de app-map (naast `artisan`), aanvullen met databank­gegevens, `DEPLOY_TOKEN` en de SMTP-gegevens van `info@bclandegem.be` (die laatste voor het contactformulier van de site — zie [config/contact.php](app/config/contact.php)).
 2. `APP_KEY` zetten: genereer lokaal met `php artisan key:generate --show` en plak de waarde.
 3. Document root: DirectAdmin laat die hier **niet** verzetten (geen Custom HTTPD Configurations op gebruikersniveau, en Subdomain Management heeft geen veld ervoor). Daarom staat de docroot op `public_html` en vangt [app/.htaccess](app/.htaccess) dat op: het blokkeert alles buiten `public/` en stuurt de rest naar `public/index.php`. Dat bestand gaat mee met de sync, dus er is geen handwerk. Kan je later tóch de docroot verzetten, verwijder het dan — Laravel's eigen `public/.htaccess` neemt over.
 4. Snapshot voor de reset: lokaal `bash app/cutover.sh` draaien en `app/cutover.sql.gz` uploaden naar `storage/app/private/cutover.sql.gz`. Die map staat in de exclude-lijst van de sync, dus een deploy raakt hem niet.
