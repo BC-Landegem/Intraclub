@@ -88,7 +88,7 @@ class Utilities
         );
     }
     /**
-     * Trim setscore, zodanig dat firstscore maximaal 15 is.
+     * Trim setscore, zodanig dat firstscore maximaal 21 is.
      *
      * @param  int $firstScore
      * @param  int $secondScore
@@ -96,7 +96,7 @@ class Utilities
      */
     private static function trimSets($firstScore, $secondScore)
     {
-        return ($firstScore > 15 || $secondScore > 15) ? 15 / max($firstScore, $secondScore) * $firstScore : $firstScore;
+        return ($firstScore > 21 || $secondScore > 21) ? 21 / max($firstScore, $secondScore) * $firstScore : $firstScore;
     }
 
     /**
