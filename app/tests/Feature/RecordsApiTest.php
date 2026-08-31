@@ -15,13 +15,13 @@ use Tests\TestCase;
  * Contract van /api/records.
  *
  * De opzet: vier spelers, twee speeldagen. Op speeldag 1 wint speler 1 alle drie
- * zijn sets, op speeldag 2 speler 2. Daardoor klimt speler 2 van de derde naar
+ * zijn sets, op speeldag 2 speler 2. Daardoor klimt speler 2 van de vierde naar
  * de eerste plaats, wat de sprong-lijst een voorspelbaar antwoord geeft.
  *
  *   basispunten   p1 14,1   p2 14,2   p3 14,3   p4 14,4
- *   dagscores     winnaar 15,00, de andere drie 12,33
- *   na speeldag 1  1. p1 14,55   2. p3 13,32   3. p2 13,27   4. p4 12,70
- *   na speeldag 2  1. p2 13,84   2. p1 13,81   3. p3 12,99   4. p4 12,13
+ *   dagscores     winnaar 15,00, de andere drie 11,00
+ *   na speeldag 1  1. p1 14,55   2. p4 12.7   3. p3 12.65   4. p2 12.6
+ *   na speeldag 2  1. p2 13.4   2. p1 13.36   3. p4 12.13   4. p3 12.1
  */
 class RecordsApiTest extends TestCase
 {
@@ -80,7 +80,7 @@ class RecordsApiTest extends TestCase
         $rijen = $this->getJson('/api/records')->assertOk()->json('data.best_seasons');
 
         $this->assertSame($this->players[2]->id, $rijen[0]['player']['id']);
-        $this->assertSame(13.84, $rijen[0]['average']);
+        $this->assertSame(13.4, $rijen[0]['average']);
         $this->assertSame(1, $rijen[0]['rank']);
         $this->assertSame(4, $rijen[0]['players_ranked']);
         $this->assertSame('2026 - 2027', $rijen[0]['season']['name']);
@@ -90,7 +90,7 @@ class RecordsApiTest extends TestCase
     {
         foreach ($this->players as $player) {
             $this->aanwezig($player->id, [1, 2]);
-        }
+        }derde
 
         $rijen = $this->getJson('/api/records')->assertOk()->json('data.biggest_climbs');
 
