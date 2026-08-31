@@ -165,23 +165,49 @@ class MergeDuplicatePlayers extends Command
                 DB::table('games')->where($kolom, $dubbelId)->update([$kolom => $blijftId]);
             }
 
+            if ($this->neemLidmaatschapOver($dubbelId, $blijftId)) {
+                // De ledenstatus bepaalt in welke klassementen de speler meetelt, en dus ook
+                // de plaats van iedereen onder hem. Elk seizoen waarin hij een fiche heeft
+                // moet daarom opnieuw gerekend worden, niet enkel wat de merge aanraakt.
+                $seizoenen = [...$seizoenen, ...DB::table('player_season_statistics')
+                    ->where('player_id', $blijftId)
+                    ->pluck('season_id')
+                    ->all()];
+            }
+
             $this->voegRondestatistiekenSamen($dubbelId, $blijftId);
 
-            // Seizoenstellers zijn afgeleid en worden zo meteen herberekend; enkel de
-            // basispunten zijn dat niet, en die horen bij de fiche die blijft.
-            DB::table('player_season_statistics')
-                ->where('player_id', $dubbelId)
-                ->whereIn('season_id', function ($query) use ($blijftId): void {
-                    $query->select('season_id')->from('player_season_statistics')->where('player_id', $blijftId);
-                })
-                ->delete();
-
-            DB::table('player_season_statistics')->where('player_id', $dubbelId)->update(['player_id' => $blijftId]);
+            $this->voegSeizoenstatistiekenSamen($dubbelId, $blijftId);
 
             DB::table('players')->where('id', $dubbelId)->delete();
 
             return array_values(array_unique($seizoenen));
         });
+    }
+
+    /**
+     * Lid zijn is een ingevoerd feit dat maar op één fiche hoeft te staan: wie terugkeert
+     * wordt soms opnieuw aangemaakt, en dan draagt net de fiche die verdwijnt het vinkje.
+     * Wie onder één van beide fiches lid is, is lid.
+     *
+     * Dit gebeurt vóór de statistieken, want de ledenstatus bepaalt daar of de rij nog leeft.
+     *
+     * @return bool of het vinkje verhuisd is
+     */
+    private function neemLidmaatschapOver(int $dubbelId, int $blijftId): bool
+    {
+        $dubbelIsLid = (bool) DB::table('players')->where('id', $dubbelId)->value('is_member');
+        $blijftIsLid = (bool) DB::table('players')->where('id', $blijftId)->value('is_member');
+
+        if (! $dubbelIsLid || $blijftIsLid) {
+            return false;
+        }
+
+        DB::table('players')->where('id', $blijftId)->update(['is_member' => true]);
+
+        $this->line("Speler {$blijftId} is lid: het vinkje stond op de dubbel ({$dubbelId}).");
+
+        return true;
     }
 
     /**
@@ -210,6 +236,60 @@ class MergeDuplicatePlayers extends Command
                 'is_drawn_out' => (bool) $doel->is_drawn_out || (bool) $rij->is_drawn_out,
             ]);
             DB::table('player_round_statistics')->where('id', $rij->id)->delete();
+        }
+    }
+
+    /**
+     * De seizoenstellers zijn afgeleid uit de wedstrijden, maar de herberekening raakt enkel
+     * spelers met `is_member`. Voor een niet-lid staan de tellers stil op wat de bron laatst
+     * berekend heeft, en dan is wegwerpen van de rij van de dubbel definitief verlies. Daarom
+     * worden de tellers altijd opgeteld: de wedstrijden van beide fiches zijn disjunct.
+     *
+     * De basispunten zijn geen afgeleide maar een invoer, en de juiste keuze hangt af van of
+     * de rij nog leeft. Bij een lid herberekent alles zich toch: dan tellen de basispunten van
+     * de blijvende fiche, want die zijn afgeleid uit zijn eindstand van vorig seizoen — de
+     * dubbel begon als nieuwkomer op 19,0000 en dat is niet zijn plaats. Bij een niet-lid is de
+     * rij bevroren en bewaren we ze zoals de bron ze toonde: met de basispunten van de fiche
+     * waaronder dat seizoen effectief gespeeld en gerekend is.
+     */
+    private function voegSeizoenstatistiekenSamen(int $dubbelId, int $blijftId): void
+    {
+        $tellers = ['sets_played', 'sets_won', 'points_played', 'points_won', 'rounds_present', 'games_played'];
+
+        $isLid = (bool) DB::table('players')->where('id', $blijftId)->value('is_member');
+
+        $bestaand = DB::table('player_season_statistics')->where('player_id', $blijftId)->get()->keyBy('season_id');
+
+        foreach (DB::table('player_season_statistics')->where('player_id', $dubbelId)->get() as $rij) {
+            $doel = $bestaand[$rij->season_id] ?? null;
+
+            if ($doel === null) {
+                DB::table('player_season_statistics')->where('id', $rij->id)->update(['player_id' => $blijftId]);
+
+                continue;
+            }
+
+            if ($doel->games_played > 0 && $rij->games_played > 0) {
+                $this->warn(sprintf(
+                    'Seizoen %d: beide fiches van speler %d speelden (%d en %d wedstrijden). Kijk basispunten en aanwezigheden na.',
+                    $rij->season_id,
+                    $blijftId,
+                    $doel->games_played,
+                    $rij->games_played,
+                ));
+            }
+
+            $waarden = [];
+            foreach ($tellers as $teller) {
+                $waarden[$teller] = $doel->$teller + $rij->$teller;
+            }
+
+            if (! $isLid && $rij->games_played > $doel->games_played) {
+                $waarden['base_points'] = $rij->base_points;
+            }
+
+            DB::table('player_season_statistics')->where('id', $doel->id)->update($waarden);
+            DB::table('player_season_statistics')->where('id', $rij->id)->delete();
         }
     }
 
