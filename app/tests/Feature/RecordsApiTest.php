@@ -15,13 +15,13 @@ use Tests\TestCase;
  * Contract van /api/records.
  *
  * De opzet: vier spelers, twee speeldagen. Op speeldag 1 wint speler 1 alle drie
- * zijn sets, op speeldag 2 speler 2. Daardoor klimt speler 2 van de vierde naar
+ * zijn sets, op speeldag 2 speler 2. Daardoor klimt speler 2 van de derde naar
  * de eerste plaats, wat de sprong-lijst een voorspelbaar antwoord geeft.
  *
  *   basispunten   p1 19,1   p2 19,2   p3 19,3   p4 19,4
- *   dagscores     winnaar 21,00, de andere drie 17,00
- *   na speeldag 1  1. p1 20,05   2. p4 18,20   3. p3 18,15   4. p2 18,10
- *   na speeldag 2  1. p2 19,07   2. p1 19,03   3. p4 17,80   4. p3 17,77
+ *   dagscores     winnaar 15,00, de andere drie 12,33
+ *   na speeldag 1  1. p1 17,05   2. p3 15,82   3. p2 15,77   4. p4 15,20
+ *   na speeldag 2  1. p2 15,51   2. p1 15,48   3. p3 14,66   4. p4 13,80
  */
 class RecordsApiTest extends TestCase
 {
@@ -66,10 +66,10 @@ class RecordsApiTest extends TestCase
     {
         $rijen = $this->getJson('/api/records')->assertOk()->json('data.best_days');
 
-        $this->assertSame(21.0, (float) $rijen[0]['day_score']);
-        $this->assertSame(63, $rijen[0]['points_won']);
-        $this->assertSame(45, $rijen[0]['points_conceded']);
-        // Beide winnaars halen 21,00 met hetzelfde saldo; de recentste avond eerst.
+        $this->assertSame(15.0, (float) $rijen[0]['day_score']);
+        $this->assertSame(45, $rijen[0]['points_won']);
+        $this->assertSame(33, $rijen[0]['points_conceded']);
+        // Beide winnaars halen 15,00 met hetzelfde saldo; de recentste avond eerst.
         $this->assertSame($this->players[2]->id, $rijen[0]['player']['id']);
         $this->assertSame(2, $rijen[0]['round']['number']);
         $this->assertSame($this->players[1]->id, $rijen[1]['player']['id']);
@@ -80,7 +80,7 @@ class RecordsApiTest extends TestCase
         $rijen = $this->getJson('/api/records')->assertOk()->json('data.best_seasons');
 
         $this->assertSame($this->players[2]->id, $rijen[0]['player']['id']);
-        $this->assertSame(19.07, $rijen[0]['average']);
+        $this->assertSame(15.51, $rijen[0]['average']);
         $this->assertSame(1, $rijen[0]['rank']);
         $this->assertSame(4, $rijen[0]['players_ranked']);
         $this->assertSame('2026 - 2027', $rijen[0]['season']['name']);
@@ -95,16 +95,16 @@ class RecordsApiTest extends TestCase
         $rijen = $this->getJson('/api/records')->assertOk()->json('data.biggest_climbs');
 
         $this->assertSame($this->players[2]->id, $rijen[0]['player']['id']);
-        $this->assertSame(3, $rijen[0]['places']);
-        $this->assertSame(4, $rijen[0]['from_rank']);
+        $this->assertSame(2, $rijen[0]['places']);
+        $this->assertSame(3, $rijen[0]['from_rank']);
         $this->assertSame(1, $rijen[0]['to_rank']);
         $this->assertSame(1, $rijen[0]['from_round']);
         $this->assertSame(2, $rijen[0]['to_round']);
-        // De gemiddeldes horen erbij: drie plaatsen winnen kan met een klein verschil,
+        // De gemiddeldes horen erbij: twee plaatsen winnen kan met een klein verschil,
         // en zonder deze twee getallen leest een sprong groter dan hij is.
-        $this->assertSame(18.1, $rijen[0]['from_average']);
-        $this->assertSame(19.07, $rijen[0]['to_average']);
-        // Zonder dit getal is een sprong van 3 niet te interpreteren.
+        $this->assertSame(15.77, $rijen[0]['from_average']);
+        $this->assertSame(15.51, $rijen[0]['to_average']);
+        // Zonder dit getal is een sprong van 2 niet te interpreteren.
         $this->assertSame(4, $rijen[0]['players_ranked']);
 
         // Alleen stijgers: wie zakt hoort niet in deze lijst.
@@ -238,9 +238,9 @@ class RecordsApiTest extends TestCase
             'player2_id' => $this->players[$volgorde[1]]->id,
             'player3_id' => $this->players[$volgorde[2]]->id,
             'player4_id' => $this->players[$volgorde[3]]->id,
-            'set1_home' => 21, 'set1_away' => 15,
-            'set2_home' => 21, 'set2_away' => 15,
-            'set3_home' => 21, 'set3_away' => 15,
+            'set1_home' => 15, 'set1_away' => 11,
+            'set2_home' => 15, 'set2_away' => 11,
+            'set3_home' => 15, 'set3_away' => 11,
         ]);
 
         return $round;

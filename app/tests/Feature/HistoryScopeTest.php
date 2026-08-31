@@ -330,9 +330,9 @@ class HistoryScopeTest extends TestCase
             'round_id' => $round->id,
             'player1_id' => $ids[1], 'player2_id' => $ids[2],
             'player3_id' => $ids[3], 'player4_id' => $ids[4],
-            'set1_home' => 21, 'set1_away' => 15,
-            'set2_home' => 21, 'set2_away' => 15,
-            'set3_home' => 21, 'set3_away' => 15,
+            'set1_home' => 15, 'set1_away' => 11,
+            'set2_home' => 15, 'set2_away' => 11,
+            'set3_home' => 15, 'set3_away' => 11,
         ]);
 
         return [$season, $round];

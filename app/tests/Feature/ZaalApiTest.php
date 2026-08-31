@@ -167,11 +167,11 @@ class ZaalApiTest extends TestCase
         $gameId = $created->json('games.0.id');
 
         $this->putJson("/api/zaal/games/{$gameId}", [
-            'set1_home' => 21, 'set1_away' => 15,
-            'set2_home' => 21, 'set2_away' => 15,
-            'set3_home' => 21, 'set3_away' => 15,
+            'set1_home' => 15, 'set1_away' => 11,
+            'set2_home' => 15, 'set2_away' => 11,
+            'set3_home' => 15, 'set3_away' => 11,
         ])->assertOk()
-            ->assertJsonPath('games.0.sets.0.home.score', 21)
+            ->assertJsonPath('games.0.sets.0.home.score', 15)
             ->assertJsonPath('games.0.isComplete', true);
 
         // Speeldag is compleet, dus de tussenstand is herberekend.
@@ -285,9 +285,9 @@ class ZaalApiTest extends TestCase
         $gameId = $created->json('games.0.id');
 
         // Enkel set 1: de match is nog niet volledig, de rest blijft leeg.
-        $this->putJson("/api/zaal/games/{$gameId}", ['set1_home' => 21, 'set1_away' => 15])
+        $this->putJson("/api/zaal/games/{$gameId}", ['set1_home' => 15, 'set1_away' => 11])
             ->assertOk()
-            ->assertJsonPath('games.0.sets.0.home.score', 21)
+            ->assertJsonPath('games.0.sets.0.home.score', 15)
             ->assertJsonPath('games.0.sets.1.home.score', null)
             ->assertJsonPath('games.0.isComplete', false);
 
@@ -295,9 +295,9 @@ class ZaalApiTest extends TestCase
 
         // Set 2 en 3 erbij: nu pas is de match af.
         $this->putJson("/api/zaal/games/{$gameId}", [
-            'set1_home' => 21, 'set1_away' => 15,
-            'set2_home' => 21, 'set2_away' => 18,
-            'set3_home' => 19, 'set3_away' => 21,
+            'set1_home' => 15, 'set1_away' => 11,
+            'set2_home' => 15, 'set2_away' => 13,
+            'set3_home' => 14, 'set3_away' => 15,
         ])->assertOk()->assertJsonPath('games.0.isComplete', true);
 
         $this->assertTrue($this->round->fresh()->is_calculated);

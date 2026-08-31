@@ -66,9 +66,9 @@ class AutomaticRecalculationTest extends TestCase
         $incompleteGame = $this->createGame([5, 6, 7, 8], complete: false);
 
         $incompleteGame->update([
-            'set1_home' => 21, 'set1_away' => 15,
-            'set2_home' => 21, 'set2_away' => 15,
-            'set3_home' => 21, 'set3_away' => 15,
+            'set1_home' => 15, 'set1_away' => 11,
+            'set2_home' => 15, 'set2_away' => 11,
+            'set3_home' => 15, 'set3_away' => 11,
         ]);
 
         $round = $this->round->fresh();
@@ -108,8 +108,8 @@ class AutomaticRecalculationTest extends TestCase
     private function createGame(array $playerIndexes, bool $complete): Game
     {
         $scores = $complete
-            ? ['set1_home' => 21, 'set1_away' => 15, 'set2_home' => 21, 'set2_away' => 15, 'set3_home' => 21, 'set3_away' => 15]
-            : ['set1_home' => 21, 'set1_away' => 15, 'set2_home' => null, 'set2_away' => null, 'set3_home' => null, 'set3_away' => null];
+            ? ['set1_home' => 15, 'set1_away' => 11, 'set2_home' => 15, 'set2_away' => 11, 'set3_home' => 15, 'set3_away' => 11]
+            : ['set1_home' => 15, 'set1_away' => 11, 'set2_home' => null, 'set2_away' => null, 'set3_home' => null, 'set3_away' => null];
 
         return $this->round->games()->create([
             'player1_id' => $this->players[$playerIndexes[0]]->id,

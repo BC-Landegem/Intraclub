@@ -324,9 +324,9 @@ class DrawAndDrawnOutTest extends TestCase
             'player2_id' => $this->players[$playerIndexes[1]]->id,
             'player3_id' => $this->players[$playerIndexes[2]]->id,
             'player4_id' => $this->players[$playerIndexes[3]]->id,
-            'set1_home' => 21, 'set1_away' => 15,
-            'set2_home' => 21, 'set2_away' => 15,
-            'set3_home' => 21, 'set3_away' => 15,
+            'set1_home' => 15, 'set1_away' => 11,
+            'set2_home' => 15, 'set2_away' => 11,
+            'set3_home' => 15, 'set3_away' => 11,
         ]);
     }
 
