@@ -18,10 +18,10 @@ use Tests\TestCase;
  * zijn sets, op speeldag 2 speler 2. Daardoor klimt speler 2 van de derde naar
  * de eerste plaats, wat de sprong-lijst een voorspelbaar antwoord geeft.
  *
- *   basispunten   p1 19,1   p2 19,2   p3 19,3   p4 19,4
+ *   basispunten   p1 14,1   p2 14,2   p3 14,3   p4 14,4
  *   dagscores     winnaar 15,00, de andere drie 12,33
- *   na speeldag 1  1. p1 17,05   2. p3 15,82   3. p2 15,77   4. p4 15,20
- *   na speeldag 2  1. p2 15,51   2. p1 15,48   3. p3 14,66   4. p4 13,80
+ *   na speeldag 1  1. p1 14,55   2. p3 13,32   3. p2 13,27   4. p4 12,70
+ *   na speeldag 2  1. p2 13,84   2. p1 13,81   3. p3 12,99   4. p4 12,13
  */
 class RecordsApiTest extends TestCase
 {
@@ -52,7 +52,7 @@ class RecordsApiTest extends TestCase
             PlayerSeasonStatistic::create([
                 'season_id' => $this->season->id,
                 'player_id' => $this->players[$index]->id,
-                'base_points' => 19 + $index / 10,
+                'base_points' => 14 + $index / 10,
             ]);
         }
 
@@ -80,7 +80,7 @@ class RecordsApiTest extends TestCase
         $rijen = $this->getJson('/api/records')->assertOk()->json('data.best_seasons');
 
         $this->assertSame($this->players[2]->id, $rijen[0]['player']['id']);
-        $this->assertSame(15.51, $rijen[0]['average']);
+        $this->assertSame(13.84, $rijen[0]['average']);
         $this->assertSame(1, $rijen[0]['rank']);
         $this->assertSame(4, $rijen[0]['players_ranked']);
         $this->assertSame('2026 - 2027', $rijen[0]['season']['name']);
@@ -100,10 +100,10 @@ class RecordsApiTest extends TestCase
         $this->assertSame(1, $rijen[0]['to_rank']);
         $this->assertSame(1, $rijen[0]['from_round']);
         $this->assertSame(2, $rijen[0]['to_round']);
-        // De gemiddeldes horen erbij: twee plaatsen winnen kan met een klein verschil,
+        // De gemiddeldes horen erbij: drie plaatsen winnen kan met een klein verschil,
         // en zonder deze twee getallen leest een sprong groter dan hij is.
-        $this->assertSame(15.77, $rijen[0]['from_average']);
-        $this->assertSame(15.51, $rijen[0]['to_average']);
+        $this->assertSame(13.27, $rijen[0]['from_average']);
+        $this->assertSame(13.84, $rijen[0]['to_average']);
         // Zonder dit getal is een sprong van 2 niet te interpreteren.
         $this->assertSame(4, $rijen[0]['players_ranked']);
 
