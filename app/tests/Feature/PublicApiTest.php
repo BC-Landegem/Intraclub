@@ -486,12 +486,61 @@ class PublicApiTest extends TestCase
             ->assertJsonPath('data.0.plays_competition', true);
     }
 
-    public function test_spelerslijst_kan_ook_wie_gestopt_is_bevatten(): void
+    /**
+     * De lijst is het huidige ledenbestand, en ?members=0 bestaat hier niet meer:
+     * dat was een bladerbare lijst van iedereen die ooit meespeelde. Een onbekende
+     * parameter mag geen tweede betekenis krijgen, dus hij wordt gewoon genegeerd —
+     * de lijst blijft het ledenbestand.
+     */
+    public function test_spelerslijst_is_het_ledenbestand_en_kent_geen_members_parameter(): void
     {
         $this->players[4]->update(['is_member' => false]);
 
         $this->getJson('/api/players')->assertOk()->assertJsonCount(3, 'data');
-        $this->getJson('/api/players?members=0')->assertOk()->assertJsonCount(4, 'data');
+        $this->getJson('/api/players?members=0')->assertOk()->assertJsonCount(3, 'data');
+    }
+
+    /**
+     * De twee helften van een eindstand: /rankings geeft plaats en gemiddelde,
+     * /seasons/{id}/statistics de sets, matchen en aanwezigheden. Ze horen dus over
+     * dezelfde spelers te gaan. Vóór fase 12 deed enkel de eerste de eis "een
+     * gemiddelde op de laatste berekende speeldag", waardoor 2025-2026 er 88 gaf en
+     * 121 — voor 33 spelers bestond de helft van de vijf kolommen niet.
+     */
+    public function test_eindstand_en_seizoensstatistieken_gaan_over_dezelfde_spelers(): void
+    {
+        $zonderGemiddelde = $this->extraSpeler('Zonder');
+        $this->players[4]->update(['is_member' => false]);
+
+        foreach ([true, false] as $membersOnly) {
+            $parameter = $membersOnly ? '' : '?members=0';
+
+            $klassement = array_column(
+                $this->getJson("/api/rankings/general{$parameter}")->assertOk()->json('data'), 'id'
+            );
+            $statistieken = array_column(array_column(
+                $this->getJson("/api/seasons/current/statistics{$parameter}")->assertOk()->json('data'), 'player'
+            ), 'id');
+
+            sort($klassement);
+            sort($statistieken);
+
+            $this->assertSame($klassement, $statistieken, 'members='.($membersOnly ? '1' : '0'));
+            $this->assertNotContains($zonderGemiddelde->id, $statistieken);
+        }
+    }
+
+    public function test_seizoenen_tellen_de_lengte_van_de_eindstand(): void
+    {
+        $this->extraSpeler('Zonder');
+
+        // Vijf seizoensrijen, vier spelers met een gemiddelde na speeldag 1. Het
+        // getal komt naast een link naar de eindstand, dus telt het die stand.
+        $this->assertSame(5, PlayerSeasonStatistic::where('season_id', $this->season->id)->count());
+
+        $this->getJson('/api/seasons')
+            ->assertOk()
+            ->assertJsonPath('data.0.players_count', 4);
     }
 
     public function test_spelerdetail_geeft_enkel_de_tellers_zonder_include(): void

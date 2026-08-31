@@ -14,6 +14,7 @@ use App\Models\Player;
 use App\Models\PlayerSeasonStatistic;
 use App\Models\Season;
 use App\Services\Pairings;
+use App\Services\PlayerSeasonHistory;
 use App\Services\RankingHistory;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Http\Request;
@@ -27,9 +28,16 @@ use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
  * spelerspagina alle drie tegelijk nodig heeft; een build-script dat enkel de
  * wedstrijden wil, haalt de sub-resource op en sleept de rest niet mee.
  *
+ * Alles hier gaat over het lopende seizoen. Van vroeger blijft op een fiche enkel
+ * de seizoenstabel over — plaats, gemiddelde, sets, matchen, aanwezig per seizoen,
+ * dezelfde vijf kolommen als in de eindstand. Wedstrijden, klassementsverloop en
+ * partnerbalans van een afgesloten seizoen zijn weg: ontdubbeld over de leden van
+ * dat seizoen stond de volledige speeldaggeschiedenis er anders weer, met alle
+ * namen en setstanden erbij. De grens staat als middleware in routes/api.php.
+ *
  * Welke includes een route kent, staat in routes/api.php.
  *
- * Queryparameters: season, members (op de lijst), include (op de speler).
+ * Queryparameters: season, include (op de speler).
  */
 class PlayerController extends Controller
 {
@@ -39,22 +47,20 @@ class PlayerController extends Controller
     public function __construct(
         private readonly RankingHistory $rankingHistory,
         private readonly Pairings $pairings,
+        private readonly PlayerSeasonHistory $seasonHistory,
     ) {}
 
     /**
-     * Standaard enkel de huidige leden. ?members=0 geeft ook wie gestopt is —
-     * nodig voor een pagina over een afgesloten seizoen, want daar hoort iemand
-     * die vertrokken is nog gewoon in de eindstand.
+     * Het huidige ledenbestand. Er is bewust geen ?members=0 meer: dat leverde een
+     * bladerbare lijst van iedereen die ooit meespeelde. Wie in een afgesloten
+     * seizoen meedeed staat nog gewoon in die eindstand — daar zijn /rankings en
+     * /seasons/{id}/statistics voor, mét ?members=0.
      */
-    public function index(Request $request): AnonymousResourceCollection
+    public function index(): AnonymousResourceCollection
     {
-        $query = Player::query()->orderBy('first_name')->orderBy('last_name');
-
-        if ($request->boolean('members', true)) {
-            $query->members();
-        }
-
-        return PlayerResource::collection($query->get());
+        return PlayerResource::collection(
+            Player::query()->members()->orderBy('first_name')->orderBy('last_name')->get()
+        );
     }
 
     public function show(Request $request, Player $player): PlayerDetailResource
@@ -75,6 +81,7 @@ class PlayerController extends Controller
         return (new PlayerDetailResource(
             $player,
             (new PlayerSeasonStatisticResource($statistic))->counters(),
+            $this->seasonHistory->forPlayer($player),
             $extra,
         ))->additional(['meta' => ['season' => $this->seasonMeta($season)]]);
     }

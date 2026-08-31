@@ -2,7 +2,7 @@
 
 Voor wie in `bc-landegem/Website` werkt. De intraclub-pagina's halen hun data vandaag uit de **legacy Slim-API** op `https://www.bclandegem.be/intra-app/api/index.php`. Die verdwijnt samen met de Joomla-site. Dit document zegt wat er in de plaats komt en wat er in deze repo moet wijzigen.
 
-De nieuwe API staat op `https://intra.bclandegem.be/api`. Contract en beslissingen: `PLAN.md`, fase 8.
+De nieuwe API staat op `https://intra.bclandegem.be/api`. Contract en beslissingen: `PLAN.md`, fasen 8 en 11.
 
 ---
 
@@ -53,12 +53,14 @@ Zonder deze wijziging valt de API-respons in de assetcache of nergens, en verlie
 | `/rounds/latestCalculated` | **weg** — zit in `meta.round` van `/rankings` |
 | `/rounds/{id}` | `/rounds/{id}` |
 | `/rounds/{id}/matches` | `/rounds/{id}/games` |
-| `/players` | `/players` (+ `?members=0`) |
-| `/players/{id}` | `/players/{id}` (+ `?include=games,ranking_history`) |
+| `/players` | `/players` — het ledenbestand; `?members=0` bestaat niet meer |
+| `/players/{id}` | `/players/{id}` (+ `?include=games,ranking_history`, + `seasons` voor de geschiedenis) |
 | `/seasons` | `/seasons` |
 | `/seasons/latest/statistics` | `/seasons/current/statistics` |
 
-Nieuw beschikbaar: `/players/{id}/games`, `/players/{id}/ranking-history`, `/players/{id}/pairings`, `/records`, en het volledige archief onder `/archive/…`.
+> Een deel van deze routes geldt sinds fase 11 **enkel nog voor het lopende seizoen**, en `/players?members=0` bestaat niet meer. Zie §7 en §8.
+
+Nieuw beschikbaar: `/players/{id}/games`, `/players/{id}/ranking-history` en `/players/{id}/pairings` (lopend seizoen), `/records`, en de eindstanden van het archief onder `/archive/seasons/…`.
 
 ## 4. Conventies die overal veranderen
 
@@ -148,42 +150,87 @@ De nieuwe API geeft `is_calculated: true`. Beide vergelijkingen worden dan altij
 
 De eerste vergelijking verdwijnt sowieso als je `meta.round` gebruikt. De tweede wordt `/rounds?calculated=1`.
 
-## 7. Zichtbaarheid
+## 7. Zichtbaarheid en de grens van de geschiedenis
 
-Klassement, speeldagoverzicht en de historiek-pagina's blijven indexeerbaar. Op **spelerspagina's en speeldagdetail** komt `noindex, follow`: wie de link heeft ziet ze, maar Google zet geen clublid met naam en aanwezigheidspercentage in de zoekresultaten. Zet die pagina's ook niet in `sitemap.xml`.
+Sinds 31-08 geldt er een harde grens rond alles vóór het lopende seizoen (`PLAN.md`, fase 11). De regel, in één zin:
 
-## 8. Nieuw: 16 seizoenen historiek
+> **Eén regel uit een eindstand mag altijd — die regels van één persoon bij elkaar zetten mag alleen als die persoon nog lid is.**
 
-Vandaag toont de site alleen het lopende seizoen. In de databank zitten:
+Concreet voor deze repo:
 
-- **2023-2024** en **2024-2025** in het huidige format, via de gewone endpoints met `?season=1` en `?season=6`;
+- **Lopend seizoen:** er verandert niets. Klassement, speeldagen, spelerspagina's, alles blijft zoals de rest van dit document beschrijft.
+- **Afgesloten seizoenen:** enkel de **eindstand** — alle deelnemers, ook wie gestopt is — plus de erelijst en `/records`. Geen speeldagpagina's meer van vroeger, geen wedstrijden, geen aanwezigheden, geen klassementsverloop.
+- **Spelerspagina:** het lopende seizoen volledig; de geschiedenis enkel als tabel met vijf kolommen per seizoen (plaats, gemiddelde, sets, matchen, aanwezig), niet openklapbaar naar speeldagen.
+- **Spelerspagina van een niet-lid:** de API geeft `403` met `{"error":{"code":"not_a_member"}}` en **geen naam**. Toon daar een zachte melding ("Deze speler is geen lid meer van de club"), geen 404-pagina.
+
+**Dit is gebouwd** (fase 11 en 12, 31-08). Twee foutcodes en één nieuw veld, en daarmee is het contract volledig:
+
+| | |
+| --- | --- |
+| `403` `{"error":{"code":"not_a_member"}}` | de vier fiche-routes van een niet-lid: `/players/{id}` en zijn `/games`, `/ranking-history`, `/pairings` |
+| `403` `{"error":{"code":"season_closed"}}` | diezelfde vier met `?season=` op een afgesloten seizoen, plus `/rounds`, `/rounds/{id}` en `/rounds/{id}/games` daarbuiten |
+| `404` | onbestaande speler, onbestaand seizoen, en de verwijderde routes uit §8 — een typefout blijft dus een typefout |
+
+Het nieuwe veld is **`seasons` op `/players/{id}`**: de geschiedenis zit in dezelfde response als de fiche, dus er is geen tweede call en geen aparte archief-fiche meer.
+
+```json
+"seasons": [
+  { "season_id": 12, "season_name": "2022 - 2023", "is_archive": true,
+    "rank": 18, "average": 18.62,
+    "sets": { "won": 21, "total": 34 }, "games": { "total": 17 }, "rounds": { "present": 17 } },
+  { "season_id": 1, "season_name": "2023-2024", "is_archive": false, "rank": 46, "average": 19.11, … }
+]
+```
+
+Vijf dingen om te weten:
+
+- **Beide generaties staan in één chronologische lijst.** `is_archive` zegt bij welke eindstand een rij hoort — `/archive/seasons/{id}/standings` of `/rankings?season={id}&members=0` — want de twee id-reeksen staan los van elkaar. Vergelijk de gemiddelden niet over die grens heen (§8).
+- **Het lopende seizoen staat er niet in.** Dat is de fiche zelf: `statistics` en `meta.season`.
+- **`rank` is de plaats uit de gepubliceerde eindstand**, dus met de gestopte leden meegeteld. Dezelfde rijen als in de seizoenstabel, andere as — je mag ze naast elkaar zetten.
+- **Een seizoen zonder eindgemiddelde staat er niet in**, net zoals het niet in de eindstand staat (fase 12). Voor een lid dat een seizoen halverwege verliet, ontbreekt dat seizoen dus; dat is geen gat maar dezelfde regel aan beide kanten.
+- **`players_count` op `/seasons` en `/archive/seasons` is de lengte van die eindstand.** Je mag het dus als teller boven de tabel zetten. Vroeger telde het de inschrijvingen: voor 2018-2019 stond er 142 boven een stand van 81.
+
+Twee gevolgen voor de bouwwijze, en die zijn niet vrijblijvend:
+
+1. **Spelerspagina's moeten client-side.** Of iemand nog lid is verandert ná de build. Een build-time fiche blijft anders maanden staan nadat iemand gestopt is, want er is bewust geen rebuild-trigger vanuit Laravel.
+2. **Eindstanden mogen build-time**, want die veranderen nooit meer. Zet er wel een **`schedule:`-cron** naast in de workflow — nachtelijk volstaat. Zonder die cron valt er bij de seizoenswissel een gat: het net gespeelde seizoen is dan uit de API verdwenen als speeldagen, en nog niet gebouwd als eindstand.
+
+**Alle namen in een eindstand blijven klikbaar**, ook die van gestopte leden. De build weet niet wie er in maart nog lid is; een link die bij het bouwen klopte, beweert drie maanden later het verkeerde. De fiche beslist het zelf, live.
+
+`noindex, follow` blijft op spelerspagina's en op speeldagdetail van het lopende seizoen, en die pagina's blijven uit `sitemap.xml`. Klassement, eindstanden en records blijven indexeerbaar.
+
+## 8. Zeventien eindstanden
+
+Vandaag toont de site alleen het lopende seizoen. In de databank zitten er zeventien:
+
+- **2023-2024** en verder in het huidige format, via de gewone endpoints met `?season={id}`;
 - **2009-2023**, veertien seizoenen, onder `/archive/…`.
 
-Die data is bevroren, dus ze hoort **build-time** opgehaald te worden: `getStaticPaths()` over `/archive/seasons`, platte HTML, nul fetches in de browser, meteen indexeerbaar. De enige "rebuild-trigger" die je daarvoor nodig hebt is een `git push`.
+Van een afgesloten seizoen is publiek enkel de **eindstand** beschikbaar (§7). Die verandert nooit meer, dus ze hoort **build-time** opgehaald te worden: `getStaticPaths()` over de seizoenen, platte HTML, nul fetches in de browser, meteen indexeerbaar.
 
 ```
-GET /archive/seasons                        → 14 seizoenen, met rounds_count en players_count
-GET /archive/seasons/{id}/standings         → eindstand, met badmintonranking en games.won
-GET /archive/seasons/{id}/rounds            → speeldagen
-GET /archive/seasons/{id}/rounds?include=games  → speeldagen mét uitslagen, in één call
-GET /archive/rounds/{id}                    → uitslagen (team1/team2, best-of-3)
-GET /archive/players?player_id={huidig}     → wat het archief weet over een huidig lid
-GET /archive/players?include=seasons        → alle spelers mét hun seizoenen, in één call
-GET /archive/players/{id}?include=games
+GET /seasons                            → alle seizoenen, met meta.current_season_id
+GET /rankings?season={id}&members=0     → eindstand huidig format: plaats + gemiddelde
+GET /seasons/{id}/statistics?members=0  → sets, punten, matchen, speeldagen aanwezig
+GET /archive/seasons                    → de veertien oude seizoenen
+GET /archive/seasons/{id}/standings     → eindstand, met badmintonranking en games.won
+GET /records                            → clubrecords over het huidige format
 ```
 
-De twee includes zijn er voor precies dit build-time-scenario: zonder `include=games` is een seizoen opbouwen een request per speeldag, en zonder `include=seasons` is een erelijst een request per speler. Zie ook §11.
+**`?members=0` is niet optioneel.** Zonder die parameter filtert de API op de huidige leden, ook in de stand van een afgesloten seizoen — en dan mist de eindstand van 2023-2024 er 36 van de 96.
+
+De vijf kolommen die een eindstand toont — plaats, gemiddelde, sets, matchen, aanwezig — zijn dezelfde als die op de spelerspagina onder "geschiedenis". Dat is opzet: het zijn letterlijk dezelfde rijen, één keer per seizoen gerangschikt en één keer per speler.
 
 Twee dingen om te weten:
 
-- Het oude format speelde met **vaste teams in best-of-3**, niet met duo's die per set wisselen. Een gearchiveerde wedstrijd heeft `team1`/`team2` en soms maar twee sets. Hergebruik de speeldagcomponent van het huidige format hier dus niet.
-- **2010-2011 heeft geen eindstand.** Dat seizoen werd destijds nooit gearchiveerd, enkel de uitslagen bleven bewaard. `standings` geeft daar een lege `data`. Vang dat op met een uitleg in plaats van een leeg tabelletje.
+- **2010-2011 heeft wél een eindstand**, met 73 spelers. Dit document zei eerder dat dat seizoen leeg terugkwam; dat klopt niet meer. Het werd destijds nooit correct gearchiveerd — de bewaarde punten kloppen niet met de bewaarde uitslagen — en de stand wordt daarom herberekend uit de wedstrijden. Dat dat mag is nagerekend: de rekenregels van toen zijn dezelfde als die van nu, en voor de drie andere comp-seizoenen reproduceert de berekening de bewaarde stand voor *álle* spelers (55/55, 82/82, 79/79). **Alle zeventien seizoenen hebben dus een stand**; er is geen leeg geval meer om op te vangen.
+- Vergelijk gemiddelden **niet over de twee generaties heen**. Het oude format speelde met vaste teams in best-of-3, het huidige met duo's die per set roteren. De cijfers zien er hetzelfde uit en betekenen iets anders.
 
-Voor de seizoenen in het huidige format: gebruik **`?members=0`**. Zonder die parameter geeft de API enkel de huidige leden, en dan valt de helft van de eindstand van 2023-2024 weg — dat seizoen had 96 spelers, waarvan er nu 60 nog lid zijn.
+**Weg uit de API** (bestonden in fase 7-10, verdwijnen met fase 11): `/archive/seasons/{id}/rounds`, `/archive/rounds/{id}`, `/archive/players`, `/archive/players/{id}`, `/rounds` en `/rounds/{id}` buiten het lopende seizoen, en `/players?members=0`.
 
 ## 9. Wat er sinds de omzetting bijgekomen is
 
-Drie dingen die er nog niet waren toen dit document geschreven werd.
+Drie dingen die er nog niet waren toen dit document geschreven werd. `day_score` en `/pairings` gelden sinds fase 11 **enkel binnen het lopende seizoen** (§7); `?members=0` op `/rankings` is juist bedoeld voor de eindstanden van vroeger.
 
 ### `day_score` — de formule wordt navolgbaar
 
@@ -210,7 +257,7 @@ Eén rij per andere speler, gesorteerd op aantal avonden. `as_partner.sets` is a
 
 ### `/records` — clubrecords
 
-Vijf lijsten in één call: `best_days`, `best_seasons`, `biggest_climbs`, `longest_streaks`, `most_played_duos`. Alleen over het huidige format; de veertien oude jaargangen krijgen hun eigen erelijst uit `/archive`.
+Vijf lijsten in één call: `best_days`, `best_seasons`, `biggest_climbs`, `longest_streaks`, `most_played_duos`. Alleen over het huidige format — de veertien oude jaargangen speelden met vaste teams in best-of-3, dus een dagscore van toen is een ander getal. Zij hebben hun eigen eindstanden onder `/archive` (§8).
 
 **Let op twee afwijkingen.** `?season=` weglaten betekent hier *alle* seizoenen, niet het lopende — een clubrecord over één seizoen is er geen. En `?limit=` geldt per lijst, standaard 10.
 
@@ -225,6 +272,8 @@ Drie velden die je op de pagina beter wél toont:
 Nodig voor de erelijst. Zonder deze parameter filtert een klassement op de huidige leden, ook dat van een afgesloten seizoen — en dan mist de eindstand van 2023-2024 er 36 van de 96.
 
 ## 11. Includes op collecties
+
+> **Let op, fase 11 haalt hier twee van de drie weg.** `include=seasons` op `/archive/players` en `include=games` op `/archive/seasons/{id}/rounds` zijn verdwenen met hun routes. `include=attendances` op `/rounds` **bestaat nog, maar enkel voor het lopende seizoen** — de speeldagpagina's van dit seizoen leunen erop, en over een afgesloten seizoen geeft de route zelf `403 season_closed`. Wat verder blijft is `?include=games,ranking_history` op de spelerspagina van het lopende seizoen. Lees de rest van deze paragraaf als achtergrond bij het contract, niet als bouwinstructie.
 
 `?include=` werkte eerst alleen op één resource. Op een collectie werd de parameter **stil genegeerd**: je kreeg de kale lijst terug en haalde de rest dan alsnog per speler op. Dat kostte een build-script 854 requests waar er 55 volstaan, zonder dat er iets waarschuwde.
 
@@ -255,14 +304,22 @@ Alles wordt in één keer ingeladen, dus een seizoen van twintig speeldagen kost
 - [ ] Tab Speeldagen: `players_present` in plaats van `× 4`
 - [ ] Tab Aanwezigheden: `/seasons/current/statistics`, deler uit `?calculated=1`
 - [ ] Homepage-teaser: `?limit=10`
-- [ ] Spelerspagina: `?include=games,ranking_history`, `statistics.games`
-- [ ] Speeldagpagina: `sets[].home/away`, `is_played`, `winner`
+- [ ] Spelerspagina: `?include=games,ranking_history`, `statistics.games` — **enkel voor het lopende seizoen** (§7)
+- [ ] Speeldagpagina: `sets[].home/away`, `is_played`, `winner` — **enkel voor het lopende seizoen**
 - [ ] **Beide `calculated === '1'`-vergelijkingen weg**
 - [ ] `noindex` op speler- en speeldagpagina's, en uit de sitemap
-- [ ] "Zo werkt het": beslissen of het uitgewerkte voorbeeld op speeldag 17 van 2025-2026 blijft staan
 - [ ] Speeldagpagina: `attendances` gebruiken, met `day_score` naast het gemiddelde
 - [ ] Spelerspagina: `day_score` in het klassementsverloop, en `/pairings` als tweede blok
-- [ ] Nieuwe pagina's: erelijst, historiek per seizoen (build-time), records
-- [ ] Build-scripts: `?include=` op de collecties gebruiken (§11) in plaats van een call per speler of per speeldag
 
-Die laatste verdient uitleg. De pagina bevat de 48 echte aanwezigen van 20 mei 2026 in een `<select>`, met een rekenmachine erbij — een build-time momentopname van één speeldag, geen live cijfers. Dat is een goede keuze: de prose eromheen ("48 spelers aanwezig") blijft kloppen omdat het voorbeeld niet beweegt. Maar het blijft ook op 20 mei 2026 staan tot iemand het aanpast. Twee opties: het voorbeeld bewust vastpinnen op één speeldag en dat in de tekst zeggen ("een voorbeeld van 20 mei 2026"), of de build altijd de laatst berekende speeldag nemen — `/rankings` geeft die in `meta.round`, en `/rounds/{id}` de bijhorende wedstrijden en aanwezigen. De tweede optie vraagt dat de tekst geen enkel concreet getal meer noemt buiten wat uit de data komt.
+Uit fase 11 (§7) komt daar dit bij, en die haalt ook werk wég. Lees §7 dus vóór je aan de historiek-pagina's begint.
+
+- [ ] **Spelerspagina client-side** in plaats van build-time, en `403 not_a_member` opvangen met een zachte melding zonder naam
+- [ ] **Geen speeldag- of wedstrijdpagina's voor afgesloten seizoenen.** Alles wat vandaag `/rounds/{id}` of `/archive/rounds/{id}` gebruikt buiten het lopende seizoen, vervalt
+- [ ] Spelerspagina: geschiedenis uit het veld **`seasons`** van diezelfde `/players/{id}`-call (§7) — vijf kolommen per seizoen, beide generaties in één lijst op `is_archive`, **niet openklapbaar** naar speeldagen
+- [ ] `403 season_closed` net zo opvangen als `not_a_member`: het betekent "die pagina bestaat niet meer voor dat seizoen", niet "er is iets stuk"
+- [ ] Nieuwe pagina's: **eindstand per seizoen** (build-time, 17×), erelijst, records
+- [ ] Alle namen in een eindstand blijven klikbaar, ook van gestopte leden — de fiche beslist zelf
+- [ ] `schedule:`-cron in de deploy-workflow (nachtelijk), zodat een net afgesloten seizoen vanzelf als eindstand verschijnt
+- [ ] "Zo werkt het": het voorbeeld **niet** vastpinnen op een speeldag-id (zie hieronder)
+
+Dat laatste punt verdient uitleg, want fase 11 haalt er een optie weg. De pagina bevat de 48 echte aanwezigen van 20 mei 2026 in een `<select>`, met een rekenmachine erbij — een build-time momentopname van één speeldag. Tot nu waren er twee mogelijkheden: het voorbeeld bewust vastpinnen op die datum, of de build altijd de laatst berekende speeldag laten nemen. **De eerste kan niet meer.** Zodra het seizoen 2025-2026 afgesloten is, geeft `/rounds/{id}` voor die speeldag niets meer terug en breekt de build. Blijft over: `meta.round` van `/rankings` volgen en `/rounds/{id}` van het lopende seizoen ophalen — wat vraagt dat de tekst geen concreet getal meer noemt buiten wat uit de data komt.

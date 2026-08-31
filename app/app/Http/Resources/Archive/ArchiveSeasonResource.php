@@ -9,6 +9,10 @@ use Illuminate\Http\Resources\Json\JsonResource;
 /**
  * Gearchiveerd seizoen.
  *
+ * `players_count` is de lengte van de eindstand, niet het aantal seizoensrijen:
+ * wie nooit een speeldag speelde stond toen ook nergens. Het staat daarom niet
+ * op een `withCount()` maar op een waarde die de controller erbij zet.
+ *
  * @mixin ArchiveSeason
  */
 class ArchiveSeasonResource extends JsonResource
@@ -21,7 +25,7 @@ class ArchiveSeasonResource extends JsonResource
             'name' => $this->name,
             'source' => $this->source,
             'rounds_count' => $this->whenCounted('rounds'),
-            'players_count' => $this->whenCounted('playerStatistics'),
+            'players_count' => (int) $this->players_count,
         ];
     }
 }

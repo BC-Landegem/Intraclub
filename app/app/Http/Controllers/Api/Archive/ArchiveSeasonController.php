@@ -2,71 +2,45 @@
 
 namespace App\Http\Controllers\Api\Archive;
 
-use App\Http\Controllers\Api\Concerns\ParsesIncludes;
 use App\Http\Controllers\Controller;
-use App\Http\Resources\Archive\ArchiveGameResource;
-use App\Http\Resources\Archive\ArchiveRoundResource;
 use App\Http\Resources\Archive\ArchiveSeasonResource;
-use App\Models\Archive\ArchiveRound;
 use App\Models\Archive\ArchiveSeason;
 use App\Services\Legacy\ArchiveStandings;
-use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 
 /**
  * Gearchiveerde seizoenen (2009-2023), alleen-lezen.
+ *
+ * Van een afgesloten seizoen blijft publiek enkel de eindstand, en het archief
+ * bestaat uitsluitend uit afgesloten seizoenen. Er zijn dus twee endpoints: de
+ * index om de veertien standen te vinden, en de stand zelf. De speeldagen en
+ * uitslagen die hier vroeger onder /rounds stonden, zijn verwijderd — die blijven
+ * wel volledig zichtbaar in het beheerspaneel.
  */
 class ArchiveSeasonController extends Controller
 {
-    use ParsesIncludes;
-
     public function __construct(private readonly ArchiveStandings $standings) {}
 
     public function index(): AnonymousResourceCollection
     {
-        return ArchiveSeasonResource::collection(
-            ArchiveSeason::query()->withCount(['rounds', 'playerStatistics'])->orderBy('name')->get()
-        );
-    }
+        $seasons = ArchiveSeason::query()->withCount('rounds')->orderBy('name')->get();
 
-    /**
-     * De speeldagen van een gearchiveerd seizoen.
-     *
-     * `?include=games` hangt de uitslagen er meteen aan. Een seizoen heeft een
-     * twintigtal speeldagen, dus zonder deze include is een historiekpagina
-     * bouwen een request per speeldag — voor data die toch bevroren is.
-     *
-     * @return array<string, mixed>
-     */
-    public function rounds(Request $request, ArchiveSeason $season): array
-    {
-        $rounds = $season->rounds()->withCount('games')->orderBy('date')->get();
-        $withGames = $this->wants($request, 'games');
-
-        if ($withGames) {
-            $rounds->load([
-                'games' => fn ($query) => $query->orderBy('id'),
-                'games.team1Player1',
-                'games.team1Player2',
-                'games.team2Player1',
-                'games.team2Player2',
-            ]);
+        // `players_count` is de lengte van de eindstand en niet het aantal
+        // seizoensrijen: dit getal komt op de site naast een link naar die stand te
+        // staan. Zou het de inschrijvingen tellen, dan stond er "142 spelers" boven
+        // een tabel van 81 rijen zonder dat iets waarschuwde. Dat kost twee queries
+        // per seizoen — veertien seizoenen, build-time opgehaald, dus dat mag.
+        foreach ($seasons as $season) {
+            $season->players_count = $this->standings->countForSeason($season);
         }
 
-        return [
-            // resolve() en niet toArray(): dat laatste laat voorwaardelijke velden
-            // (whenCounted, whenLoaded) als lege waarden in de response staan.
-            'data' => $rounds->map(fn (ArchiveRound $round): array => (new ArchiveRoundResource($round))->resolve($request)
-                + ($withGames
-                    ? ['games' => ArchiveGameResource::collection($round->games)->resolve($request)]
-                    : []))->all(),
-            'meta' => ['season' => ['id' => $season->id, 'name' => $season->name]],
-        ];
+        return ArchiveSeasonResource::collection($seasons);
     }
 
     /**
-     * De eindstand van het seizoen. Voor 2010-2011 is `data` leeg: dat seizoen
-     * werd destijds nooit gearchiveerd, enkel de uitslagen bleven bewaard.
+     * De eindstand van het seizoen. Alle veertien seizoenen hebben er een, ook
+     * 2010-2011: dat werd destijds nooit correct gearchiveerd en wordt bij de
+     * import herberekend uit de uitslagen.
      *
      * @return array<string, mixed>
      */
@@ -85,7 +59,7 @@ class ArchiveSeasonController extends Controller
                 // Op twee cijfers zoals elk ander gemiddelde in deze API. De
                 // sortering gebeurt in SQL op de ruwe waarde, dus dit raakt enkel
                 // wat er getoond wordt.
-                'average' => $rij->average === null ? null : round((float) $rij->average, 2),
+                'average' => round((float) $rij->average, 2),
                 'base_points' => $rij->base_points === null ? null : (float) $rij->base_points,
                 'sets' => [
                     'won' => (int) $rij->sets_won,

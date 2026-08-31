@@ -11,6 +11,11 @@ use Illuminate\Http\Resources\Json\JsonResource;
  * `meta.current_season_id` — een `is_current` per rij zou per seizoen opnieuw
  * moeten opzoeken welk het jongste is.
  *
+ * `players_count` is de lengte van de eindstand, niet het aantal seizoensrijen:
+ * wie op de laatste berekende speeldag geen gemiddelde heeft, staat niet in die
+ * stand. Het staat daarom niet op een `withCount()` maar op een waarde die de
+ * controller erbij zet.
+ *
  * @mixin Season
  */
 class SeasonResource extends JsonResource
@@ -22,7 +27,7 @@ class SeasonResource extends JsonResource
             'id' => $this->id,
             'name' => $this->name,
             'rounds_count' => $this->whenCounted('rounds'),
-            'players_count' => $this->whenCounted('playerStatistics'),
+            'players_count' => (int) $this->players_count,
         ];
     }
 }

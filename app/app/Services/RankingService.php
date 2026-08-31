@@ -50,7 +50,7 @@ class RankingService
 
         $round = $roundId
             ? Round::find($roundId)
-            : $season->rounds()->where('is_calculated', true)->orderByDesc('number')->first();
+            : $this->lastCalculatedRound($season);
 
         $ranking = $round === null
             ? $this->rankingForNewSeason($season, $membersOnly)
@@ -70,6 +70,40 @@ class RankingService
         }
 
         return ['season' => $season, 'round' => $round, 'categories' => $result];
+    }
+
+    /**
+     * De eindstand van een seizoen: plaats en gemiddelde per speler, in de vorm
+     * waarin /rankings ze publiceert.
+     *
+     * Dit is de verzameling die bepaalt wie in de stand van een seizoen hoort, en
+     * ze staat hier omdat drie plaatsen ze precies gelijk moeten hebben: de stand
+     * zelf, `players_count` op /seasons, en de aanwezighedentabel van
+     * /seasons/{id}/statistics. Die laatste twee liepen uiteen — 2025-2026 gaf 88
+     * rijen in het klassement en 121 in de statistieken — omdat een seizoensrij ook
+     * bestaat voor wie op de laatste speeldag geen gemiddelde heeft.
+     *
+     * @return array<int, array{rank: int, average: float}> speler-id => plaats
+     */
+    public function finalStanding(Season $season, bool $membersOnly = true): array
+    {
+        $round = $this->lastCalculatedRound($season);
+
+        $ranking = $round === null
+            ? $this->rankingForNewSeason($season, $membersOnly)
+            : $this->rankingAfterRound($round, $membersOnly);
+
+        $standing = [];
+        foreach ($ranking->values() as $index => $entry) {
+            $standing[$entry['player']->id] = ['rank' => $index + 1, 'average' => $entry['average']];
+        }
+
+        return $standing;
+    }
+
+    public function lastCalculatedRound(Season $season): ?Round
+    {
+        return $season->rounds()->where('is_calculated', true)->orderByDesc('number')->first();
     }
 
     /**

@@ -16,6 +16,7 @@
 | Admin-scope | CRUD spelers/speeldagen/wedstrijden/seizoenen, gebruikersbeheer, klassement-inzage + herberekening. Aanwezigheden/uitloting blijven een zaal-app-feature |
 | Publieke site | Joomla blijft. De pagina’s worden in een **apart project** beheerd; daar volstaat het wijzigen van de API-base-URL, want het contract is identiek gebleven. `web/` in deze repo is enkel een referentiekopie — niet aanpassen. |
 | Archief oude jaargangen | De jaargangen 2009-2023 uit de volledige sitedump gaan naar aparte, alleen-lezen `archive_`-tabellen — **niet** in `games`. Het oude format speelde met vaste teams in best-of-3 (derde set bleef leeg zodra een team er twee had), terwijl `games` vier spelers met per set roterende teams veronderstelt. Zie fase 7 |
+| Publieke geschiedenis | Van alles vóór het lopende seizoen blijft publiek enkel de **eindstand**, de **erelijst/records** en de **seizoenstabel van wie nú lid is**. Speeldagen, wedstrijden en fiches van afgesloten seizoenen gaan dicht; de fiche van een niet-lid geeft `403 not_a_member`. Zie fase 11 |
 | Deploy | GitHub Actions: `composer install --no-dev` + `ng build` in CI, FTPS-sync van gewijzigde bestanden. Migrations via beveiligde web-route na deploy |
 | Cutover | Big bang vóór seizoensstart. Fallback: oude systeem blijft staan; datamigratie is herhaalbaar, dus omschakelen kan desnoods ook na speeldag 1 |
 
@@ -180,7 +181,7 @@ De volledige sitedump bevat twee generaties van vóór het huidige systeem, die 
 - [x] **Aanwezigheden en matchen worden uit de uitslagen berekend**, niet overgenomen. Geen van beide oude systemen hield ze betrouwbaar bij: `intra_*` begon er pas in 2019-2020 mee (daarvóór stond overal nul) en `comp_*` telde "gewonnen spelletjes", wat niet met gewonnen matchen overeenkomt. De berekening reproduceert de bewaarde intra-cijfers exact waar die bestaan — het importcommando controleert dat bij elke run en rapporteert elke afwijking. Zo geldt één definitie over alle veertien seizoenen
 - [x] Filament: navigatiegroep **Archief** met Seizoenen (eindstand + speeldagen), Speeldagen (uitslagen met team1/team2 en de setstand) en Spelers (geschiedenis per seizoen, met link naar de huidige spelersfiche). Alles alleen-lezen; browser-getest op de echte data
 - [x] Publieke API onder `/api/archive`: `seasons`, `seasons/{id}/rounds`, `seasons/{id}/standings`, `rounds/{id}`, `players` (filterbaar met `?playerId=`) en `players/{id}` (`?withMatches=1` voor de wedstrijden). Aparte paden, zodat het geverifieerde contract van de bestaande endpoints ongemoeid blijft. 6 contracttests → **in fase 8 op snake_case gezet**: `?player_id=` en `?include=games`, en `data`/`meta` zoals de rest
-- [ ] Optioneel: 2010-2011 heeft wél uitslagen maar geen bewaarde eindstand. Uit de wedstrijden valt een gedeeltelijke stand af te leiden (sets, punten, matchen) — zonder klassementsgemiddelde, want dat vraagt de rekenlogica van toen
+- [x] **De eindstand van de comp-seizoenen wordt herberekend uit de uitslagen** (`App\Services\Legacy\ArchiveCompStandings`, draait mee in `intraclub:import-archive`). De rekenregels blijken dezelfde als die van het huidige systeem, enkel toegepast op vaste teams: dagresultaat = herschaald setgemiddelde van je team, afwezig = verliezersgemiddelde, eindstand = gemiddelde van de basispunten en elke speeldag. Dat het écht die regels waren is na te rekenen — voor drie van de vier seizoenen reproduceert de berekening de bewaarde eindstand voor **álle** spelers (55/55, 82/82, 79/79), tot op de opslagprecisie, inclusief wie geen enkele wedstrijd speelde. **2010-2011 is de uitzondering:** daar kloppen de bewaarde tellers wél met de uitslagen maar de bewaarde punten niet, en geen enkele afwijkende afwezigheids- of setregel verklaart dat verschil — de stand van toen is blijven staan op uitslagen die daarna nog verschoven zijn. Voor dat seizoen is de herberekening de enige stand die met de bewaarde uitslagen overeenkomt; ze staat er nu met 73 spelers. **Alle 17 seizoenen hebben dus een eindstand**
 - [x] **Verwijderde comp-spelers worden "Onbekende speler"** in plaats van overgeslagen. De uitslagen zijn wel degelijk gespeeld; alleen wie er speelde is niet meer te achterhalen. Elk onbekend bron-id krijgt een eigen archiefspeler (8 stuks) — niet één gedeelde, want twee wedstrijden hebben méér dan één onbekende en die zouden anders als dezelfde persoon in dezelfde match belanden. Levert 21 wedstrijden en 21 seizoensstatistieken extra op.
 - [x] **`php artisan intraclub:merge-duplicates`**: voegt dubbel aangemaakte spelers samen op basis van `player_dubbels` uit `player-map-overrides.php`. David Inghels (36 ← 132) en Lieselot Van Haute (72 ← 145) hebben nu 15 en 22 wedstrijden op één fiche in plaats van 12+3 en 21+1.
 - [x] **Seizoenstellers van de dubbel gaan mee, ze worden niet weggegooid.** Eerste versie schrapte de seizoensrij van de dubbel op de redenering dat tellers afgeleid zijn en meteen herberekend worden. Dat geldt enkel voor leden: `SeasonCalculator` filtert op `is_member`, en voor een niet-lid staan de tellers stil op wat de bron laatst berekend heeft. Beide dubbels zijn niet-lid en speelden 2025-2026 net onder de fiche die verdwijnt — hun seizoen viel daardoor op nul. Nu worden de tellers altijd opgeteld (de wedstrijden van beide fiches zijn disjunct). Spelen beide fiches in hetzelfde seizoen, dan waarschuwt het commando.
@@ -257,6 +258,142 @@ Terugkoppeling van de eerste echte consument (het build-script van de site): `?i
 **Stil negeren is weg.** `ValidateIncludes` hangt aan de hele publieke groep en kijkt `?include=` na tegen wat de route zelf opsomt (`->defaults('include', [...])` in `routes/api.php`). Onbekend geeft 422 met de toegelaten lijst erbij, ook op een route die géén includes kent. Dat is de eigenlijke fout die 800 requests kostte: niet dat de include ontbrak, maar dat niets waarschuwde. De toegelaten lijst staat daarmee op de route in plaats van als constante in de controller — één plaats, en die plaats leest als documentatie. `ParsesIncludes` leest alleen nog uit wat de middleware al goedkeurde.
 
 6 contracttests erbij (124 groen).
+
+### Fase 11 — Publieke geschiedenis afbakenen ✅ (API afgerond 31-08; site volgt in de `Website`-repo)
+
+Na intern overleg: van alles vóór het lopende seizoen mag publiek nog maar drie dingen terugkomen — de **eindstand**, de **erelijst** en de **statistiek van wie nú lid is**. Voor de rest een zachte melding.
+
+De regel, in één zin:
+
+> **Eén regel uit een eindstand mag altijd — die regels van één persoon bij elkaar zetten mag alleen als die persoon nog lid is.**
+
+Die formulering is er niet meteen. "Geen statistiek van ex-leden" klinkt eenvoudiger maar loopt vast op de eerste pagina waar je hem toepast: de eindstand van 2023-2024 had 96 spelers, van wie er nu 60 lid zijn. Daar 36 namen uit halen levert een stand met gaten op, plaatsen die van 12 naar 15 springen, en een kampioen die verdwijnt zodra hij de club verlaat. Een erelijst waar winnaars uit wegvallen is geen erelijst. **Namen blijven dus staan in een uitslag; wat dichtgaat is het dossier.**
+
+**Wat publiek blijft**
+
+| | |
+|---|---|
+| Lopend seizoen | alles, volledig ongewijzigd |
+| Eindstand per seizoen, alle 17 | compleet, mét de namen van ex-leden — `?members=0` |
+| Vijf kolommen per speler: plaats · gemiddelde · sets · matchen · aanwezig | dezelfde rijen als op de fiche, andere as |
+| Erelijst en `/records`, incl. `most_played_duos` | compleet; een record is een onderscheiding, geen profiel |
+| Fiche van een **huidig lid** | lopend seizoen volledig; geschiedenis enkel de seizoenstabel hierboven, niet openklapbaar |
+| Fiche van een **niet-lid** | `403 not_a_member`, **zonder naam** in het antwoord |
+
+**Drie deuren naar hetzelfde bestand.** De fiche afsluiten volstaat niet. Bij het doorlopen bleken er drie doorgangen die dezelfde geschiedenis langs een andere kant teruggeven, en elk daarvan maakt de gate cosmetisch zolang hij openstaat:
+
+1. `GET /rounds?season={id}&include=attendances` — één call met de aanwezigheid **en de `day_score` van elke speler op elke speeldag** van een heel seizoen. Dat is een vollediger dossier dan de fiche zelf: wie er wanneer was, wat hij die avond scoorde, en dus zijn aanwezigheidspercentage en zijn vorm.
+2. `GET /archive/players?include=seasons` — 192 spelers mét hun seizoenen in één call, waarvan er 114 vertrokken zijn. De eindstand gekanteld: niet per seizoen, maar per persoon.
+3. `GET /players/{id}/games` over de 60 leden van 2023-2024 — een game verschijnt op de fiche zodra één van de vier nog lid is, dus zit er in zowat elke wedstrijd van dat seizoen minstens één. Ontdubbelen op `game.id` en de **volledige speeldaggeschiedenis** staat er weer, met alle namen en setstanden.
+
+Een statische site is met één script leeg te halen, dus "je moet het wel willen vinden" telt hier niet als bescherming.
+
+**Wat weggaat uit de publieke API**
+
+| Weg | Reden |
+|---|---|
+| `/rounds`, `/rounds/{id}`, `/rounds/{id}/games` voor een afgesloten seizoen | speeldagen van vroeger staan niet in het lijstje van drie |
+| `include=attendances` op `/rounds` buiten het lopende seizoen | deur 1 |
+| `/archive/seasons/{id}/rounds`, `/archive/rounds/{id}` | idem, voor 2009-2023 |
+| `/archive/players` (index) en `include=seasons` | deur 2 |
+| `/players?members=0` — de index "iedereen die ooit meespeelde" | een bladerbare lijst van vertrokken leden |
+| `/players/{id}/games`, `/ranking-history`, `/pairings` buiten het lopende seizoen | deur 3 |
+| Diezelfde vier routes volledig, voor een niet-lid | `403 not_a_member` |
+
+Die routes worden **verwijderd**, niet achter de gate geparkeerd. Een route die 403 geeft is een uitnodiging, en git onthoudt het wel.
+
+**Waar de regel staat.** Niet verspreid over acht controllers, maar naast `ValidateIncludes` op de publieke groep: één middleware die het seizoen van de route bepaalt en alles wat niet het lopende is tegenhoudt, plus een `RequireMember` op de fiche-routes. De grens staat dan in `routes/api.php` te lezen als documentatie, net zoals `->defaults('include', …)` dat nu doet — precies de plek waar fase 10 geleerd heeft dat ze hoort. Daarnaast **`HistoryScopeTest`**: één bestand dat élke publieke route afloopt tegen een afgesloten seizoen en tegen een niet-lid, en vastlegt wat er terugkomt. Zonder dat bestand is de volgende handige include het gat weer open — dat is letterlijk hoe fase 10 ontstond.
+
+**Bouwwijze: de gate in de API, de fiche client-side.** `is_member` is een boolean die beweegt (iemand stopt in oktober, komt terug in januari). Zet je de gate enkel in de site-build, dan is `/api/players/123` gewoon publiek op te vragen. Zet je hem enkel in de API, dan blijft de al gebouwde statische fichepagina staan tot iemand toevallig pusht — en een rebuild-trigger vanuit Laravel is bewust geen optie. De split loopt daarom langs de as die er echt toe doet:
+
+- **uitslagen** (eindstand, erelijst, records) veranderen nooit meer → build-time, statisch, indexeerbaar;
+- **status** (is deze speler nog lid?) beweegt → client-side fetch, `noindex`, klopt altijd op de seconde.
+
+Gevolg voor de site: op de eindstand van 2023-2024 zijn **alle 96 namen klikbaar**, en 36 daarvan landen op de melding. Grijze namen zouden mooier zijn, maar de build weet niet wie er in maart nog lid is — een link die bij het bouwen klopte, beweert drie maanden later het verkeerde.
+
+Daarbovenop een **`schedule:`-cron in de GitHub Actions van de `Website`-repo**, bijvoorbeeld nachtelijk. Dat is geen ducttape tussen twee diensten: Laravel weet er niets van en stuurt niets, de site haalt uit zichzelf op zoals ze bij elke push al doet. Het dicht het gat dat anders bij de seizoenswissel valt.
+
+**De kanteling.** `Season::current()` is het laatst aangemaakte seizoen, dus het moment waarop een beheerder in Filament op "nieuw seizoen" klikt — één klik, die meteen ook de basispunten uit de eindstand toekent — klapt het vorige seizoen in dezelfde seconde dicht van *alles zichtbaar* naar *enkel de eindstand*. Dat is **hard, zonder overgangsperiode**: een uitzonderingsvenster is een tweede definitie van "huidig" op een tweede plaats, en de aanleiding voor deze hele beslissing was net minder publiek tonen. Wie de laatste speeldag nog even wil laten staan, maakt het nieuwe seizoen een week later aan — de regel zit dan in de agenda van het bestuur, niet in de code. De eindstandpagina van het net afgesloten seizoen bestaat pas na een build; daarvoor is de nachtelijke cron er.
+
+**Wat níét verandert.** Filament blijft volledig: bestuur en beheerders zien achter de login elke speeldag van 2011 nog. De zaal-app werkt op het lopende seizoen en staat sowieso achter authenticatie. Fase 7 is geen verloren werk — het archief verhuist van "publiek" naar "intern, plus een eindstand".
+
+**Wat het kost, eerlijk.** Het klassementsverloop per speeldag over voorbije seizoenen verdwijnt, ook voor leden en ook over hun eigen seizoen — dat was een van de leukere pagina's. De historiek-pagina's uit fase 8/9 worden kaler: per seizoen een eindstand in plaats van een doorbladerbaar seizoen. En twee van de drie collectie-includes uit fase 10 verliezen hun enige consument, drie weken nadat ze gebouwd zijn.
+
+**Nog te doen**
+
+- [x] `CurrentSeasonOnly` + `RequireMember`, per route aangehangen in `routes/api.php` — 31-08
+- [x] Dode routes, resources en contracttests verwijderen (zie tabel), incl. de bijhorende includes
+- [x] `403 not_a_member` met vaste body, zonder naam; 404 blijft voor "bestaat niet"
+- [x] `/players/{id}` geeft voor een lid per afgesloten seizoen enkel de vijf kolommen (plaats, gemiddelde, sets, matchen, aanwezig) — dezelfde vorm als de eindstand
+- [x] `HistoryScopeTest`: elke publieke route × afgesloten seizoen × niet-lid (14 tests)
+- [x] `docs/website-migratie.md` herzien (§3, §7, §8, §11, checklist) — 31-08
+- [ ] In `Website`: fiches client-side, eindstanden build-time, nachtelijke cron, speeldag- en spelerspagina's van vroeger eruit
+
+**Vijf dingen die pas bij het bouwen beslist zijn.**
+
+- **De grens hangt per route, niet op de groep.** De beslissing schreef "naast `ValidateIncludes` op de publieke groep", maar `/rankings?season={oud}&members=0` en `/seasons/{id}/statistics` moeten juist wél elk seizoen tonen — dát zijn de eindstanden. Op de groep zou de middleware precies datgene tegenhouden wat publiek moet blijven. Nu staat `CurrentSeasonOnly` op de drie `/rounds`-routes en op de vier fiche-routes, en `RequireMember` op die laatste vier. Het effect is hetzelfde en de routetabel leest nog steeds als documentatie.
+- **De seizoensgrens geeft `403` met `error.code: season_closed`**, naast de `not_a_member` die al beslist was. Zelfde vorm, en een build-script dat op een afgesloten seizoen mikt ziet meteen waarom het faalt in plaats van een 404 die op een typefout lijkt. Een onbekend seizoen blijft 404, ook `?season[]=1`.
+- **De fiche-gate staat ook op `/players/{id}` zelf**, niet enkel op de drie sub-resources: `?include=games,ranking_history` gaf anders langs dezelfde weg terug wat `/players/{id}/games` net tegenhoudt. Gevolg: de fiche bestaat enkel voor het lopende seizoen, en de geschiedenis komt uit `seasons` in diezelfde response.
+- **`/archive/players/{id}` is óók weg, en de archiefseizoenen zitten nu in de seizoenstabel van `/players/{id}`.** Fase 12 noemde die route nog, maar zonder de index eronder was ze niet meer te vinden (de site kent enkel `players.id`, niet `archive_players.id`), en een aparte fiche voor het archief zou twee tabellen maken van wat één geschiedenis is. `PlayerSeasonHistory` zet beide generaties in één chronologische lijst met `is_archive` erbij; de seizoensnamen sorteren lexicografisch al op datum, ook met de inconsistente spatiëring in de echte data ("2022 - 2023" vs "2023-2024").
+- **De plaats op de fiche komt uit de gepubliceerde eindstand, niet uit `player_round_statistics.rank`.** Fase 8 bevroor die rank op de leden van het moment van berekenen; de stand die de site toont staat op `?members=0` en bevat ook wie gestopt is. Wordt een oud seizoen later nog eens herrekend, dan verliest het ex-lid zijn plaats en schuift iedereen onder hem op — dan claimt de fiche een andere plaats dan de tabel waarnaar ze linkt. Fase 11 belooft letterlijk "dezelfde rijen, andere as", dus is `RankingService::finalStanding()` de enige bron. De bevroren rank houdt zijn rol binnen het lopende seizoen. `HistoryScopeTest` zet dat geval expliciet op en controleert eerst dát de twee bronnen daar verschillen — anders bewijst de assertie erna niets.
+
+`include=attendances` op `/rounds` blijft bestaan voor het lopende seizoen: de speeldagpagina's van dit seizoen leunen erop, en de seizoensgrens op de route maakt deur 1 sowieso dicht. `docs/website-migratie.md` §11 leest alsof de include helemaal verdwijnt; de tabel hierboven ("buiten het lopende seizoen") is wat gebouwd is.
+
+### Fase 12 — Wie hoort in een eindstand ✅ (afgerond 31-08)
+
+Waarneming: de eindstand van 2022-2023 bevat zes spelers zónder gemiddelde. Nagekeken op de echte data, en het bleek een gat dat over beide generaties én over beide codepaden loopt.
+
+De regel, in één zin:
+
+> **Geen gemiddelde op de laatste (berekende) speeldag van een seizoen ⇒ die speler staat niet in de eindstand van dat seizoen, en dat seizoen staat niet op zijn fiche.**
+
+**Het scharnier is de speeldagrij, niet de seizoensrij.** De aanvankelijke formulering was "wie geen seizoensstatistiek heeft, hoort niet in de stand" — maar die rij bestaat wél: 2022-2023 heeft er 85, ook voor de zes. Wat ontbreekt is hun rij op de láátste speeldag. Beide generaties stoppen simpelweg met speeldagrijen schrijven zodra iemand eruit is; dát is het spoor dat een uitschrijving achterlaat. In 2022-2023 staan er 85 rijen tot en met speeldag 10 en 79 vanaf speeldag 11.
+
+**Twee groepen zonder gemiddelde**, en ze verdienen dezelfde behandeling:
+
+| | rijen (archief) | wat het is |
+|---|---|---|
+| Nooit gespeeld | 240 | seizoensrij met basispunten, `rounds_present = 0`, geen enkele speeldagrij |
+| Wel gespeeld, dan gestopt | 16 | speeldagrijen tot ronde N, dan niets — het uitschrijf-trucje |
+
+2018-2019 is het ergst (61 van 142 namen), 2022-2023 met 6 juist een van de mildere. De vier `comp_`-seizoenen zijn niet geraakt: die hebben wél een `final_points`.
+
+**Hetzelfde gat in het levende pad, met een ander gezicht.** `/api/rankings` eist al een speeldagrij mét gemiddelde (`RankingService::rankingAfterRound`), `/seasons/{id}/statistics` niet. In het archief is het één query, dus komt het eruit als `average: null`; in het levende pad zijn het twee endpoints, dus komt het eruit als twee tabellen van verschillende lengte:
+
+| `?members=0` | `/rankings` | `/seasons/{id}/statistics` | na de regel |
+|---|---|---|---|
+| 2023-2024 | 96 | 96 | 96 |
+| 2024-2025 | 95 | 111 | 95 |
+| 2025-2026 | 88 | 121 | 88 |
+
+Dat is precies de voorwaarde die fase 11 nodig heeft: de vijf kolommen (plaats · gemiddelde · sets · matchen · aanwezig) komen uit twee bronnen, en vandaag bestaat voor 33 rijen in 2025-2026 de helft van die kolommen niet.
+
+**`members=1` verandert nergens** — 61 / 65 / 88 blijven wat ze zijn. De regel bijt uitsluitend op `?members=0`, dus de standaardweergave beweegt niet.
+
+**De fiche volgt dezelfde verzameling.** Valt een seizoen uit de eindstand, dan valt het ook uit de seizoenstabel op de fiche. Anders claimt de fiche deelname die de eindstand ontkent, en fase 11 belooft letterlijk "dezelfde rijen als op de fiche, andere as".
+
+**Wat niet doorgaat.** `is_member` blijft de handeling om iemand uit de lopende stand te halen; de data laat zien dat dat de laatste drie seizoenen al zo gebeurde (33× in 2025-2026). Geen "uitschrijven uit dit seizoen"-knop, geen per-seizoen stopmarkering, geen verplaatsing van de poort naar de seizoensrij — dat laatste zou een no-op zijn zolang `SeasonCalculator` op `is_member` filtert, want de échte poort zit daar en de rankingquery erft het resultaat gewoon.
+
+**Wat het kost.** 240 archiefrijen "ingeschreven, nooit gespeeld" verdwijnen uit de eindstanden, 46 daarvan in 2018-2019 alleen. Ze hadden basispunten maar geen enkele speeldagrij; ze stonden toen ook nergens.
+
+**`players_count` telt mee.** Dat veld staat publiek op `/seasons` en `/archive/seasons`, en fase 11 maakt die laatste net de publieke index van de historiek — het getal komt dus naast een link te staan die naar de eindstand leidt. Bleef het de rúwe seizoensrijen tellen, dan zou er "142 spelers" boven een tabel van 81 rijen komen zonder dat iets waarschuwt; precies het stille-afwijking-patroon waar fase 10 op stukliep. Het inschrijvingsgetal gaat daarmee verloren, en dat is aanvaard: 142 was voor 2018-2019 sowieso een misleidend antwoord, want 46 van hen speelden nooit één avond.
+
+**Nog te doen**
+
+- [x] `ArchiveStandings::forSeason()`: rijen zonder eindgemiddelde weg. Nagerekend op de echte data: 2022-2023 85 → 79, 2018-2019 142 → 81, comp-seizoenen onveranderd (55/73/82/79)
+- [x] `SeasonController::statistics()`: dezelfde eis op de laatste **berekende** speeldag, zodat `/rankings?members=0` en `/seasons/{id}/statistics?members=0` gegarandeerd dezelfde rijen geven
+- [x] Seizoenen zonder eindgemiddelde uit de seizoenstabel op `/players/{id}` (het archief zit daar nu mee in, zie fase 11)
+- [x] Contracttest die de rijen van beide endpoints per seizoen tegen elkaar legt, met en zonder `?members=0`
+- [x] `players_count` op `/seasons` en `/archive/seasons` telt de lengte van de eindstand. Gemeten: 96 / 95 / 88 levend; archief 55, 73, 82, 79, 62, 60, 51, 83, 80, 81, 89, 89, 72, 79
+
+**Één verzameling, drie consumenten.** De eis staat niet als tweede query in de controller maar in `RankingService::finalStanding()`, en die geeft plaats + gemiddelde per speler in exact de vorm waarin `/rankings` ze publiceert. Daar hangen de drie plaatsen aan die het gelijk moeten hebben: de stand zelf, `players_count` op `/seasons`, en het `whereIn` van `/seasons/{id}/statistics`. Zouden ze elk hun eigen `whereExists` op de laatste berekende speeldag hebben, dan is de contracttest het enige dat ze samenhoudt — en fase 10 heeft geleerd hoe stil zoiets uiteenloopt. Aan de archiefkant doet `ArchiveStandings::query()` hetzelfde voor `forSeason()` en `countForSeason()`.
+
+`players_count` staat daarom ook niet meer op een `withCount()`: de controller zet het getal per seizoen erbij. Dat kost twee queries per gearchiveerd seizoen op `/archive/seasons` — veertien seizoenen, bevroren data, build-time opgehaald en een minuut cachebaar, dus dat mag.
+
+**Twee dingen om in het oog te houden**
+
+- Een speler die in de zaal-app wordt toegevoegd heeft `average = null` tot de eerstvolgende herberekening, en is dus kort onzichtbaar in `?members=0`. Herberekening loopt bij score-invoer, dus binnen dezelfde avond.
+- Het archief kent geen `is_calculated`; daar blijft "laatste speeldag op datum" het criterium.
 
 ## Lokale dev-omgeving (opgezet 26-08-2026)
 
