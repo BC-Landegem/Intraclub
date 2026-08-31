@@ -20,7 +20,7 @@ use Tests\TestCase;
  *
  *   basispunten   p1 14,1   p2 14,2   p3 14,3   p4 14,4
  *   dagscores     winnaar 15,00, de andere drie 11,00
- *   na speeldag 1  1. p1 14,55   2. p4 12.7   3. p3 12.65   4. p2 12.6
+ *   na speeldag 1  1. p1 14.55   2. p4 12.7   3. p3 12.65   4. p2 12.6
  *   na speeldag 2  1. p2 13.4   2. p1 13.36   3. p4 12.13   4. p3 12.1
  */
 class RecordsApiTest extends TestCase
@@ -90,17 +90,17 @@ class RecordsApiTest extends TestCase
     {
         foreach ($this->players as $player) {
             $this->aanwezig($player->id, [1, 2]);
-        }derde
+        }
 
         $rijen = $this->getJson('/api/records')->assertOk()->json('data.biggest_climbs');
 
         $this->assertSame($this->players[2]->id, $rijen[0]['player']['id']);
-        $this->assertSame(3, $rijen[0]['places']);
-        $this->assertSame(4, $rijen[0]['from_rank']);
+        $this->assertSame(2, $rijen[0]['places']);
+        $this->assertSame(3, $rijen[0]['from_rank']);
         $this->assertSame(1, $rijen[0]['to_rank']);
         $this->assertSame(1, $rijen[0]['from_round']);
         $this->assertSame(2, $rijen[0]['to_round']);
-        // De gemiddeldes horen erbij: drie plaatsen winnen kan met een klein verschil,
+        // De gemiddeldes horen erbij: twee plaatsen winnen kan met een klein verschil,
         // en zonder deze twee getallen leest een sprong groter dan hij is.
         $this->assertSame(13.27, $rijen[0]['from_average']);
         $this->assertSame(13.84, $rijen[0]['to_average']);
