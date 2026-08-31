@@ -219,7 +219,7 @@ class MatchValidator
     /**
      * Controle of set klopt
      * 
-     * 15-14 of 14-15
+     * 21-20 of 20-21
      * 15+ - x waarbij x steeds = 15+ -2
      *
      * @param  int $homeScore
