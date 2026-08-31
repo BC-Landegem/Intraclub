@@ -26,6 +26,7 @@ class SeasonResource extends JsonResource
         return [
             'id' => $this->id,
             'name' => $this->name,
+            'points_per_set' => $this->points_per_set->value,
             'rounds_count' => $this->whenCounted('rounds'),
             'players_count' => (int) $this->players_count,
         ];

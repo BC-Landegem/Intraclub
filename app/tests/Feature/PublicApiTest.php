@@ -11,6 +11,7 @@ use App\Models\Season;
 use App\Services\SeasonCalculator;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
+use Tests\Concerns\PlaysToPoints;
 use Tests\TestCase;
 
 /**
@@ -22,9 +23,12 @@ use Tests\TestCase;
  *   - collecties in `data`, met `meta` voor seizoen en speeldag;
  *   - filters als queryparameters, niet als aparte routes;
  *   - een onbekend seizoen, speeldag of include faalt, met een status die zegt wat.
+ *
+ * Draait voor sets tot 15 en tot 21: zie {@see PublicApiPlayedTo21Test}.
  */
 class PublicApiTest extends TestCase
 {
+    use PlaysToPoints;
     use RefreshDatabase;
 
     private Season $season;
@@ -38,7 +42,12 @@ class PublicApiTest extends TestCase
     {
         parent::setUp();
 
-        $this->season = Season::create(['name' => '2026 - 2027']);
+        $this->bootFormat();
+
+        $this->season = Season::create([
+            'name' => '2026 - 2027',
+            'points_per_set' => $this->format->pointsPerSet,
+        ]);
         $this->round = $this->season->rounds()->create(['number' => 1, 'date' => '2026-09-01']);
 
         foreach (range(1, 4) as $index) {
@@ -56,7 +65,7 @@ class PublicApiTest extends TestCase
             PlayerSeasonStatistic::create([
                 'season_id' => $this->season->id,
                 'player_id' => $player->id,
-                'base_points' => 19 + $index / 10,
+                'base_points' => $this->format->basePoints($index),
             ]);
         }
 
@@ -68,9 +77,7 @@ class PublicApiTest extends TestCase
             'player2_id' => $this->players[2]->id,
             'player3_id' => $this->players[3]->id,
             'player4_id' => $this->players[4]->id,
-            'set1_home' => 15, 'set1_away' => 11,
-            'set2_home' => 15, 'set2_away' => 11,
-            'set3_home' => 15, 'set3_away' => 11,
+            ...$this->format->straightSets(),
         ]);
     }
 
@@ -88,6 +95,7 @@ class PublicApiTest extends TestCase
                 'meta' => ['season' => ['id', 'name'], 'round' => ['id', 'number', 'date']],
             ])
             ->assertJsonPath('meta.season.name', '2026 - 2027')
+            ->assertJsonPath('meta.season.points_per_set', $this->format->value())
             // Dit verving /rounds/latestCalculated: de stand zegt zelf na welke
             // speeldag ze geldt.
             ->assertJsonPath('meta.round.id', $this->round->id)
@@ -249,8 +257,8 @@ class PublicApiTest extends TestCase
             ->assertJsonPath('data.games.0.sets.0.away.player_ids', [$spelers[2], $spelers[3]])
             ->assertJsonPath('data.games.0.sets.1.home.player_ids', [$spelers[0], $spelers[2]])
             ->assertJsonPath('data.games.0.sets.2.home.player_ids', [$spelers[0], $spelers[3]])
-            ->assertJsonPath('data.games.0.sets.0.home.score', 15)
-            ->assertJsonPath('data.games.0.sets.0.away.score', 11)
+            ->assertJsonPath('data.games.0.sets.0.home.score', $this->format->win())
+            ->assertJsonPath('data.games.0.sets.0.away.score', $this->format->lose())
             ->assertJsonPath('data.games.0.sets.0.is_played', true)
             ->assertJsonPath('data.games.0.sets.0.winner', 'home')
             ->assertJsonPath('data.games.0.is_complete', true)
@@ -266,7 +274,7 @@ class PublicApiTest extends TestCase
             'player2_id' => $this->players[2]->id,
             'player3_id' => $this->players[3]->id,
             'player4_id' => $this->players[4]->id,
-            'set1_home' => 15, 'set1_away' => 11,
+            ...$this->format->firstSetOnly(),
         ]);
 
         $this->getJson("/api/rounds/{$round->id}")
@@ -310,18 +318,17 @@ class PublicApiTest extends TestCase
     }
 
     /**
-     * De setstanden zijn drie keer 15-11, dus speler 1 wint alle drie zijn sets
-     * (15,15,15 → 15,00) en de andere drie winnen er één (15,11,11 → 12,33). Het
-     * verliezersgemiddelde van de speeldag is daarmee 11,00.
+     * De setstanden zijn drie keer win-lose, dus speler 1 wint alle drie zijn sets
+     * (dagscore = setmaximum) en de andere drie winnen er één. Het
+     * verliezersgemiddelde van de speeldag is de losing score.
      */
     public function test_speeldagdetail_geeft_de_dagscore_per_speler(): void
     {
         $aanwezigheden = collect($this->getJson("/api/rounds/{$this->round->id}")->json('data.attendances'))
             ->keyBy('player.id');
 
-        // Cast naar float omdat JSON maar één getaltype heeft: 15,00 komt als 15 terug.
-        $this->assertSame(15.0, (float) $aanwezigheden[$this->players[1]->id]['day_score']);
-        $this->assertSame(12.33, (float) $aanwezigheden[$this->players[2]->id]['day_score']);
+        $this->assertSame($this->format->winnerDayScore(), (float) $aanwezigheden[$this->players[1]->id]['day_score']);
+        $this->assertSame($this->format->otherDayScore(), (float) $aanwezigheden[$this->players[2]->id]['day_score']);
     }
 
     public function test_dagscore_van_een_afwezige_en_een_uitgelote(): void
@@ -343,9 +350,9 @@ class PublicApiTest extends TestCase
         $response = $this->getJson("/api/rounds/{$this->round->id}")->assertOk();
         $aanwezigheden = collect($response->json('data.attendances'))->keyBy('player.id');
 
-        $this->assertSame(11.0, (float) $response->json('data.average_absent'));
+        $this->assertSame($this->format->absentAverage(), (float) $response->json('data.average_absent'));
         // Afwezig: het verliezersgemiddelde van die speeldag.
-        $this->assertSame(11.0, (float) $aanwezigheden[$afwezig->id]['day_score']);
+        $this->assertSame($this->format->absentAverage(), (float) $aanwezigheden[$afwezig->id]['day_score']);
         // Uitgeloot zonder game: die speeldag telt niet mee, dus geen dagscore.
         $this->assertNull($aanwezigheden[$uitgeloot->id]['day_score']);
     }
@@ -358,14 +365,13 @@ class PublicApiTest extends TestCase
     {
         $verloop = $this->getJson("/api/players/{$this->players[1]->id}/ranking-history")->json('data.0');
 
-        $this->assertSame(15.0, (float) $verloop['day_score']);
-        $this->assertSame(17.05, $verloop['average']);
-        $this->assertSame(round((19.1 + 15.0) / 2, 2), $verloop['average']);
+        $this->assertSame($this->format->winnerDayScore(), (float) $verloop['day_score']);
+        $this->assertSame(round(($this->format->basePoints(1) + $this->format->winnerDayScore()) / 2, 2), $verloop['average']);
     }
 
     /**
      * De rotatie geeft speler 2 één set mét elk van de anderen en twee sets tégen
-     * elk van hen. Hij speelt met speler 1 in set 1 (15-11 gewonnen) en staat in de
+     * elk van hen. Hij speelt met speler 1 in set 1 (gewonnen) en staat in de
      * sets 2 en 3 tegen hem, beide verloren.
      */
     public function test_partner_en_tegenstanderbalans(): void
@@ -413,9 +419,7 @@ class PublicApiTest extends TestCase
             'player2_id' => $this->players[3]->id,
             'player3_id' => $this->extraSpeler('Zoe')->id,
             'player4_id' => $this->extraSpeler('Yves')->id,
-            'set1_home' => 15, 'set1_away' => 11,
-            'set2_home' => 15, 'set2_away' => 11,
-            'set3_home' => 15, 'set3_away' => 11,
+            ...$this->format->straightSets(),
         ]);
 
         $data = $this->getJson("/api/players/{$this->players[2]->id}/pairings")->assertOk()->json('data');
@@ -433,7 +437,7 @@ class PublicApiTest extends TestCase
             'player2_id' => $this->players[2]->id,
             'player3_id' => $this->players[3]->id,
             'player4_id' => $this->players[4]->id,
-            'set1_home' => 15, 'set1_away' => 11,
+            ...$this->format->firstSetOnly(),
         ]);
 
         $rijen = collect($this->getJson("/api/players/{$this->players[2]->id}/pairings")->json('data'))
@@ -638,6 +642,7 @@ class PublicApiTest extends TestCase
             ->assertOk()
             ->assertJsonPath('data.0.name', '2026 - 2027')
             ->assertJsonPath('data.0.rounds_count', 1)
+            ->assertJsonPath('data.0.points_per_set', $this->format->value())
             ->assertJsonPath('meta.current_season_id', $this->season->id);
     }
 
@@ -687,7 +692,7 @@ class PublicApiTest extends TestCase
         PlayerSeasonStatistic::create([
             'season_id' => $this->season->id,
             'player_id' => $player->id,
-            'base_points' => 19.0,
+            'base_points' => $this->format->startingBasePoints(),
         ]);
 
         return $player;

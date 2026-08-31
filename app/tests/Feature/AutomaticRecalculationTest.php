@@ -8,10 +8,12 @@ use App\Models\PlayerSeasonStatistic;
 use App\Models\Round;
 use App\Models\Season;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Tests\Concerns\PlaysToPoints;
 use Tests\TestCase;
 
 class AutomaticRecalculationTest extends TestCase
 {
+    use PlaysToPoints;
     use RefreshDatabase;
 
     private Season $season;
@@ -25,7 +27,12 @@ class AutomaticRecalculationTest extends TestCase
     {
         parent::setUp();
 
-        $this->season = Season::create(['name' => '2026 - 2027']);
+        $this->bootFormat();
+
+        $this->season = Season::create([
+            'name' => '2026 - 2027',
+            'points_per_set' => $this->format->pointsPerSet,
+        ]);
         $this->round = $this->season->rounds()->create([
             'number' => 1,
             'date' => '2026-09-01',
@@ -46,7 +53,7 @@ class AutomaticRecalculationTest extends TestCase
             PlayerSeasonStatistic::create([
                 'season_id' => $this->season->id,
                 'player_id' => $player->id,
-                'base_points' => 19,
+                'base_points' => $this->format->startingBasePoints(),
             ]);
         }
     }
@@ -65,11 +72,7 @@ class AutomaticRecalculationTest extends TestCase
         $this->createGame([1, 2, 3, 4], complete: true);
         $incompleteGame = $this->createGame([5, 6, 7, 8], complete: false);
 
-        $incompleteGame->update([
-            'set1_home' => 15, 'set1_away' => 11,
-            'set2_home' => 15, 'set2_away' => 11,
-            'set3_home' => 15, 'set3_away' => 11,
-        ]);
+        $incompleteGame->update($this->format->straightSets());
 
         $round = $this->round->fresh();
         $this->assertTrue($round->is_calculated);
@@ -108,8 +111,8 @@ class AutomaticRecalculationTest extends TestCase
     private function createGame(array $playerIndexes, bool $complete): Game
     {
         $scores = $complete
-            ? ['set1_home' => 15, 'set1_away' => 11, 'set2_home' => 15, 'set2_away' => 11, 'set3_home' => 15, 'set3_away' => 11]
-            : ['set1_home' => 15, 'set1_away' => 11, 'set2_home' => null, 'set2_away' => null, 'set3_home' => null, 'set3_away' => null];
+            ? $this->format->straightSets()
+            : $this->format->firstSetOnly();
 
         return $this->round->games()->create([
             'player1_id' => $this->players[$playerIndexes[0]]->id,

@@ -154,7 +154,7 @@ class MergeDuplicatePlayersTest extends TestCase
 
     private function gegevenEenDubbel(int $gamesBlijft, int $gamesDubbel): void
     {
-        DB::table('seasons')->insert(['id' => 1, 'name' => '2025 - 2026']);
+        DB::table('seasons')->insert(['id' => 1, 'name' => '2025 - 2026', 'points_per_set' => 15]);
         DB::table('rounds')->insert([
             ['id' => 1, 'season_id' => 1, 'number' => 1, 'date' => '2025-09-24', 'is_calculated' => false],
             ['id' => 2, 'season_id' => 1, 'number' => 2, 'date' => '2025-10-08', 'is_calculated' => false],
@@ -193,7 +193,7 @@ class MergeDuplicatePlayersTest extends TestCase
 
     private function gegevenEenVorigSeizoenVoorDeBlijver(): void
     {
-        DB::table('seasons')->insert(['id' => 2, 'name' => '2024-2025']);
+        DB::table('seasons')->insert(['id' => 2, 'name' => '2024-2025', 'points_per_set' => 15]);
         DB::table('rounds')->insert(
             ['id' => 3, 'season_id' => 2, 'number' => 1, 'date' => '2024-09-25', 'is_calculated' => false],
         );

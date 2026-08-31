@@ -80,6 +80,7 @@ class ImportLegacyDatabase extends Command
         $this->copy($legacy, 'season', 'seasons', fn (object $row): array => [
             'id' => $row->Id,
             'name' => $row->Name,
+            'points_per_set' => 21,
         ]);
     }
 

@@ -11,13 +11,17 @@ use App\Models\Season;
 use App\Services\DrawService;
 use App\Services\SeasonCalculator;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Tests\Concerns\PlaysToPoints;
 use Tests\TestCase;
 
 /**
  * Loting en de gevolgen van uitgeloot-zijn.
+ *
+ * Draait voor sets tot 15 en tot 21: zie {@see DrawAndDrawnOutPlayedTo21Test}.
  */
 class DrawAndDrawnOutTest extends TestCase
 {
+    use PlaysToPoints;
     use RefreshDatabase;
 
     private Season $season;
@@ -29,7 +33,12 @@ class DrawAndDrawnOutTest extends TestCase
     {
         parent::setUp();
 
-        $this->season = Season::create(['name' => '2026 - 2027']);
+        $this->bootFormat();
+
+        $this->season = Season::create([
+            'name' => '2026 - 2027',
+            'points_per_set' => $this->format->pointsPerSet,
+        ]);
 
         foreach (range(1, 12) as $index) {
             $player = Player::create([
@@ -46,7 +55,7 @@ class DrawAndDrawnOutTest extends TestCase
             PlayerSeasonStatistic::create([
                 'season_id' => $this->season->id,
                 'player_id' => $player->id,
-                'base_points' => 19 + $index / 100,
+                'base_points' => $this->format->startingBasePoints() + $index / 100,
             ]);
         }
     }
@@ -324,9 +333,7 @@ class DrawAndDrawnOutTest extends TestCase
             'player2_id' => $this->players[$playerIndexes[1]]->id,
             'player3_id' => $this->players[$playerIndexes[2]]->id,
             'player4_id' => $this->players[$playerIndexes[3]]->id,
-            'set1_home' => 15, 'set1_away' => 11,
-            'set2_home' => 15, 'set2_away' => 11,
-            'set3_home' => 15, 'set3_away' => 11,
+            ...$this->format->straightSets(),
         ]);
     }
 

@@ -2,10 +2,13 @@
 
 namespace App\Filament\Resources\Seasons;
 
+use App\Enums\PointsPerSet;
 use App\Filament\Resources\Seasons\Pages\ManageSeasons;
 use App\Models\Season;
+use App\Services\SeasonCalculator;
 use BackedEnum;
 use Filament\Actions\EditAction;
+use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
 use Filament\Resources\Resource;
 use Filament\Schemas\Schema;
@@ -39,6 +42,11 @@ class SeasonResource extends Resource
                     ->required()
                     ->unique(ignoreRecord: true)
                     ->maxLength(50),
+                Select::make('points_per_set')
+                    ->label('Sets tot')
+                    ->options(PointsPerSet::class)
+                    ->default(PointsPerSet::Fifteen)
+                    ->required(),
             ]);
     }
 
@@ -50,6 +58,9 @@ class SeasonResource extends Resource
                 TextColumn::make('name')
                     ->label('Naam')
                     ->searchable(),
+                TextColumn::make('points_per_set')
+                    ->label('Sets tot')
+                    ->badge(),
                 TextColumn::make('rounds_count')
                     ->label('Speeldagen')
                     ->counts('rounds'),
@@ -58,7 +69,10 @@ class SeasonResource extends Resource
                     ->counts('playerStatistics'),
             ])
             ->recordActions([
-                EditAction::make(),
+                EditAction::make()
+                    ->after(function (Season $record): void {
+                        app(SeasonCalculator::class)->calculate($record);
+                    }),
             ]);
     }
 

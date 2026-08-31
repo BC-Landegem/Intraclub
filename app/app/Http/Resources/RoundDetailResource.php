@@ -44,6 +44,7 @@ class RoundDetailResource extends JsonResource
             'season' => [
                 'id' => (int) $this->season_id,
                 'name' => $this->season->name,
+                'points_per_set' => $this->season->points_per_set->value,
             ],
             'games_count' => $this->games->count(),
             'players_present' => $statistics->where('is_present', true)->count(),

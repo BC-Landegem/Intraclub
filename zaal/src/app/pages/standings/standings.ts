@@ -28,16 +28,16 @@ interface RankingRound {
 interface RankingResponse {
   data: Record<Category, RankingEntry[]>;
   meta: {
-    season: { id: number; name: string } | null;
+    season: { id: number; name: string; points_per_set: number } | null;
     round: RankingRound | null;
   };
 }
 
 /**
  * The current standings, for players who walk up to the tablet between matches.
- * The average is a score out of 21, so each row carries a bar showing where the
- * player sits between the lowest and highest average — readable at a glance from
- * a few metres away.
+ * The average is a score out of 15 or 21 depending on the season, so each row
+ * carries a bar showing where the player sits between the lowest and highest
+ * average — readable at a glance from a few metres away.
  */
 @Component({
   selector: 'app-standings',

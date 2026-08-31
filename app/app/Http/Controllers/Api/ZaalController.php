@@ -25,9 +25,6 @@ use Illuminate\Validation\Rule;
  */
 class ZaalController extends Controller
 {
-    /** Startpunt voor een speler die in de loop van het seizoen bijkomt (zoals in de legacy-app). */
-    private const DEFAULT_BASE_POINTS = 19.0;
-
     public function __construct(private readonly DrawService $drawService) {}
 
     /**
@@ -56,6 +53,7 @@ class ZaalController extends Controller
             'drawnOut' => [],
             'games' => [],
             'seasonName' => $season?->name,
+            'pointsPerSet' => $season?->points_per_set->value,
             'latestRound' => $latest === null ? null : [
                 'id' => $latest->id,
                 'number' => $latest->number,
@@ -204,8 +202,8 @@ class ZaalController extends Controller
 
     /**
      * Voeg tijdens de speeldag een nieuwe speler toe. Hij krijgt meteen
-     * seizoensstatistieken (basispunten zoals de legacy-app: 19) en staat aanwezig,
-     * zodat hij direct mee kan in de loting.
+     * seizoensstatistieken (basispunten volgens de puntenschaal van het seizoen)
+     * en staat aanwezig, zodat hij direct mee kan in de loting.
      */
     public function storePlayer(Request $request, Round $round): JsonResponse
     {
@@ -231,9 +229,10 @@ class ZaalController extends Controller
                 'is_member' => true,
             ]);
 
+            $season = $round->season;
             PlayerSeasonStatistic::updateOrCreate(
                 ['season_id' => $round->season_id, 'player_id' => $player->id],
-                ['base_points' => $data['basePoints'] ?? self::DEFAULT_BASE_POINTS],
+                ['base_points' => $data['basePoints'] ?? $season->points_per_set->startingBasePoints()],
             );
 
             PlayerRoundStatistic::updateOrCreate(
@@ -252,6 +251,8 @@ class ZaalController extends Controller
      */
     private function roundPayload(Round $round): array
     {
+        $round->loadMissing('season');
+
         $attendance = $round->playerStatistics()->get()->keyBy('player_id');
 
         $players = Player::query()
@@ -282,6 +283,7 @@ class ZaalController extends Controller
                 'number' => $round->number,
                 'date' => $round->date->format('Y-m-d'),
                 'seasonId' => $round->season_id,
+                'pointsPerSet' => $round->season->points_per_set->value,
                 'isCalculated' => (bool) $round->is_calculated,
                 'isToday' => $round->date->isToday(),
             ],
