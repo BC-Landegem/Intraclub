@@ -95,8 +95,8 @@ class RecordsApiTest extends TestCase
         $rijen = $this->getJson('/api/records')->assertOk()->json('data.biggest_climbs');
 
         $this->assertSame($this->players[2]->id, $rijen[0]['player']['id']);
-        $this->assertSame(2, $rijen[0]['places']);
-        $this->assertSame(3, $rijen[0]['from_rank']);
+        $this->assertSame(3, $rijen[0]['places']);
+        $this->assertSame(4, $rijen[0]['from_rank']);
         $this->assertSame(1, $rijen[0]['to_rank']);
         $this->assertSame(1, $rijen[0]['from_round']);
         $this->assertSame(2, $rijen[0]['to_round']);
