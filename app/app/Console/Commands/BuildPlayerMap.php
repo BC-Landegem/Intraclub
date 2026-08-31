@@ -2,6 +2,7 @@
 
 namespace App\Console\Commands;
 
+use App\Enums\Gender;
 use App\Services\Legacy\ArchivePerson;
 use App\Services\Legacy\ArchivePlayerMatcher;
 use Illuminate\Console\Command;
@@ -78,7 +79,7 @@ class BuildPlayerMap extends Command
                 in_array($persoon->status, ['GEKOPPELD', 'BEVESTIGD'], true) ? $persoon->playerId : '',
                 $persoon->firstName,
                 $persoon->lastName,
-                $persoon->gender,
+                self::geslachtLabel($persoon->gender),
                 $persoon->comp?->ID,
                 $persoon->compLink,
                 $compAct?->wedstrijden,
@@ -122,15 +123,26 @@ class BuildPlayerMap extends Command
         return self::SUCCESS;
     }
 
+    /** Het geslacht zoals een mens het in het rapport wil lezen. */
+    private static function geslachtLabel(?string $waarde): string
+    {
+        return $waarde === null ? '' : Gender::from($waarde)->getLabel();
+    }
+
     /** @return list<string> */
     private function geslachtsConflict(ArchivePerson $persoon, object $speler): array
     {
         // Een geslachtsconflict is een sterk signaal dat de koppeling fout is.
-        $huidig = $speler->gender === 'female' ? 'Vrouw' : 'Man';
-
-        return strcasecmp($huidig, $persoon->gender) === 0
+        // Beide kanten staan sinds de normalisatie in dezelfde vorm, dus dit mag een
+        // gewone vergelijking zijn; het rapport zelf blijft Nederlands, want het wordt
+        // in Excel door een mens nagekeken.
+        return $speler->gender === $persoon->gender
             ? []
-            : [sprintf('LET OP geslacht verschilt: oud %s, nieuw %s', $persoon->gender, $huidig)];
+            : [sprintf(
+                'LET OP geslacht verschilt: oud %s, nieuw %s',
+                self::geslachtLabel($persoon->gender),
+                self::geslachtLabel($speler->gender),
+            )];
     }
 
     /**

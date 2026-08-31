@@ -36,6 +36,18 @@ class ArchiveStandings
      */
     private const AVERAGE = 'COALESCE(slot.average, stat.final_points)';
 
+    /**
+     * Het geslacht, met voorrang voor de huidige fiche.
+     *
+     * Naam en klassement in deze stand zijn "zoals toen" en komen uit het archief,
+     * maar het geslacht niet: `players` is het bestand dat onderhouden wordt, dus een
+     * correctie daar hoort door te werken zonder her-import. Vandaag verschilt geen
+     * van de 78 gekoppelde spelers, dus dit wijkt pas af wanneer iemand de huidige
+     * fiche bewust aanpast — en dan is die de juiste. Wie niet gekoppeld is, valt
+     * terug op het archief; blijft er niets over, dan is het een "Onbekende speler".
+     */
+    private const GENDER = 'COALESCE(huidig.gender, speler.gender)';
+
     /** @return Collection<int, object> */
     public function forSeason(ArchiveSeason $season): Collection
     {
@@ -55,6 +67,7 @@ class ArchiveStandings
                 'stat.games_won',
                 'stat.rounds_present',
                 DB::raw(self::AVERAGE.' as average'),
+                DB::raw(self::GENDER.' as gender'),
             ])
             ->orderByDesc('average')
             ->orderBy('speler.last_name')
@@ -90,6 +103,9 @@ class ArchiveStandings
 
         return DB::table('archive_player_season_statistics as stat')
             ->join('archive_players as speler', 'speler.id', '=', 'stat.archive_player_id')
+            // Enkel voor het geslacht; `players.id` is de sleutel, dus dit kan geen rij
+            // verdubbelen en countForSeason() telt hetzelfde als voordien.
+            ->leftJoin('players as huidig', 'huidig.id', '=', 'speler.player_id')
             ->leftJoin('archive_player_round_statistics as slot', function ($join) use ($laatsteSpeeldag): void {
                 $join->on('slot.archive_player_id', '=', 'stat.archive_player_id')
                     ->where('slot.archive_round_id', '=', $laatsteSpeeldag?->id ?? 0);

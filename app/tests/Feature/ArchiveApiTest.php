@@ -92,14 +92,55 @@ class ArchiveApiTest extends TestCase
     {
         $this->getJson('/api/archive/seasons/2/standings')
             ->assertOk()
-            ->assertJsonCount(1, 'data')
+            ->assertJsonCount(2, 'data')
             ->assertJsonPath('meta.season.source', 'comp')
             ->assertJsonPath('data.0.last_name', 'Maes')
             ->assertJsonPath('data.0.average', 18.75);
 
         $this->getJson('/api/archive/seasons')
             ->assertOk()
-            ->assertJsonPath('data.0.players_count', 1);
+            ->assertJsonPath('data.0.players_count', 2);
+    }
+
+    /**
+     * Het geslacht staat in de stand zodat de site er het damesklassement van een
+     * oude jaargang uit kan filteren — voor de huidige seizoenen doet
+     * /rankings?category=women dat, en die route bestaat niet voor het archief.
+     * Daarom dezelfde waarden als /players: één filter, geen tweede vocabulaire.
+     */
+    public function test_de_eindstand_geeft_het_geslacht_zoals_players_dat_doet(): void
+    {
+        $this->getJson('/api/archive/seasons/1/standings')
+            ->assertOk()
+            ->assertJsonPath('data.0.gender', 'male')
+            ->assertJsonPath('data.1.gender', 'male');
+
+        $this->getJson('/api/archive/seasons/2/standings')
+            ->assertOk()
+            ->assertJsonPath('data.0.gender', 'female')
+            // De speler zonder persoon erachter. Null en niet weggelaten: elke rij in
+            // `data` houdt dezelfde sleutels, en een damesfilter sluit hem vanzelf uit.
+            ->assertJsonPath('data.1.last_name', 'Onbekende speler')
+            ->assertJsonPath('data.1.gender', null);
+    }
+
+    /**
+     * Naam en klassement in deze stand zijn "zoals toen", maar het geslacht niet: wie
+     * nog een fiche heeft, krijgt wat daar staat. `players` wordt onderhouden, de
+     * archieftabel wijzigt enkel bij een her-import — dus een correctie in het
+     * beheerspaneel hoort meteen door te werken, ook op een stand van 2013.
+     */
+    public function test_het_geslacht_volgt_de_huidige_fiche_wanneer_die_bestaat(): void
+    {
+        DB::table('players')->where('id', 7)->update(['gender' => 'female']);
+
+        $this->getJson('/api/archive/seasons/1/standings')
+            ->assertOk()
+            ->assertJsonPath('data.0.player_id', 7)
+            ->assertJsonPath('data.0.gender', 'female')
+            // Wie geen fiche meer heeft, blijft op het archief leunen.
+            ->assertJsonPath('data.1.player_id', null)
+            ->assertJsonPath('data.1.gender', 'male');
     }
 
     public function test_een_onbekende_include_geeft_422(): void
@@ -118,10 +159,15 @@ class ArchiveApiTest extends TestCase
         ]);
 
         DB::table('archive_players')->insert([
-            ['id' => 1, 'player_id' => 7, 'first_name' => 'Jan', 'last_name' => 'Bollaert', 'gender' => 'Man', 'ranking' => 'C2'],
-            ['id' => 2, 'player_id' => null, 'first_name' => 'Piet', 'last_name' => 'Janssens', 'gender' => 'Man', 'ranking' => 'D'],
-            ['id' => 3, 'player_id' => null, 'first_name' => 'Ann', 'last_name' => 'Peeters', 'gender' => 'Vrouw', 'ranking' => 'D'],
-            ['id' => 4, 'player_id' => null, 'first_name' => 'Els', 'last_name' => 'Maes', 'gender' => 'Vrouw', 'ranking' => 'D'],
+            ['id' => 1, 'player_id' => 7, 'first_name' => 'Jan', 'last_name' => 'Bollaert', 'gender' => 'male', 'ranking' => 'C2'],
+            ['id' => 2, 'player_id' => null, 'first_name' => 'Piet', 'last_name' => 'Janssens', 'gender' => 'male', 'ranking' => 'D'],
+            ['id' => 3, 'player_id' => null, 'first_name' => 'Ann', 'last_name' => 'Peeters', 'gender' => 'female', 'ranking' => 'D'],
+            ['id' => 4, 'player_id' => null, 'first_name' => 'Els', 'last_name' => 'Maes', 'gender' => 'female', 'ranking' => 'D'],
+            // Een comp-speler die uit zijn eigen ledentabel verwijderd was: zijn
+            // uitslagen zijn wél gespeeld, dus hij staat in de stand, maar er is geen
+            // persoon meer om een geslacht aan te hangen. In het echte archief zijn er
+            // acht van, verspreid over de drie oudste comp-seizoenen.
+            ['id' => 5, 'player_id' => null, 'first_name' => '', 'last_name' => 'Onbekende speler', 'gender' => null, 'ranking' => null],
         ]);
 
         DB::table('archive_seasons')->insert([
@@ -151,9 +197,12 @@ class ArchiveApiTest extends TestCase
             'archive_season_id' => 1, 'archive_player_id' => 3, 'base_points' => 19.0,
         ]);
         DB::table('archive_player_season_statistics')->insert([
-            'archive_season_id' => 2, 'archive_player_id' => 4, 'base_points' => 19.0, 'final_points' => 18.75,
-            'sets_played' => 2, 'sets_won' => 1, 'points_played' => 40, 'points_won' => 20,
-            'games_played' => 1, 'games_won' => 0, 'rounds_present' => 1,
+            ['archive_season_id' => 2, 'archive_player_id' => 4, 'base_points' => 19.0, 'final_points' => 18.75,
+                'sets_played' => 2, 'sets_won' => 1, 'points_played' => 40, 'points_won' => 20,
+                'games_played' => 1, 'games_won' => 0, 'rounds_present' => 1],
+            ['archive_season_id' => 2, 'archive_player_id' => 5, 'base_points' => 19.0, 'final_points' => 17.0,
+                'sets_played' => 2, 'sets_won' => 1, 'points_played' => 40, 'points_won' => 18,
+                'games_played' => 1, 'games_won' => 0, 'rounds_present' => 1],
         ]);
         DB::table('archive_player_round_statistics')->insert([
             ['archive_round_id' => 1, 'archive_player_id' => 1, 'average' => 19.5],

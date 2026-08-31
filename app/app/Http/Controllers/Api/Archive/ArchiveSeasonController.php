@@ -55,6 +55,17 @@ class ArchiveSeasonController extends Controller
                 'first_name' => $rij->first_name,
                 'last_name' => $rij->last_name,
                 'full_name' => trim("{$rij->first_name} {$rij->last_name}"),
+                // Staat erbij omdat de site hier het damesklassement van een oude
+                // jaargang uit afleidt; voor de huidige seizoenen doet
+                // /rankings?category=women dat, en die route bestaat niet voor het
+                // archief. Zelfde waarden als /players ('male'/'female'), zodat de
+                // site één filter heeft en geen tweede vocabulaire.
+                //
+                // Null enkel voor de acht "Onbekende speler"-rijen: dat zijn
+                // comp-spelers die uit hun eigen ledentabel verwijderd waren, maar
+                // van wie de uitslagen wél echt gespeeld zijn. Alle 192 herkende
+                // archiefspelers hebben een geslacht.
+                'gender' => $rij->gender,
                 'ranking' => $rij->ranking,
                 // Op twee cijfers zoals elk ander gemiddelde in deze API. De
                 // sortering gebeurt in SQL op de ruwe waarde, dus dit raakt enkel

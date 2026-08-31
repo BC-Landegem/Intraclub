@@ -2,6 +2,7 @@
 
 namespace App\Services\Legacy;
 
+use App\Enums\Gender;
 use Illuminate\Database\ConnectionInterface;
 use Illuminate\Support\Facades\DB;
 
@@ -251,7 +252,11 @@ class ArchivePlayerMatcher
 
             $persoon->firstName = trim($persoon->intra->voornaam ?? $persoon->comp->voornaam);
             $persoon->lastName = trim($persoon->intra->naam ?? $persoon->comp->achternaam);
-            $persoon->gender = $persoon->intra->geslacht ?? $persoon->comp->geslacht ?? null;
+            // De twee generaties spellen het geslacht anders — `intra_spelers` schrijft
+            // "Man"/"Vrouw", `comp_spelers` "man"/"vrouw" — dus het krijgt hier meteen de
+            // vorm van Gender. Dit is de enige plek waar de oude databanken gelezen
+            // worden, en dus de enige plek waar die twee spellingen mogen bestaan.
+            $persoon->gender = self::geslacht($persoon->intra->geslacht ?? $persoon->comp->geslacht ?? null);
             $persoon->ranking = $persoon->intra->klassement ?? null;
 
             if ($persoon->status === 'AMBIGU' || $persoon->status === 'BEVESTIGD') {
@@ -391,6 +396,21 @@ class ArchivePlayerMatcher
     private static function paarScore(string $eersteA, string $tweedeA, string $eersteB, string $tweedeB): float
     {
         return 0.4 * self::veldScore($eersteA, $eersteB) + 0.6 * self::veldScore($tweedeA, $tweedeB);
+    }
+
+    /**
+     * Het geslacht zoals de oude databanken het schreven, op de vorm van Gender.
+     * Alles wat geen van beide is — leeg, of een waarde die geen van de twee
+     * generaties hoort te schrijven — wordt null: dat is in het archief al de
+     * betekenis "hier zit geen persoon achter".
+     */
+    private static function geslacht(?string $bron): ?string
+    {
+        return match (mb_strtolower(trim((string) $bron))) {
+            'man' => Gender::Male->value,
+            'vrouw' => Gender::Female->value,
+            default => null,
+        };
     }
 
     private static function veldScore(string $a, string $b): float
