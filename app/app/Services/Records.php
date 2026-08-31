@@ -18,7 +18,7 @@ use Illuminate\Support\Facades\DB;
  * Die veertien seizoenen hebben hun eigen eindstanden onder /api/archive.
  *
  * Twee lijsten voor "beste prestatie", bewust apart: `best_days` is één avond,
- * `best_seasons` een heel seizoen. Een dagscore van 21,00 betekent "alle drie de
+ * `best_seasons` een heel seizoen. Een dagscore van 15,00 betekent "alle drie de
  * sets gewonnen" en komt vaak voor, dus die lijst breekt gelijke scores op
  * puntensaldo — anders is het geen rangschikking maar een toevallige volgorde.
  *
@@ -67,8 +67,8 @@ class Records
 
     /**
      * De beste avonden: hoogste dagscore, bij gelijke score het grootste
-     * puntensaldo. Driemaal 21-0 staat dus boven driemaal 21-19, ook al is de
-     * dagscore van beiden 21,00.
+     * puntensaldo. Driemaal 15-0 staat dus boven driemaal 15-13, ook al is de
+     * dagscore van beiden 15,00.
      *
      * @param  Collection<int, Game>  $games
      * @return list<array<string, mixed>>

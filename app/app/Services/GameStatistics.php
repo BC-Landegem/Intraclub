@@ -102,13 +102,13 @@ readonly class GameStatistics
     }
 
     /**
-     * Herschaal een setscore naar een 21-puntenschaal wanneer er voorbij 21 werd gespeeld
+     * Herschaal een setscore naar een 15-puntenschaal wanneer er voorbij 15 werd gespeeld
      * (verlengingen), zodat elke set even zwaar doorweegt in het gemiddelde.
      */
     private static function trim(int $score, int $opponentScore): float
     {
-        return ($score > 21 || $opponentScore > 21)
-            ? 21 / max($score, $opponentScore) * $score
+        return ($score > 15 || $opponentScore > 15)
+            ? 15 / max($score, $opponentScore) * $score
             : (float) $score;
     }
 }
