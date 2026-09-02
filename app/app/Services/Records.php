@@ -18,9 +18,10 @@ use Illuminate\Support\Facades\DB;
  * Die veertien seizoenen hebben hun eigen eindstanden onder /api/archive.
  *
  * Twee lijsten voor "beste prestatie", bewust apart: `best_days` is één avond,
- * `best_seasons` een heel seizoen. Een dagscore van 21,00 betekent "alle drie de
- * sets gewonnen" en komt vaak voor, dus die lijst breekt gelijke scores op
- * puntensaldo — anders is het geen rangschikking maar een toevallige volgorde.
+ * `best_seasons` een heel seizoen. Een dagscore gelijk aan het setmaximum van
+ * dat seizoen (15 of 21) betekent "alle drie de sets gewonnen" en komt vaak
+ * voor, dus die lijst breekt gelijke scores op puntensaldo — anders is het geen
+ * rangschikking maar een toevallige volgorde.
  *
  * Over de rank: deze service leest `player_round_statistics.rank` niet, maar
  * berekent de plaats per speeldag opnieuw over iedereen die die speeldag een
@@ -67,8 +68,8 @@ class Records
 
     /**
      * De beste avonden: hoogste dagscore, bij gelijke score het grootste
-     * puntensaldo. Driemaal 21-0 staat dus boven driemaal 21-19, ook al is de
-     * dagscore van beiden 21,00.
+     * puntensaldo. Driemaal 15-0 (of 21-0) staat dus boven een krappe 3-0,
+     * ook al is de dagscore van beiden het setmaximum.
      *
      * @param  Collection<int, Game>  $games
      * @return list<array<string, mixed>>
@@ -78,7 +79,8 @@ class Records
         $rijen = [];
 
         foreach ($games as $game) {
-            $statistics = GameStatistics::fromGame($game);
+            $pointsPerSet = $this->seasons->get((int) $game->season_id)->points_per_set->value;
+            $statistics = GameStatistics::fromGame($game, $pointsPerSet);
 
             foreach ($game->playerIds() as $index => $playerId) {
                 $slot = $index + 1;
@@ -465,6 +467,7 @@ class Records
         return [
             'id' => $seasonId,
             'name' => $this->seasons->get($seasonId)?->name,
+            'points_per_set' => $this->seasons->get($seasonId)?->points_per_set?->value,
         ];
     }
 }

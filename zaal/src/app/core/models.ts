@@ -5,6 +5,7 @@ export interface RoundInfo {
   number: number;
   date: string;
   seasonId: number;
+  pointsPerSet: number;
   isCalculated: boolean;
   isToday: boolean;
 }
@@ -61,6 +62,7 @@ export interface RoundState {
   /** Enkel aanwezig wanneer er nog geen speeldag voor vandaag is. */
   latestRound?: LatestRound | null;
   seasonName?: string | null;
+  pointsPerSet?: number | null;
 }
 
 export interface CurrentUser {

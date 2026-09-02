@@ -9,6 +9,7 @@ use App\Models\PlayerSeasonStatistic;
 use App\Models\Round;
 use App\Models\Season;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Tests\Concerns\PlaysToPoints;
 use Tests\TestCase;
 
 /**
@@ -18,13 +19,11 @@ use Tests\TestCase;
  * zijn sets, op speeldag 2 speler 2. Daardoor klimt speler 2 van de vierde naar
  * de eerste plaats, wat de sprong-lijst een voorspelbaar antwoord geeft.
  *
- *   basispunten   p1 19,1   p2 19,2   p3 19,3   p4 19,4
- *   dagscores     winnaar 21,00, de andere drie 17,00
- *   na speeldag 1  1. p1 20,05   2. p4 18,20   3. p3 18,15   4. p2 18,10
- *   na speeldag 2  1. p2 19,07   2. p1 19,03   3. p4 17,80   4. p3 17,77
+ * Draait voor sets tot 15 en tot 21: zie {@see RecordsApiPlayedTo21Test}.
  */
 class RecordsApiTest extends TestCase
 {
+    use PlaysToPoints;
     use RefreshDatabase;
 
     private Season $season;
@@ -36,7 +35,12 @@ class RecordsApiTest extends TestCase
     {
         parent::setUp();
 
-        $this->season = Season::create(['name' => '2026 - 2027']);
+        $this->bootFormat();
+
+        $this->season = Season::create([
+            'name' => '2026 - 2027',
+            'points_per_set' => $this->format->pointsPerSet,
+        ]);
 
         foreach (range(1, 4) as $index) {
             $this->players[$index] = Player::create([
@@ -52,7 +56,7 @@ class RecordsApiTest extends TestCase
             PlayerSeasonStatistic::create([
                 'season_id' => $this->season->id,
                 'player_id' => $this->players[$index]->id,
-                'base_points' => 19 + $index / 10,
+                'base_points' => $this->format->basePoints($index),
             ]);
         }
 
@@ -66,10 +70,10 @@ class RecordsApiTest extends TestCase
     {
         $rijen = $this->getJson('/api/records')->assertOk()->json('data.best_days');
 
-        $this->assertSame(21.0, (float) $rijen[0]['day_score']);
-        $this->assertSame(63, $rijen[0]['points_won']);
-        $this->assertSame(45, $rijen[0]['points_conceded']);
-        // Beide winnaars halen 21,00 met hetzelfde saldo; de recentste avond eerst.
+        $this->assertSame($this->format->winnerDayScore(), (float) $rijen[0]['day_score']);
+        $this->assertSame($this->format->pointsWonStraight(), $rijen[0]['points_won']);
+        $this->assertSame($this->format->pointsConcededStraight(), $rijen[0]['points_conceded']);
+        // Beide winnaars halen het setmaximum met hetzelfde saldo; de recentste avond eerst.
         $this->assertSame($this->players[2]->id, $rijen[0]['player']['id']);
         $this->assertSame(2, $rijen[0]['round']['number']);
         $this->assertSame($this->players[1]->id, $rijen[1]['player']['id']);
@@ -80,7 +84,7 @@ class RecordsApiTest extends TestCase
         $rijen = $this->getJson('/api/records')->assertOk()->json('data.best_seasons');
 
         $this->assertSame($this->players[2]->id, $rijen[0]['player']['id']);
-        $this->assertSame(19.07, $rijen[0]['average']);
+        $this->assertSame($this->format->bestSeasonAverage(), $rijen[0]['average']);
         $this->assertSame(1, $rijen[0]['rank']);
         $this->assertSame(4, $rijen[0]['players_ranked']);
         $this->assertSame('2026 - 2027', $rijen[0]['season']['name']);
@@ -102,8 +106,8 @@ class RecordsApiTest extends TestCase
         $this->assertSame(2, $rijen[0]['to_round']);
         // De gemiddeldes horen erbij: drie plaatsen winnen kan met een klein verschil,
         // en zonder deze twee getallen leest een sprong groter dan hij is.
-        $this->assertSame(18.1, $rijen[0]['from_average']);
-        $this->assertSame(19.07, $rijen[0]['to_average']);
+        $this->assertSame($this->format->climbFromAverage(), $rijen[0]['from_average']);
+        $this->assertSame($this->format->bestSeasonAverage(), $rijen[0]['to_average']);
         // Zonder dit getal is een sprong van 3 niet te interpreteren.
         $this->assertSame(4, $rijen[0]['players_ranked']);
 
@@ -183,6 +187,7 @@ class RecordsApiTest extends TestCase
             ->assertOk()
             ->assertJsonPath('meta.limit', 10)
             ->assertJsonPath('meta.seasons.0.name', '2026 - 2027')
+            ->assertJsonPath('meta.seasons.0.points_per_set', $this->format->value())
             ->assertJsonCount(1, 'meta.seasons');
 
         $this->getJson('/api/records?limit=2')
@@ -238,9 +243,7 @@ class RecordsApiTest extends TestCase
             'player2_id' => $this->players[$volgorde[1]]->id,
             'player3_id' => $this->players[$volgorde[2]]->id,
             'player4_id' => $this->players[$volgorde[3]]->id,
-            'set1_home' => 21, 'set1_away' => 15,
-            'set2_home' => 21, 'set2_away' => 15,
-            'set3_home' => 21, 'set3_away' => 15,
+            ...$this->format->straightSets(),
         ]);
 
         return $round;

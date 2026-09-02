@@ -76,7 +76,7 @@ class MergeDuplicatePlayersTest extends TestCase
             ->update(['base_points' => 19.0033]);
         DB::table('player_season_statistics')->where('season_id', 1)->where('player_id', self::DUBBEL)->update([
             'base_points' => 19.0, 'sets_played' => 3, 'sets_won' => 3,
-            'points_played' => 108, 'points_won' => 63, 'rounds_present' => 1, 'games_played' => 1,
+            'points_played' => 79, 'points_won' => 45, 'rounds_present' => 1, 'games_played' => 1,
         ]);
 
         $this->artisan('intraclub:merge-duplicates', ['--force' => true])->assertSuccessful();
@@ -88,7 +88,7 @@ class MergeDuplicatePlayersTest extends TestCase
         $rij = $rijen->firstWhere('player_id', self::BLIJFT);
         $this->assertSame(1, $rij->games_played);
         $this->assertSame(3, $rij->sets_played);
-        $this->assertSame(108, $rij->points_played);
+        $this->assertSame(79, $rij->points_played);
         $this->assertSame(1, $rij->rounds_present);
         $this->assertEqualsWithDelta(19.0, $rij->base_points, 0.00001);
     }
@@ -154,7 +154,7 @@ class MergeDuplicatePlayersTest extends TestCase
 
     private function gegevenEenDubbel(int $gamesBlijft, int $gamesDubbel): void
     {
-        DB::table('seasons')->insert(['id' => 1, 'name' => '2025 - 2026']);
+        DB::table('seasons')->insert(['id' => 1, 'name' => '2025 - 2026', 'points_per_set' => 15]);
         DB::table('rounds')->insert([
             ['id' => 1, 'season_id' => 1, 'number' => 1, 'date' => '2025-09-24', 'is_calculated' => false],
             ['id' => 2, 'season_id' => 1, 'number' => 2, 'date' => '2025-10-08', 'is_calculated' => false],
@@ -173,8 +173,8 @@ class MergeDuplicatePlayersTest extends TestCase
                 DB::table('games')->insert([
                     'id' => $gameId++, 'round_id' => 1,
                     'player1_id' => $spelerId, 'player2_id' => 200, 'player3_id' => 201, 'player4_id' => 202,
-                    'set1_home' => 21, 'set1_away' => 15, 'set2_home' => 21, 'set2_away' => 16,
-                    'set3_home' => 21, 'set3_away' => 17,
+                    'set1_home' => 15, 'set1_away' => 11, 'set2_home' => 15, 'set2_away' => 11,
+                    'set3_home' => 15, 'set3_away' => 12,
                 ]);
             }
         }
@@ -193,7 +193,7 @@ class MergeDuplicatePlayersTest extends TestCase
 
     private function gegevenEenVorigSeizoenVoorDeBlijver(): void
     {
-        DB::table('seasons')->insert(['id' => 2, 'name' => '2024-2025']);
+        DB::table('seasons')->insert(['id' => 2, 'name' => '2024-2025', 'points_per_set' => 15]);
         DB::table('rounds')->insert(
             ['id' => 3, 'season_id' => 2, 'number' => 1, 'date' => '2024-09-25', 'is_calculated' => false],
         );
@@ -202,8 +202,8 @@ class MergeDuplicatePlayersTest extends TestCase
             DB::table('games')->insert([
                 'id' => $gameId, 'round_id' => 3,
                 'player1_id' => self::BLIJFT, 'player2_id' => 200, 'player3_id' => 201, 'player4_id' => 202,
-                'set1_home' => 21, 'set1_away' => 15, 'set2_home' => 21, 'set2_away' => 16,
-                'set3_home' => 21, 'set3_away' => 17,
+                'set1_home' => 15, 'set1_away' => 11, 'set2_home' => 15, 'set2_away' => 11,
+                'set3_home' => 15, 'set3_away' => 12,
             ]);
         }
 

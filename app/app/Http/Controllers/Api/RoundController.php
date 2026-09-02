@@ -62,7 +62,7 @@ class RoundController extends Controller
             // De wedstrijden zitten erbij omdat de dagscore uit de setstanden komt.
             // Alles in één keer inladen houdt het bij een handvol queries voor de
             // hele lijst in plaats van een paar per speeldag.
-            $rounds->load(['games', 'playerStatistics.player']);
+            $rounds->load(['games', 'playerStatistics.player', 'season']);
         }
 
         return [

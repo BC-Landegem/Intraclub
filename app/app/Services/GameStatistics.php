@@ -14,9 +14,9 @@ use App\Models\Game;
 readonly class GameStatistics
 {
     /**
-     * @param array<int, int> $setsWon setsgewonnen per spelerpositie (1..4)
-     * @param array<int, float> $averages getrimd puntengemiddelde per spelerpositie (1..4)
-     * @param array<int, int> $pointsWon ruwe punten per spelerpositie (1..4)
+     * @param  array<int, int>  $setsWon  setsgewonnen per spelerpositie (1..4)
+     * @param  array<int, float>  $averages  getrimd puntengemiddelde per spelerpositie (1..4)
+     * @param  array<int, int>  $pointsWon  ruwe punten per spelerpositie (1..4)
      */
     private function __construct(
         public array $setsWon,
@@ -24,10 +24,9 @@ readonly class GameStatistics
         public array $pointsWon,
         public float $averageLosing,
         public int $totalPoints,
-    ) {
-    }
+    ) {}
 
-    public static function fromGame(Game $game): self
+    public static function fromGame(Game $game, int $pointsPerSet): self
     {
         return self::fromScores(
             (int) $game->set1_home,
@@ -36,6 +35,7 @@ readonly class GameStatistics
             (int) $game->set2_away,
             (int) $game->set3_home,
             (int) $game->set3_away,
+            $pointsPerSet,
         );
     }
 
@@ -46,36 +46,39 @@ readonly class GameStatistics
         int $set2Away,
         int $set3Home,
         int $set3Away,
+        int $pointsPerSet,
     ): self {
         $setsWon = [1 => 0, 2 => 0, 3 => 0, 4 => 0];
         $pointsLosingTeam = 0.0;
 
+        $trim = fn (int $score, int $opponentScore): float => self::trim($score, $opponentScore, $pointsPerSet);
+
         if ($set1Home > $set1Away) {
             $setsWon[1]++;
             $setsWon[2]++;
-            $pointsLosingTeam += self::trim($set1Away, $set1Home);
+            $pointsLosingTeam += $trim($set1Away, $set1Home);
         } else {
             $setsWon[3]++;
             $setsWon[4]++;
-            $pointsLosingTeam += self::trim($set1Home, $set1Away);
+            $pointsLosingTeam += $trim($set1Home, $set1Away);
         }
         if ($set2Home > $set2Away) {
             $setsWon[1]++;
             $setsWon[3]++;
-            $pointsLosingTeam += self::trim($set2Away, $set2Home);
+            $pointsLosingTeam += $trim($set2Away, $set2Home);
         } else {
             $setsWon[2]++;
             $setsWon[4]++;
-            $pointsLosingTeam += self::trim($set2Home, $set2Away);
+            $pointsLosingTeam += $trim($set2Home, $set2Away);
         }
         if ($set3Home > $set3Away) {
             $setsWon[1]++;
             $setsWon[4]++;
-            $pointsLosingTeam += self::trim($set3Away, $set3Home);
+            $pointsLosingTeam += $trim($set3Away, $set3Home);
         } else {
             $setsWon[2]++;
             $setsWon[3]++;
-            $pointsLosingTeam += self::trim($set3Home, $set3Away);
+            $pointsLosingTeam += $trim($set3Home, $set3Away);
         }
 
         $pointsWon = [
@@ -86,10 +89,10 @@ readonly class GameStatistics
         ];
 
         $averages = [
-            1 => (self::trim($set1Home, $set1Away) + self::trim($set2Home, $set2Away) + self::trim($set3Home, $set3Away)) / 3,
-            2 => (self::trim($set1Home, $set1Away) + self::trim($set2Away, $set2Home) + self::trim($set3Away, $set3Home)) / 3,
-            3 => (self::trim($set1Away, $set1Home) + self::trim($set2Home, $set2Away) + self::trim($set3Away, $set3Home)) / 3,
-            4 => (self::trim($set1Away, $set1Home) + self::trim($set2Away, $set2Home) + self::trim($set3Home, $set3Away)) / 3,
+            1 => ($trim($set1Home, $set1Away) + $trim($set2Home, $set2Away) + $trim($set3Home, $set3Away)) / 3,
+            2 => ($trim($set1Home, $set1Away) + $trim($set2Away, $set2Home) + $trim($set3Away, $set3Home)) / 3,
+            3 => ($trim($set1Away, $set1Home) + $trim($set2Home, $set2Away) + $trim($set3Away, $set3Home)) / 3,
+            4 => ($trim($set1Away, $set1Home) + $trim($set2Away, $set2Home) + $trim($set3Home, $set3Away)) / 3,
         ];
 
         return new self(
@@ -102,13 +105,14 @@ readonly class GameStatistics
     }
 
     /**
-     * Herschaal een setscore naar een 21-puntenschaal wanneer er voorbij 21 werd gespeeld
-     * (verlengingen), zodat elke set even zwaar doorweegt in het gemiddelde.
+     * Herschaal een setscore naar de puntenschaal van het seizoen wanneer er
+     * voorbij dat maximum werd gespeeld (verlengingen), zodat elke set even zwaar
+     * doorweegt in het gemiddelde.
      */
-    private static function trim(int $score, int $opponentScore): float
+    private static function trim(int $score, int $opponentScore, int $pointsPerSet): float
     {
-        return ($score > 21 || $opponentScore > 21)
-            ? 21 / max($score, $opponentScore) * $score
+        return ($score > $pointsPerSet || $opponentScore > $pointsPerSet)
+            ? $pointsPerSet / max($score, $opponentScore) * $score
             : (float) $score;
     }
 }

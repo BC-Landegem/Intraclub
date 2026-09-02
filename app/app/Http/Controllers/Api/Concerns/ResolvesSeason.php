@@ -39,9 +39,13 @@ trait ResolvesSeason
         return $season;
     }
 
-    /** @return array{id: int, name: string}|null */
+    /** @return array{id: int, name: string, points_per_set: int}|null */
     protected function seasonMeta(?Season $season): ?array
     {
-        return $season === null ? null : ['id' => $season->id, 'name' => $season->name];
+        return $season === null ? null : [
+            'id' => $season->id,
+            'name' => $season->name,
+            'points_per_set' => $season->points_per_set->value,
+        ];
     }
 }

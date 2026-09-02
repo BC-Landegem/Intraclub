@@ -34,10 +34,11 @@ class SeasonCalculator
         DB::transaction(function () use ($season): void {
             $allRounds = $season->rounds()->with('games')->orderBy('id')->get();
             $rounds = $this->completedRounds($allRounds);
+            $pointsPerSet = $season->points_per_set->value;
 
             $this->resetUncountedRounds($allRounds->skip($rounds->count()));
 
-            $averageLosersPerRound = $this->calculateRoundAverages($rounds);
+            $averageLosersPerRound = $this->calculateRoundAverages($rounds, $pointsPerSet);
             $lastRoundPosition = count($averageLosersPerRound);
             $drawnOut = $this->drawnOutPositions($rounds);
 
@@ -51,7 +52,7 @@ class SeasonCalculator
                 ->get();
 
             foreach ($playerStatistics as $playerStatistic) {
-                $this->calculatePlayer($rounds, $playerStatistic, $averageLosersPerRound, $lastRoundPosition, $drawnOut);
+                $this->calculatePlayer($rounds, $playerStatistic, $averageLosersPerRound, $lastRoundPosition, $drawnOut, $pointsPerSet);
             }
 
             $this->writeRanks($rounds, $playerStatistics->pluck('player_id')->all());
@@ -152,7 +153,7 @@ class SeasonCalculator
      * @param  Collection<int, Round>  $rounds
      * @return array<int, float> verliezersgemiddelde per speeldagpositie (1-based, volgorde = oplopend round-id)
      */
-    private function calculateRoundAverages(Collection $rounds): array
+    private function calculateRoundAverages(Collection $rounds, int $pointsPerSet): array
     {
         $averages = [];
         $position = 1;
@@ -162,7 +163,7 @@ class SeasonCalculator
 
             $averageLosing = $games->isEmpty()
                 ? 0.0
-                : $games->sum(fn (Game $game): float => GameStatistics::fromGame($game)->averageLosing) / $games->count();
+                : $games->sum(fn (Game $game): float => GameStatistics::fromGame($game, $pointsPerSet)->averageLosing) / $games->count();
 
             $round->update(['average_absent' => $averageLosing, 'is_calculated' => true]);
             $averages[$position] = $averageLosing;
@@ -182,6 +183,7 @@ class SeasonCalculator
         array $averageLosersPerRound,
         int $lastRoundPosition,
         array $drawnOut,
+        int $pointsPerSet,
     ): void {
         $playerId = $playerStatistic->player_id;
 
@@ -220,7 +222,7 @@ class SeasonCalculator
                 continue;
             }
 
-            $statistics = GameStatistics::fromGame($game);
+            $statistics = GameStatistics::fromGame($game, $pointsPerSet);
             $slot = array_search($playerId, $game->playerIds(), true) + 1;
 
             $results[$position] = $statistics->averages[$slot];

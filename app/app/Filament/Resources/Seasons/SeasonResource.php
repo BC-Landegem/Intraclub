@@ -2,10 +2,12 @@
 
 namespace App\Filament\Resources\Seasons;
 
+use App\Enums\PointsPerSet;
 use App\Filament\Resources\Seasons\Pages\ManageSeasons;
 use App\Models\Season;
 use BackedEnum;
 use Filament\Actions\EditAction;
+use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
 use Filament\Resources\Resource;
 use Filament\Schemas\Schema;
@@ -39,6 +41,18 @@ class SeasonResource extends Resource
                     ->required()
                     ->unique(ignoreRecord: true)
                     ->maxLength(50),
+                Select::make('points_per_set')
+                    ->label('Sets tot')
+                    ->options(PointsPerSet::class)
+                    ->default(PointsPerSet::Fifteen)
+                    ->required()
+                    // Zodra er een speeldag staat, ligt de schaal vast: de setstanden
+                    // zijn op die schaal gespeeld en omzetten zou ze herinterpreteren.
+                    // SeasonObserver bewaakt dat sowieso; dit toont het gewoon.
+                    ->disabled(fn (?Season $record): bool => $record?->rounds()->exists() ?? false)
+                    ->helperText(fn (?Season $record): ?string => $record?->rounds()->exists()
+                        ? 'Ligt vast: dit seizoen heeft al een speeldag.'
+                        : null),
             ]);
     }
 
@@ -50,6 +64,9 @@ class SeasonResource extends Resource
                 TextColumn::make('name')
                     ->label('Naam')
                     ->searchable(),
+                TextColumn::make('points_per_set')
+                    ->label('Sets tot')
+                    ->badge(),
                 TextColumn::make('rounds_count')
                     ->label('Speeldagen')
                     ->counts('rounds'),
@@ -58,6 +75,9 @@ class SeasonResource extends Resource
                     ->counts('playerStatistics'),
             ])
             ->recordActions([
+                // Bewust zonder herberekening: een naamswijziging mag de bevroren stand
+                // van een afgesloten seizoen niet aanraken. De enige wijziging die wél
+                // gevolgen heeft is de puntenschaal, en die bewaakt SeasonObserver.
                 EditAction::make(),
             ]);
     }

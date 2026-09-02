@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Models\Game;
 use App\Models\Round;
+use App\Models\Season;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 
@@ -30,9 +31,9 @@ class DayScores
      */
     public function forRound(Round $round): array
     {
-        $round->loadMissing(['games', 'playerStatistics']);
+        $round->loadMissing(['games', 'playerStatistics', 'season']);
 
-        $scores = $this->fromGames($round->games->sortBy('id'));
+        $scores = $this->fromGames($round->games->sortBy('id'), $round->season->points_per_set->value);
 
         foreach ($round->playerStatistics as $statistic) {
             if (array_key_exists($statistic->player_id, $scores)) {
@@ -54,8 +55,18 @@ class DayScores
      */
     public function forPlayerSeason(int $playerId, int $seasonId): array
     {
+        // Geen seizoen — nog geen enkel seizoen aangemaakt, of een onbekend id — betekent
+        // ook geen enkele speeldag om een dagscore van te geven. Een lege lijst hoort hier,
+        // geen fout: de aanroeper toont dan gewoon een lege historiek.
+        $season = Season::query()->find($seasonId);
+
+        if ($season === null) {
+            return [];
+        }
+
         $perRound = $this->gamesOfPlayer($playerId, $seasonId);
         $drawnOut = $this->drawnOutPerRound($playerId, $seasonId);
+        $pointsPerSet = $season->points_per_set->value;
 
         $scores = [];
 
@@ -64,7 +75,7 @@ class DayScores
 
             $scores[$round->id] = $games === null
                 ? (($drawnOut[$round->id] ?? false) ? null : $this->absentScore($round))
-                : ($this->fromGames($games)[$playerId] ?? null);
+                : ($this->fromGames($games, $pointsPerSet)[$playerId] ?? null);
         }
 
         return $scores;
@@ -74,7 +85,7 @@ class DayScores
      * @param  Collection<int, Game>  $games  op id gesorteerd
      * @return array<int, float>
      */
-    private function fromGames(Collection $games): array
+    private function fromGames(Collection $games, int $pointsPerSet): array
     {
         $scores = [];
 
@@ -86,7 +97,7 @@ class DayScores
                 continue;
             }
 
-            $statistics = GameStatistics::fromGame($game);
+            $statistics = GameStatistics::fromGame($game, $pointsPerSet);
 
             foreach ($game->playerIds() as $index => $playerId) {
                 // De eerste game van de speeldag telt; speelt iemand er een tweede

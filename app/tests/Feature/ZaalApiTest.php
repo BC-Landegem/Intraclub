@@ -10,13 +10,17 @@ use App\Models\Season;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Hash;
+use Tests\Concerns\PlaysToPoints;
 use Tests\TestCase;
 
 /**
  * De zaal-app: aanwezigheden, loting en score-invoer. Alles achter login.
+ *
+ * Draait voor sets tot 15 en tot 21: zie {@see ZaalApiPlayedTo21Test}.
  */
 class ZaalApiTest extends TestCase
 {
+    use PlaysToPoints;
     use RefreshDatabase;
 
     private User $user;
@@ -32,13 +36,18 @@ class ZaalApiTest extends TestCase
     {
         parent::setUp();
 
+        $this->bootFormat();
+
         $this->user = User::create([
             'name' => 'Zaalverantwoordelijke',
             'email' => 'zaal@bclandegem.be',
             'password' => Hash::make('geheim-wachtwoord'),
         ]);
 
-        $this->season = Season::create(['name' => '2026 - 2027']);
+        $this->season = Season::create([
+            'name' => '2026 - 2027',
+            'points_per_set' => $this->format->pointsPerSet,
+        ]);
         $this->round = $this->season->rounds()->create(['number' => 1, 'date' => '2026-09-01']);
 
         foreach (range(1, 6) as $index) {
@@ -56,7 +65,7 @@ class ZaalApiTest extends TestCase
             PlayerSeasonStatistic::create([
                 'season_id' => $this->season->id,
                 'player_id' => $player->id,
-                'base_points' => 19 + $index / 100,
+                'base_points' => $this->format->startingBasePoints() + $index / 100,
             ]);
         }
     }
@@ -96,6 +105,7 @@ class ZaalApiTest extends TestCase
         $this->getJson('/api/zaal/round')
             ->assertOk()
             ->assertJsonPath('round.id', $this->round->id)
+            ->assertJsonPath('round.pointsPerSet', $this->format->value())
             ->assertJsonPath('presentCount', 0)
             ->assertJsonCount(6, 'players')
             ->assertJsonPath('players.0.present', false);
@@ -166,12 +176,8 @@ class ZaalApiTest extends TestCase
 
         $gameId = $created->json('games.0.id');
 
-        $this->putJson("/api/zaal/games/{$gameId}", [
-            'set1_home' => 21, 'set1_away' => 15,
-            'set2_home' => 21, 'set2_away' => 15,
-            'set3_home' => 21, 'set3_away' => 15,
-        ])->assertOk()
-            ->assertJsonPath('games.0.sets.0.home.score', 21)
+        $this->putJson("/api/zaal/games/{$gameId}", $this->format->straightSets())->assertOk()
+            ->assertJsonPath('games.0.sets.0.home.score', $this->format->win())
             ->assertJsonPath('games.0.isComplete', true);
 
         // Speeldag is compleet, dus de tussenstand is herberekend.
@@ -221,7 +227,7 @@ class ZaalApiTest extends TestCase
         $player = Player::where('first_name', 'Nieuwe')->firstOrFail();
         $this->assertTrue($player->is_member);
         $this->assertSame(
-            19.0,
+            $this->format->startingBasePoints(),
             (float) PlayerSeasonStatistic::where('player_id', $player->id)->value('base_points')
         );
     }
@@ -285,9 +291,9 @@ class ZaalApiTest extends TestCase
         $gameId = $created->json('games.0.id');
 
         // Enkel set 1: de match is nog niet volledig, de rest blijft leeg.
-        $this->putJson("/api/zaal/games/{$gameId}", ['set1_home' => 21, 'set1_away' => 15])
+        $this->putJson("/api/zaal/games/{$gameId}", $this->format->firstSetOnly())
             ->assertOk()
-            ->assertJsonPath('games.0.sets.0.home.score', 21)
+            ->assertJsonPath('games.0.sets.0.home.score', $this->format->win())
             ->assertJsonPath('games.0.sets.1.home.score', null)
             ->assertJsonPath('games.0.isComplete', false);
 
@@ -295,9 +301,9 @@ class ZaalApiTest extends TestCase
 
         // Set 2 en 3 erbij: nu pas is de match af.
         $this->putJson("/api/zaal/games/{$gameId}", [
-            'set1_home' => 21, 'set1_away' => 15,
-            'set2_home' => 21, 'set2_away' => 18,
-            'set3_home' => 19, 'set3_away' => 21,
+            'set1_home' => $this->format->win(), 'set1_away' => $this->format->lose(),
+            'set2_home' => $this->format->win(), 'set2_away' => $this->format->loseClose(),
+            'set3_home' => $this->format->loseDeuce(), 'set3_away' => $this->format->win(),
         ])->assertOk()->assertJsonPath('games.0.isComplete', true);
 
         $this->assertTrue($this->round->fresh()->is_calculated);

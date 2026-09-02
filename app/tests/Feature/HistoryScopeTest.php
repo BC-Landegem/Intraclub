@@ -10,6 +10,7 @@ use App\Models\Season;
 use App\Services\SeasonCalculator;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
+use Tests\Concerns\PlaysToPoints;
 use Tests\TestCase;
 
 /**
@@ -27,6 +28,7 @@ use Tests\TestCase;
  */
 class HistoryScopeTest extends TestCase
 {
+    use PlaysToPoints;
     use RefreshDatabase;
 
     private Season $closedSeason;
@@ -44,6 +46,8 @@ class HistoryScopeTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
+
+        $this->bootFormat();
 
         [$this->closedSeason, $this->closedRound] = $this->seizoenMetSpeeldag('2025 - 2026', '2025-09-03');
         [$this->currentSeason, $this->currentRound] = $this->seizoenMetSpeeldag('2026 - 2027', '2026-09-02');
@@ -302,7 +306,10 @@ class HistoryScopeTest extends TestCase
      */
     private function seizoenMetSpeeldag(string $naam, string $datum): array
     {
-        $season = Season::create(['name' => $naam]);
+        $season = Season::create([
+            'name' => $naam,
+            'points_per_set' => $this->format->pointsPerSet,
+        ]);
         $round = $season->rounds()->create(['number' => 1, 'date' => $datum]);
 
         $ids = [];
@@ -322,7 +329,7 @@ class HistoryScopeTest extends TestCase
             PlayerSeasonStatistic::create([
                 'season_id' => $season->id,
                 'player_id' => $player->id,
-                'base_points' => 19 + $index / 10,
+                'base_points' => $this->format->basePoints($index),
             ]);
         }
 
@@ -330,9 +337,7 @@ class HistoryScopeTest extends TestCase
             'round_id' => $round->id,
             'player1_id' => $ids[1], 'player2_id' => $ids[2],
             'player3_id' => $ids[3], 'player4_id' => $ids[4],
-            'set1_home' => 21, 'set1_away' => 15,
-            'set2_home' => 21, 'set2_away' => 15,
-            'set3_home' => 21, 'set3_away' => 15,
+            ...$this->format->straightSets(),
         ]);
 
         return [$season, $round];

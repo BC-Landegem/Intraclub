@@ -40,7 +40,11 @@ class RecordController extends Controller
             'data' => $this->records->all($seasons->pluck('id')->all(), $limit),
             'meta' => [
                 'seasons' => $seasons
-                    ->map(fn (Season $season): array => ['id' => $season->id, 'name' => $season->name])
+                    ->map(fn (Season $season): array => [
+                        'id' => $season->id,
+                        'name' => $season->name,
+                        'points_per_set' => $season->points_per_set->value,
+                    ])
                     ->values()
                     ->all(),
                 'limit' => $limit,
