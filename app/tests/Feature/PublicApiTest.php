@@ -140,6 +140,23 @@ class PublicApiTest extends TestCase
         $this->getJson('/api/seasons/999/statistics')->assertNotFound();
     }
 
+    /**
+     * Een verse installatie heeft nog geen seizoen. De spelerspagina moet dan gewoon
+     * laden met een lege historiek: er valt niets te tonen, maar dat is geen fout.
+     */
+    public function test_zonder_seizoen_is_de_rankinghistoriek_leeg_en_geen_fout(): void
+    {
+        $speler = $this->players[1];
+
+        $this->round->delete();
+        $this->season->delete();
+
+        $this->getJson("/api/players/{$speler->id}/ranking-history")
+            ->assertOk()
+            ->assertJsonPath('data', [])
+            ->assertJsonPath('meta.season', null);
+    }
+
     public function test_speeldagen_dragen_hun_eigen_tellingen(): void
     {
         PlayerRoundStatistic::where('round_id', $this->round->id)

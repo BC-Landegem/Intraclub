@@ -5,7 +5,6 @@ namespace App\Filament\Resources\Seasons;
 use App\Enums\PointsPerSet;
 use App\Filament\Resources\Seasons\Pages\ManageSeasons;
 use App\Models\Season;
-use App\Services\SeasonCalculator;
 use BackedEnum;
 use Filament\Actions\EditAction;
 use Filament\Forms\Components\Select;
@@ -46,7 +45,14 @@ class SeasonResource extends Resource
                     ->label('Sets tot')
                     ->options(PointsPerSet::class)
                     ->default(PointsPerSet::Fifteen)
-                    ->required(),
+                    ->required()
+                    // Zodra er een speeldag staat, ligt de schaal vast: de setstanden
+                    // zijn op die schaal gespeeld en omzetten zou ze herinterpreteren.
+                    // SeasonObserver bewaakt dat sowieso; dit toont het gewoon.
+                    ->disabled(fn (?Season $record): bool => $record?->rounds()->exists() ?? false)
+                    ->helperText(fn (?Season $record): ?string => $record?->rounds()->exists()
+                        ? 'Ligt vast: dit seizoen heeft al een speeldag.'
+                        : null),
             ]);
     }
 
@@ -69,10 +75,10 @@ class SeasonResource extends Resource
                     ->counts('playerStatistics'),
             ])
             ->recordActions([
-                EditAction::make()
-                    ->after(function (Season $record): void {
-                        app(SeasonCalculator::class)->calculate($record);
-                    }),
+                // Bewust zonder herberekening: een naamswijziging mag de bevroren stand
+                // van een afgesloten seizoen niet aanraken. De enige wijziging die wél
+                // gevolgen heeft is de puntenschaal, en die bewaakt SeasonObserver.
+                EditAction::make(),
             ]);
     }
 

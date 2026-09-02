@@ -55,9 +55,18 @@ class DayScores
      */
     public function forPlayerSeason(int $playerId, int $seasonId): array
     {
+        // Geen seizoen — nog geen enkel seizoen aangemaakt, of een onbekend id — betekent
+        // ook geen enkele speeldag om een dagscore van te geven. Een lege lijst hoort hier,
+        // geen fout: de aanroeper toont dan gewoon een lege historiek.
+        $season = Season::query()->find($seasonId);
+
+        if ($season === null) {
+            return [];
+        }
+
         $perRound = $this->gamesOfPlayer($playerId, $seasonId);
         $drawnOut = $this->drawnOutPerRound($playerId, $seasonId);
-        $pointsPerSet = Season::query()->findOrFail($seasonId)->points_per_set->value;
+        $pointsPerSet = $season->points_per_set->value;
 
         $scores = [];
 
