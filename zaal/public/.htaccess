@@ -10,3 +10,8 @@
 
     RewriteRule ^ index.html [L]
 </IfModule>
+
+# Sommige Apache-installaties kennen .webmanifest nog niet.
+<IfModule mod_mime.c>
+    AddType application/manifest+json .webmanifest
+</IfModule>
