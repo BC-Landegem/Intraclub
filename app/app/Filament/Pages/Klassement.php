@@ -2,6 +2,7 @@
 
 namespace App\Filament\Pages;
 
+use App\Models\Round;
 use App\Models\Season;
 use App\Services\RankingService;
 use App\Services\SeasonCalculator;
@@ -36,7 +37,7 @@ class Klassement extends Page
         return Season::query()->orderByDesc('id')->pluck('name', 'id')->all();
     }
 
-    /** @return array{seasonId: int|null, categories: array<string, list<array{id: int, firstName: string, name: string, average: float, rank: int, difference: int}>>} */
+    /** @return array{season: ?Season, round: ?Round, categories: array<string, list<array{id: int, first_name: string, last_name: string, full_name: string, average: float, rank: int, difference: int}>>} */
     public function getRanking(): array
     {
         return app(RankingService::class)->get($this->seasonId, categories: RankingService::CATEGORIES);

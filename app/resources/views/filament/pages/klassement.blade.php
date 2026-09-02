@@ -27,7 +27,7 @@
                         @forelse ($ranking['categories'][$category] as $entry)
                             <tr style="border-top: 1px solid rgb(128 128 128 / 0.15);">
                                 <td style="padding: 0.375rem 0.5rem 0.375rem 0; font-variant-numeric: tabular-nums; opacity: 0.6;">{{ $entry['rank'] }}</td>
-                                <td style="padding: 0.375rem 0.5rem 0.375rem 0;">{{ $entry['firstName'] }} {{ $entry['name'] }}</td>
+                                <td style="padding: 0.375rem 0.5rem 0.375rem 0;">{{ $entry['full_name'] }}</td>
                                 <td style="padding: 0.375rem 0.5rem 0.375rem 0; text-align: right; font-variant-numeric: tabular-nums;">{{ number_format($entry['average'], 2, ',', '') }}</td>
                                 <td style="padding: 0.375rem 0 0.375rem 0; text-align: right; font-variant-numeric: tabular-nums;">
                                     @if ($entry['difference'] > 0)
