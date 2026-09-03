@@ -5,21 +5,25 @@ import { ZaalApi } from '../../../core/zaal-api';
 import { timeOfDay } from '../player-finder/player-finder';
 
 /**
- * Hetzelfde scherm in drie toonaarden:
+ * Hetzelfde scherm in twee toonaarden:
  *
  * - `confirm`: net bewaard. Zegt niet alleen dát het bewaard is, maar wát er
  *   bewaard is, zodat de speler zijn invoer kan natrekken vóór hij weggaat.
- * - `read`: iemand van je viertal was je voor. Geen formulier meer, een uitslag
- *   om te lezen — met een aparte, bewuste knop om alsnog te wijzigen.
- * - `peek`: je bekijkt een wedstrijd van het bord van de avond. Dan ben je kijker,
- *   niet deelnemer: geen naam geaccentueerd en niets te wijzigen.
+ * - `recap`: de wedstrijd om te lezen — of je er nu zelf in speelt of ze van het
+ *   bord van de avond openslaat.
+ *
+ * Die twee waren er drie: `peek` voor de kijker en `read` voor de deelnemer die
+ * te laat was om zelf in te vullen. Het onderscheid hing aan de wijzigknop, die
+ * de kijker niet kreeg. Nu draagt elk wedstrijdscherm die knop, en blijft er van
+ * het verschil enkel een geaccentueerde naam in de telling over. Dat is geen
+ * modus.
  *
  * En één toestand die daar dwars doorheen loopt: een set die nog gespeeld moet
  * worden heeft geen cijfers maar een startstand. Dat is waarvoor de vier spelers
  * hier vóór hun wedstrijd langskomen — de duo's roteren per set, dus hun voorsprong
  * verschilt per set en is niet uit het hoofd te doen.
  */
-export type RecapMode = 'confirm' | 'read' | 'peek';
+export type RecapMode = 'confirm' | 'recap';
 
 /** Eén setregel: ofwel de stand die er staat, ofwel de stand waarop ze begint. */
 interface RecapRow {
@@ -62,6 +66,19 @@ export class MatchRecap {
   protected readonly hasAnyScore = computed(() =>
     this.game().sets.some((set) => set.home.score !== null && set.away.score !== null),
   );
+
+  /**
+   * Wat de wijzigknop belooft. Bij een lege wedstrijd is er niets aan te passen
+   * en heet hij wat hij doet; wie net bewaard heeft krijgt de aarzelende vorm,
+   * want die knop is daar een uitweg en geen uitnodiging.
+   */
+  protected readonly editLabel = computed(() => {
+    if (this.mode() === 'confirm') {
+      return 'Toch iets aanpassen';
+    }
+
+    return this.hasAnyScore() ? 'Score aanpassen' : 'Score invullen';
+  });
 
   protected readonly rows = computed<RecapRow[]>(() =>
     this.game().sets.map((set) => ({

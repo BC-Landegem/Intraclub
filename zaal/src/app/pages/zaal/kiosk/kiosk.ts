@@ -2,15 +2,17 @@ import { Component, inject } from '@angular/core';
 import { Router, RouterLink } from '@angular/router';
 import { RoundPlayer } from '../../../core/models';
 import { ZaalApi } from '../../../core/zaal-api';
+import { AttendanceFinder } from '../attendance-finder/attendance-finder';
 import { PlayerFinder } from '../player-finder/player-finder';
 
 /**
- * De rusttoestand van de tablet: "wie heeft er gespeeld?", met daaronder de twee
- * schermen waarvoor spelers zelf langskomen.
+ * De rusttoestand van de tablet, in twee gedaantes. Vóór de loting is dat de
+ * aanwezigheidslijst — iedereen duidt zichzelf aan — en daarna "wie heeft er
+ * gespeeld?". Eronder staan de twee schermen waarvoor spelers zelf langskomen.
  */
 @Component({
   selector: 'app-kiosk',
-  imports: [PlayerFinder, RouterLink],
+  imports: [AttendanceFinder, PlayerFinder, RouterLink],
   templateUrl: './kiosk.html',
   styleUrl: './kiosk.css',
 })

@@ -1,23 +1,11 @@
-<div class="search-row">
-  <label class="visually-hidden" for="player-search">Zoek een speler</label>
-  <input
-    id="player-search"
-    type="search"
-    placeholder="Zoek een speler…"
-    [value]="searchTerm()"
-    (input)="searchTerm.set($any($event.target).value)"
-  />
-  <button type="button" routerLink="nieuwe-speler">+ Nieuwe speler</button>
-</div>
-
 <ul class="player-list">
-  @for (player of filteredPlayers(); track player.id) {
+  @for (player of players(); track player.id) {
     <li>
       <button
         type="button"
         class="player-button"
         [class.present]="player.present"
-        [disabled]="api.isBusy()"
+        [disabled]="isBusy()"
         (click)="checkIn($event, player)"
       >
         <span class="sweep" aria-hidden="true"></span>
@@ -39,16 +27,3 @@
     <li class="empty">Geen spelers gevonden.</li>
   }
 </ul>
-
-<button
-  type="button"
-  class="primair wide"
-  [disabled]="api.isBusy() || api.presentCount() < 4"
-  (click)="draw()"
->
-  Loten ({{ api.presentCount() }} aanwezig)
-</button>
-
-<button type="button" class="afmelden" (click)="signOut()">Afmelden</button>
-
-<router-outlet />

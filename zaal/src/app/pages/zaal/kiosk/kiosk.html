@@ -1,12 +1,15 @@
+<!--
+  Vóór de loting is de tablet de aanwezigheidslijst: iedereen duidt zichzelf aan
+  zodra hij binnen is. Dat is meteen het antwoord op "waarom sta ik hier" in het
+  eerste kwartier — er stond eerst een paneel dat zei dat er niets te doen was,
+  met een grote knop naar het scherm van de organisator erbij.
+
+  Er is geen omleiding voor nodig: het beginscherm ís dit blad zolang er geen
+  wedstrijden zijn, en wordt de namenvinder zodra er geloot is. "Speeldag starten"
+  landt dus vanzelf goed, en de terugvalklok komt hier ook uit.
+-->
 @if (api.games().length === 0) {
-  <div class="paneel start">
-    <h2>De loting moet nog gebeuren</h2>
-    <p class="subtitle">
-      Zodra de wedstrijden verdeeld zijn, kan je hier je score invullen. Duid de aanwezigen aan en
-      loot via <strong>Beheer</strong>.
-    </p>
-    <button type="button" class="primair groot" routerLink="/beheer">Naar Beheer</button>
-  </div>
+  <app-attendance-finder />
 } @else {
   <app-player-finder
     [players]="api.presentPlayers()"

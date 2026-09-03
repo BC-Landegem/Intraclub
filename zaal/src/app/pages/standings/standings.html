@@ -19,7 +19,11 @@
 
   <nav class="categorieen">
     @for (item of categories; track item.key) {
-      <button type="button" [class.actief]="category() === item.key" (click)="category.set(item.key)">
+      <button
+        type="button"
+        [class.actief]="category() === item.key"
+        (click)="category.set(item.key)"
+      >
         {{ item.label }}
       </button>
     }

@@ -11,7 +11,12 @@
     <div class="row">
       <div class="field">
         <label for="first-name">Voornaam</label>
-        <input id="first-name" type="text" autocomplete="given-name" [formField]="playerForm.firstName" />
+        <input
+          id="first-name"
+          type="text"
+          autocomplete="given-name"
+          [formField]="playerForm.firstName"
+        />
         @if (playerForm.firstName().touched() && playerForm.firstName().invalid()) {
           <p class="field-error">{{ playerForm.firstName().errors()[0]?.message }}</p>
         }
@@ -19,7 +24,12 @@
 
       <div class="field">
         <label for="last-name">Achternaam</label>
-        <input id="last-name" type="text" autocomplete="family-name" [formField]="playerForm.name" />
+        <input
+          id="last-name"
+          type="text"
+          autocomplete="family-name"
+          [formField]="playerForm.name"
+        />
         @if (playerForm.name().touched() && playerForm.name().invalid()) {
           <p class="field-error">{{ playerForm.name().errors()[0]?.message }}</p>
         }
@@ -52,7 +62,12 @@
     @if (playerForm.playsCompetition().value()) {
       <div class="field">
         <label for="double-ranking">Dubbelklassement (0 - 12)</label>
-        <input id="double-ranking" type="number" inputmode="numeric" [formField]="playerForm.doubleRanking" />
+        <input
+          id="double-ranking"
+          type="number"
+          inputmode="numeric"
+          [formField]="playerForm.doubleRanking"
+        />
         @if (playerForm.doubleRanking().touched() && playerForm.doubleRanking().invalid()) {
           <p class="field-error">{{ playerForm.doubleRanking().errors()[0]?.message }}</p>
         }

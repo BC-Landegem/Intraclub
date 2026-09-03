@@ -1,13 +1,9 @@
+/*
+ * Alleen de tegels. Het zoeken zit erbuiten — een zoekveld bij de organisator, een
+ * letterraster bij de speler — want dat is het enige wat tussen die twee verschilt.
+ */
 :host {
-  display: grid;
-  gap: 1rem;
-  align-content: start;
-}
-
-.search-row {
-  display: grid;
-  grid-template-columns: 1fr auto;
-  gap: 0.5rem;
+  display: block;
 }
 
 .player-list {
@@ -164,30 +160,28 @@
   color: var(--tekst-zacht);
 }
 
-.wide {
-  width: 100%;
-  min-height: 64px;
-  font-size: 1.1rem;
+/*
+ * Op het spelersscherm staan er maar een handvol namen onder één letter, en het
+ * komt na een letterraster van 104px. Dan zijn tegels van 64px een val: kleiner
+ * mikpunt op precies het scherm waar rechtopstaande mensen met haast aan staan.
+ */
+:host(.groot) .player-list {
+  gap: 0.6rem;
 }
 
-/* Afmelden hoort bij beheer, niet bij een tablet waar spelers aan staan. */
-.afmelden {
-  justify-self: start;
-  margin-top: 0.5rem;
-  color: var(--tekst-zacht);
+:host(.groot) .player-button {
+  min-height: 84px;
+  padding: 0.75rem 1.25rem;
 }
 
-.afmelden:hover {
-  color: var(--tekst);
+:host(.groot) .player-button .name {
+  font-size: 1.4rem;
+  font-weight: 600;
+  letter-spacing: -0.01em;
 }
 
-.visually-hidden {
-  position: absolute;
-  width: 1px;
-  height: 1px;
-  margin: -1px;
-  padding: 0;
-  overflow: hidden;
-  clip-path: inset(50%);
-  white-space: nowrap;
+:host(.groot) .check,
+:host(.groot) .check svg {
+  width: 34px;
+  height: 34px;
 }

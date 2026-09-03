@@ -1,6 +1,6 @@
 <header class="bar">
   <div class="bar-titel">
-    <h1>{{ isAdmin() ? 'Beheer' : 'Intraclub' }}</h1>
+    <h1>{{ isOrganiser() ? 'Organisator' : 'Intraclub' }}</h1>
     @if (api.round(); as round) {
       <p class="subtitle">Speeldag {{ round.number }} · {{ round.date }}</p>
     } @else {
@@ -11,13 +11,25 @@
   @if (api.round() !== null) {
     <nav class="bar-acties" aria-label="Schermen">
       @if (isHome()) {
-        <button type="button" class="stil" routerLink="/beheer">Beheer</button>
+        <button type="button" class="stil" routerLink="/organisator">Organisator</button>
       } @else {
         <button type="button" routerLink="/">Terug naar de zaal</button>
       }
     </nav>
   }
 </header>
+
+<!--
+  De terugvalklok, alleen op de bevestiging en alleen als lijn. Het `track` op de
+  tik vervangt het element bij elke aanraking, want anders loopt de animatie door
+  waar ze stond. Geen cijfer en geen tekst: de lijn zegt dat de tablet zichzelf
+  opruimt, en dat is alles wat iemand die klaar is erover hoeft te weten.
+-->
+@if (isConfirm()) {
+  @for (beurt of [tick()]; track beurt) {
+    <div class="klok" [style.animation-duration]="idleMs() + 'ms'" aria-hidden="true"></div>
+  }
+}
 
 @if (api.errorMessage(); as message) {
   <p class="foutmelding notice">{{ message }}</p>

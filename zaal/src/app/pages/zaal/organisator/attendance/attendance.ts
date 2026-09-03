@@ -1,16 +1,20 @@
 import { Component, computed, inject, signal } from '@angular/core';
 import { Router, RouterLink, RouterOutlet } from '@angular/router';
 import { Auth } from '../../../../core/auth';
-import { RoundPlayer } from '../../../../core/models';
 import { ZaalApi } from '../../../../core/zaal-api';
+import { AttendanceList } from '../../attendance-list/attendance-list';
 
 /**
- * Wie er vanavond is, en daarna de loting. Dit is het enige scherm waar de
- * organisator een lijst afgaat, dus staat de zoekregel bovenaan.
+ * De aanwezigheden zoals de organisator ze ziet: de volle lijst met een zoekveld,
+ * en daaronder de knoppen die alleen hij heeft — loten, een nieuwe speler, afmelden.
+ *
+ * Spelers duiden zichzelf aan op het beginscherm, in een letterraster. Dat is
+ * dezelfde handeling op dezelfde tegels (`AttendanceList`), maar een andere manier
+ * om erbij te komen: hij zoekt wie ontbreekt, zij zoeken zichzelf.
  */
 @Component({
   selector: 'app-attendance',
-  imports: [RouterLink, RouterOutlet],
+  imports: [RouterLink, RouterOutlet, AttendanceList],
   templateUrl: './attendance.html',
   styleUrl: './attendance.css',
 })
@@ -31,25 +35,10 @@ export class Attendance {
       : players.filter((player) => player.fullName.toLowerCase().includes(term));
   });
 
-  /**
-   * Checking in is the one moment in this app that is about the player, not the
-   * administration. The fill sweeps from where the finger landed, so the tile
-   * answers the tap itself; the counter in the tab bar then acknowledges the new
-   * arrival.
-   */
-  protected async checkIn(event: MouseEvent, player: RoundPlayer): Promise<void> {
-    const tile = event.currentTarget as HTMLElement;
-    const bounds = tile.getBoundingClientRect();
-    tile.style.setProperty('--tap-x', `${event.clientX - bounds.left}px`);
-    tile.style.setProperty('--tap-y', `${event.clientY - bounds.top}px`);
-
-    await this.api.setAttendance(player.id, !player.present);
-  }
-
   /** Geloot: de voorstellen wachten op het andere tabblad. */
   protected async draw(): Promise<void> {
     await this.api.drawRound();
-    await this.router.navigate(['/beheer/wedstrijden']);
+    await this.router.navigate(['/organisator/wedstrijden']);
   }
 
   protected async signOut(): Promise<void> {

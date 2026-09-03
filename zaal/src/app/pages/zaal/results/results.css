@@ -136,3 +136,20 @@ button.vak.leeg:hover {
     transition: none;
   }
 }
+
+/*
+ * De uitnodiging op een wedstrijd die nog gespeeld moet worden. Het pijltje doet
+ * hier het werk dat de cijfers niet kunnen doen: zeggen dat deze rij ergens heen
+ * gaat. De beginstanden zelf staan één tik verder, mét de duonamen — zonder die
+ * namen is een startstand niet te gebruiken.
+ */
+.uitnodiging {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.pijl {
+  width: 15px;
+  height: 15px;
+}

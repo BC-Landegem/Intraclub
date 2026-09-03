@@ -1,0 +1,44 @@
+:host {
+  display: grid;
+  gap: 1rem;
+  align-content: start;
+}
+
+/*
+ * De organisator scant wie er ontbreekt, dus hij houdt de volle lijst met een
+ * zoekveld erboven. Het letterraster van het spelersscherm zit een overzichtstaak
+ * juist in de weg: dat verbergt 84 van de 88 namen.
+ */
+.search-row {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 0.5rem;
+}
+
+.wide {
+  width: 100%;
+  min-height: 64px;
+  font-size: 1.1rem;
+}
+
+/* Afmelden hoort bij de organisator, niet bij een tablet waar spelers aan staan. */
+.afmelden {
+  justify-self: start;
+  margin-top: 0.5rem;
+  color: var(--tekst-zacht);
+}
+
+.afmelden:hover {
+  color: var(--tekst);
+}
+
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}

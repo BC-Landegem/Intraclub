@@ -1,0 +1,99 @@
+/*
+ * Zelfde vorm en zelfde maten als de score-vinder: wie vanavond zijn score komt
+ * invullen heeft deze twee schermen dan al één keer gezien.
+ */
+:host {
+  display: grid;
+  gap: 0;
+  align-content: start;
+}
+
+.vraag {
+  margin: 0;
+  font-size: clamp(1.75rem, 4.5vw, 2.4rem);
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+
+.onder {
+  display: flex;
+  align-items: baseline;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+  margin: 0.35rem 0 0;
+  color: var(--tekst-zacht);
+  font-size: 1.05rem;
+}
+
+/*
+ * De teller staat naast de vraag en niet als eigen regel: hij is geen mededeling
+ * maar een terloopse stand van zaken — hoe vol is de zaal, mag er geloot worden.
+ */
+.teller {
+  color: var(--accent);
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Alfabet: altijd één schermvulling, nooit een schuifbalk. */
+.alfabet {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(96px, 1fr));
+  gap: 0.75rem;
+  margin-top: 1.35rem;
+}
+
+.letter {
+  min-height: 104px;
+  padding: 0;
+  font-size: 2.4rem;
+  font-weight: 700;
+  line-height: 1;
+  transition:
+    background 140ms ease-out,
+    border-color 140ms ease-out;
+}
+
+.letter:hover {
+  background: #20252e;
+  border-color: #39414d;
+}
+
+.terug {
+  justify-self: start;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  min-height: 48px;
+  margin-bottom: 1.1rem;
+  padding: 0 1rem 0 0.75rem;
+  color: var(--tekst-zacht);
+  font-size: 0.95rem;
+}
+
+.terug:hover {
+  color: var(--tekst);
+  border-color: #39414d;
+}
+
+.icoon {
+  width: 18px;
+  height: 18px;
+  flex: none;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2.4;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+app-attendance-list {
+  display: block;
+  margin-top: 1.1rem;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .letter {
+    transition: none;
+  }
+}

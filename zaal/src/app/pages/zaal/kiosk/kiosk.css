@@ -4,34 +4,6 @@
   align-content: start;
 }
 
-.subtitle {
-  margin: 0.15rem 0 0;
-  color: var(--tekst-zacht);
-}
-
-button.groot {
-  min-height: 68px;
-  padding: 0 2rem;
-  font-size: 1.15rem;
-}
-
-.start {
-  display: grid;
-  gap: 1rem;
-  justify-items: start;
-  padding: 2rem;
-}
-
-.start h2 {
-  margin: 0;
-  font-size: 1.5rem;
-  letter-spacing: -0.02em;
-}
-
-.start .subtitle {
-  margin: 0;
-}
-
 /*
  * De twee bestemmingen waarvoor spelers zelf langskomen. Ze staan onder het
  * alfabet omdat dat het leespad is: een rechtopstaand iemand aan een tafel kijkt

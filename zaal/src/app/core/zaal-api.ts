@@ -76,7 +76,9 @@ export class ZaalApi {
 
   /** Players who are present but not in any game yet. */
   readonly playersWithoutGame = computed(() => {
-    const playing = new Set(this.games().flatMap((game) => game.players.map((player) => player.id)));
+    const playing = new Set(
+      this.games().flatMap((game) => game.players.map((player) => player.id)),
+    );
 
     return this.presentPlayers().filter((player) => !playing.has(player.id));
   });
@@ -110,7 +112,10 @@ export class ZaalApi {
 
   async setAttendance(playerId: number, present: boolean): Promise<void> {
     await this.run(() =>
-      this.http.post<RoundState>(`/api/zaal/rounds/${this.roundId()}/attendance`, { playerId, present }),
+      this.http.post<RoundState>(`/api/zaal/rounds/${this.roundId()}/attendance`, {
+        playerId,
+        present,
+      }),
     );
 
     if (present && this.failure() === '') {
@@ -252,7 +257,10 @@ function withScores(game: Game, scores: GameScores): Game {
 
 /** Zet een HTTP-fout om in iets dat je in de zaal kan lezen. */
 export function describeError(error: unknown): string {
-  const response = error as { status?: number; error?: { message?: string; errors?: Record<string, string[]> } };
+  const response = error as {
+    status?: number;
+    error?: { message?: string; errors?: Record<string, string[]> };
+  };
 
   if (response?.error?.errors) {
     return Object.values(response.error.errors).flat().join(' ');

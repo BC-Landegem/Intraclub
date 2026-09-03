@@ -463,6 +463,142 @@ Bij H=0 staat er **0 en 0**, bij H=1 **1 en 0**. Altijd twee getallen op dezelfd
 - [x] Tests: `HandicapTest` (splitsing, richting, afstand blijft H, injectie blijft 0 of 1), `start` in beide payloads via `ZaalApiTest` en `PublicApiTest`. Volledige suite groen: 340 tests
 - [x] Bonuspunten per speler in de afwerklijst van `admin/games`
 
+### Fase 14 — Gebruikersreview zaal-app (03-09)
+
+Eerste review door een clublid dat de app op een speeldag gebruikt heeft. Zeven punten,
+maar geen zeven losse fixes: drie ervan botsen op een productprincipe, en één verbergt
+een vraag die nog nergens beslist was. Wat hier staat is de uitkomst van dat gesprek —
+de redenering, niet enkel de wijziging.
+
+**De handicap is niet afroepbaar, en dat is een antwoord, geen tekort.** De vraag was of
+de organisator de handicap mee moet omroepen bij het afkondigen van een match. Dat kan
+niet: `Handicap::between()` rekent per set met de bonussommen van dát duo, en de duo's
+roteren drie keer. Eén wedstrijd is dus geen getal maar zes. Fase 13 had het antwoord al
+gebouwd — `/wedstrijden` is het leespad — maar de rij die erheen leidt zei
+`moet nog gespeeld worden`, in accentoranje, gestippeld. De opmaak beloofde iets en de
+copy sprak haar tegen. De copy wint, want mensen lezen. Dus: de rij nodigt uit, het bord
+blijft één tik verder, en de organisator roept nummer en namen zoals hij altijd deed.
+
+**"Beheer" was een bezet woord.** PLAN.md noemt Filament "het beheerspaneel", PRODUCT.md
+noemt die gebruiker "Beheerder". De reviewer las het correct en belandde op de verkeerde
+verwachting. `Spelers` en `Loting` — zijn eigen voorstellen — vallen allebei af: het
+eerste trekt spelers aan naar een scherm dat niet voor hen is, het tweede liegt vanaf het
+moment dat de loting gebeurd is en diezelfde deur de afwerklijst wordt. Elk label dat een
+ínhoud noemt nodigt uit tot tikken. **"Organisator"** noemt het publiek, en dat is het
+enige soort label dat tegelijk de juiste persoon binnenlaat en de rest wegduwt. Route,
+map en klasse verhuizen mee: `Admin` in de zaal-app benoemde de verkeerde persoon.
+
+**De luide knop was een toestandsfout, geen plaatsingsfout.** De knop in de balk is al
+44px en transparant. De 68px oranje knop stond in de lege toestand van de kiosk — en die
+toestand is geen randgeval maar de openingstoestand van élke speeldag, ruwweg het eerste
+kwartier, precies wanneer de meeste mensen rond de tablet staan. Dat paneel adresseerde in
+drie zinnen twee publieken. Nu spreekt het alleen de speler aan; de organisatordeur is de
+hele avond dezelfde knop op dezelfde plek.
+
+**"Dit scherm sluit vanzelf" beloofde schermgedrag dat overal geldt.** Er is geen
+sluitmechanisme op de bevestiging — er is één terugvalklok in `Zaal` die op elk scherm
+loopt. De tussenstand valt ook terug, zonder één woord uitleg, en daar heeft nog nooit
+iemand iets over gezegd: een vangnet kondig je niet aan, want zodra je het aankondigt is
+het een belofte en gaan mensen erop wachten. Gekozen is om de belofte dan ook waar te
+maken: op `bewaard` telt dezelfde klok in 30 s af in plaats van 120, en hij is zichtbaar
+als een haarlijn onder de kop. Geen cijfer en geen balk op de `Klaar`-knop — een primaire
+knop die volloopt leest als "wacht", niet als "je mag weg". Elke aanraking zet hem terug,
+want het ís `keepAwake()`, niet een tweede klok.
+
+**Editen vanuit het overzicht gaat rechtstreeks.** Er zat eerst een naamtik tussen — vier
+namen, "wie ben je?" — als bevestiging, omdat `score-entry` bij élke tik bewaart zonder te
+vragen en wie op de verkeerde wedstrijd landt dus een score van een ander groepje kan
+overschrijven. Dat is het faalgeval uit PRODUCT.md. Bij het uitproberen bleek die stap
+overbodig, en bij nader inzien terecht: **het invulscherm opent bij een volledige wedstrijd
+dicht.** `activeIndex` zoekt de eerste set zónder score, en die is er niet, dus staan er
+drie afgeronde regels en is er niets open. Overschrijven vraagt een tik op "wijzig" en dáárna
+nog twee (winnaar, dan stand), waarvan de eerste niets bewaart. De drempel zat al in het
+scherm; er hoefde er geen tweede voor.
+
+Wat blijft: de speler in het pad is een **aanspreking, geen recht**. Invullen mocht altijd al
+door elk van de vier — `Elk van de vier spelers kan de score van dezelfde wedstrijd invullen`
+staat zo in PRODUCT.md — dus elke gedaante bestaat nu twee keer, met en zonder
+`speler/:playerId`. Met naam: "Jouw wedstrijd — Jan, …" en Klaar gaat terug naar de zaal.
+Zonder: "Wedstrijd 3 — Jan, Piet, …" en Klaar gaat terug naar het bord waar je vandaan kwam.
+Daarmee vallen `peek` en `read` samen: als elk wedstrijdscherm dezelfde knop draagt, is het
+verschil tussen kijker en deelnemer alleen nog een geaccentueerde naam in de telling.
+
+**Sets in willekeurige volgorde was de enige echte onmogelijkheid.** De setnummers zijn
+paringen, geen tijdstippen (set 2 = P1+P3), dus vier spelers die met een andere paring
+beginnen botsen op de app. En wie er maar twee speelt kan set 1 en 3 niet invullen met een
+gat ertussen. `redo()` bestond al — hij werd alleen niet aangeboden op een wachtende set.
+De automatische doorloop blijft, want negen op de tien viertallen spelen gewoon op volgorde.
+
+**Het lettersysteem blijft.** Bij 44-48 aanwezigen zijn dat twee tikken zonder schuifbalk;
+één lijst van 46 namen scrolt, en scrollen is een van de drie klachten waarmee dit dossier
+begon. De puntenknoppen tonen enkel het getal van de verliezer omdat 90,7 % van de sets
+exact op het setmaximum eindigt. Beide vormen zijn al door de data gedekt; "moest wat
+wennen" is gewenning, geen ontwerpfout.
+
+**Nog te doen**
+
+- [ ] `beheer` → `organisator`: route, map `pages/zaal/admin/` → `pages/zaal/organisator/`, klasse `Admin` → `Organisator`, labels en `isAdmin` → `isOrganiser`
+- [ ] Lege kiosktoestand spreekt alleen de speler aan; de grote knop naar de organisator verdwijnt, de tussenstand blijft de ene bruikbare bestemming
+- [ ] Terugvalklok route-afhankelijk (30 s op `bewaard`, 120 s elders) en zichtbaar als haarlijn in `zaal.html`; de zin in `match-recap` verdwijnt
+- [ ] `RecapMode` wordt `confirm | recap`; `peek` en `read` vallen samen, `match.ts` verliest een gedaante
+- [x] Elke gedaante bestaat met en zonder `speler/:playerId`; `score-entry` werkt zonder speler (kop en uitweg passen zich aan), wijzigknop op elk wedstrijdscherm. Een tussenscherm met de vier namen is geprobeerd en weer weg: het invulscherm opent bij een volledige wedstrijd al dicht
+- [ ] Afwerklijst in `organisator/games` wordt aantikbaar naar hetzelfde wedstrijdscherm
+- [ ] Wachtende setregel in `score-entry` wordt aantikbaar (`redo`)
+- [ ] `moet nog gespeeld worden` → een uitnodiging naar het bord
+
+**Openstaand, niet in deze fase.** Een sterk duo begint op `−floor(H/2)`; bij H=14 (twee
+vrouwelijke recreanten tegenover twee klassementsspelers) is dat −7. Scoren ze in die set
+minder dan 7 punten, dan is hun bordstand negatief — een stand die `directWins()` niet
+aanbiedt en die `isPlayableSet()` aan beide kanten weigert. De handicapregel kan dus een
+stand produceren die de invoer niet kan opslaan. Zeldzaam, maar geen theorie, en de fix
+raakt de serverkant. Eigen ronde.
+
+### Fase 15 — Aanwezigheid is zelfbediening (03-09)
+
+Uit dezelfde review, maar het is geen detail: **iedereen duidt zichzelf aan.** Daarmee
+verandert het publiek van de aanwezigheidslijst, en dus waar ze hoort te staan.
+
+**Het beginscherm ís voortaan dat blad.** Zolang er geen wedstrijden zijn toont `/` de
+aanwezigheidsvinder; zodra er geloot is wordt het de namenvinder. Er is geen omleiding
+voor nodig — "Speeldag van vandaag starten" laat het kader gewoon de outlet renderen en
+die staat dan op het juiste scherm. Dat vervangt meteen het paneel uit fase 14 dat zei
+dat er niets te doen was: het eerste kwartier van de avond heeft nu een taak in plaats
+van een mededeling.
+
+**Waarom een letterraster en niet de lijst die er al stond.** De club telt 88 leden. In
+`repeat(auto-fill, minmax(240px, 1fr))` is dat op 1024px vier kolommen en 22 rijen — drie
+à vier schermvullingen scrollen, plus een zoekveld dat een tabletklavier opent. Zolang die
+lijst van de organisator was, was dat prima: hij gaat ze één keer af en hij weet hoe.
+Vanaf het moment dat 46 mensen er hun eigen naam in zoeken is het hetzelfde probleem dat
+`player-finder` al oplost, en die docblock is er stellig over: *"Twee tikken, en geen van
+beide schermen scrollt."* Het zou vreemd zijn om dat op het drukste scherm van de avond
+te negeren.
+
+Dus twee wegen naar dezelfde tegels: de speler zoekt **zichzelf** (voorletter, dan een
+handvol namen), de organisator zoekt **wie ontbreekt** (volle lijst, zoekveld). Een
+letterraster verbergt 84 van de 88 namen en zit een overzichtstaak dus juist in de weg.
+`AttendanceList` draagt de tegel en de incheck-animatie; hoe je bij die tegel komt staat
+erbuiten.
+
+**De terugkeer na een tik is geen versiering.** De tegel is een toggle
+(`setAttendance(id, !present)`), en bij zelfbediening is dat scherper dan bij één
+organisator: een tweede tik op je eigen groene tegel zet je er weer áf, stil, zonder
+animatie — en dat merkt niemand tot de loting iemand mist. Na een geslaagde incheck keert
+het scherm daarom na 1,1 s terug naar de letters: lang genoeg om de veeg en het vinkje te
+zien, en daarna is er geen tegel meer om per ongeluk twee keer aan te raken. Afvinken doet
+dat niet — dat ís een correctie, en dan wil je blijven staan.
+
+**Nog te doen**
+
+- [x] `AttendanceList`: alleen het tegelraster, met `players` als input en een `groot`-variant (84px) voor het spelersscherm, dat na een letterraster van 104px komt
+- [x] `AttendanceFinder`: voorletter → namen, teller "n aanwezig" naast de vraag, terugkeer naar de letters na een incheck
+- [x] `Kiosk` toont de vinder zolang `games()` leeg is; het lege paneel en de knop naar de organisator zijn weg
+- [x] `Attendance` (organisator) houdt zoekveld, "+ Nieuwe speler", "Loten" en "Afmelden"
+
+**Openstaand.** Na de loting is `/` de namenvinder, dus een laatkomer kan zichzelf daar
+niet meer aanduiden. Dat pad bestaat wel — "Match aanvullen" zet wie je kiest meteen
+aanwezig — maar het loopt via de organisator. Of dat volstaat, blijkt op een speeldag.
+
 ## Lokale dev-omgeving (opgezet 26-08-2026)
 
 - PHP 8.4.24 via winget (`%LOCALAPPDATA%\Microsoft\WinGet\Packages\PHP.PHP.8.4_...`), php.ini met pdo_mysql/mbstring/intl/curl/zip/gd/opcache. Oude PHP 7.4 staat nog op `C:\tools\php74` maar is uit de PATH gehaald. **VS Code/terminal herstarten om de nieuwe PATH op te pikken.**

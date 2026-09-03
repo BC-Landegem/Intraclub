@@ -10,15 +10,17 @@ type Mode = RecapMode | 'entry';
 
 /**
  * Eén wedstrijd, in de gedaante die de route vraagt: de score invullen, de
- * bevestiging erna, de uitslag als deelnemer, of de uitslag als kijker.
+ * bevestiging erna, of de uitslag om te lezen.
  *
- * De vier gedaantes zijn vier routes, dus de terugknop doet hier wat hij overal
- * doet. Binnen de wedstrijd vervángen de stappen elkaar wél in de geschiedenis:
- * heen en weer tussen invullen en bevestigen blijft één stap, zodat "terug"
- * altijd de wedstrijd verlaat in plaats van erin te blijven ronddraaien.
+ * De gedaantes zijn routes, dus de terugknop doet hier wat hij overal doet.
+ * Binnen de wedstrijd vervángen de stappen elkaar wél in de geschiedenis: heen
+ * en weer tussen invullen en bevestigen blijft één stap, zodat "terug" altijd de
+ * wedstrijd verlaat in plaats van erin te blijven ronddraaien.
  *
- * Waarom de speler in de URL staat en niet enkel de wedstrijd: hij bepaalt wat
- * je mag. Zonder speler ben je kijker en valt er niets in te vullen.
+ * De speler in de URL is geen recht maar een aanspreking: hij bepaalt of je eigen
+ * naam vooraan staat en oplicht in de telling. Invullen mocht altijd al door elk
+ * van de vier, dus wie van het bord van de avond komt gaat rechtstreeks naar het
+ * invulscherm — zonder naam, en zonder tussenstap om er een te kiezen.
  */
 @Component({
   selector: 'app-match',
@@ -58,19 +60,13 @@ export class Match {
   protected readonly target = computed(() => this.api.round()?.pointsPerSet ?? 0);
   protected readonly cap = computed(() => this.api.round()?.maxScore ?? 0);
 
-  /** Invullen kan enkel wanneer we weten wie er staat. */
-  protected readonly isEntry = computed(() => this.mode() === 'entry' && this.me() !== null);
+  /** Het invulscherm; het werkt met of zonder speler. */
+  protected readonly isEntry = computed(() => this.mode() === 'entry');
 
-  /** Zonder speler is dit een kijkscherm, wat de route ook zegt. */
-  protected readonly recapMode = computed<RecapMode>(() => {
-    const mode = this.mode();
-
-    if (this.me() === null) {
-      return 'peek';
-    }
-
-    return mode === 'entry' ? 'read' : mode;
-  });
+  /** Alles wat geen bevestiging is, is een uitslag om te lezen. */
+  protected readonly recapMode = computed<RecapMode>(() =>
+    this.mode() === 'confirm' ? 'confirm' : 'recap',
+  );
 
   /** De drie sets staan er: door naar de bevestiging. */
   protected onSaved(): void {
@@ -82,14 +78,29 @@ export class Match {
     void this.step('score');
   }
 
-  /** Terug naar waar dit scherm vandaan kwam: het bord van de avond, of de zaal. */
+  /**
+   * Terug naar waar dit scherm vandaan kwam. Zonder speler in de URL kom je van
+   * het bord van de avond; met een speler kom je van je eigen naam, en dan hoort
+   * de tablet achteraf leeg te staan voor de volgende.
+   */
   protected close(): void {
-    void this.router.navigate([this.mode() === 'peek' ? '/wedstrijden' : '/'], { replaceUrl: true });
-  }
-
-  private step(to: 'score' | 'bewaard'): Promise<boolean> {
-    return this.router.navigate(['/wedstrijd', this.gameId(), 'speler', this.playerId(), to], {
+    void this.router.navigate([this.playerId() === undefined ? '/wedstrijden' : '/'], {
       replaceUrl: true,
     });
+  }
+
+  /**
+   * Een stap binnen dezelfde wedstrijd, langs dezelfde ingang als waarlangs je
+   * binnenkwam: met een speler in het pad blijft die erin staan, zonder blijft
+   * hij weg. Zo verandert "Klaar" achteraf niet stiekem van bestemming.
+   */
+  private step(to: 'score' | 'bewaard'): Promise<boolean> {
+    const player = this.playerId();
+    const path =
+      player === undefined
+        ? ['/wedstrijd', this.gameId(), to]
+        : ['/wedstrijd', this.gameId(), 'speler', player, to];
+
+    return this.router.navigate(path, { replaceUrl: true });
   }
 }

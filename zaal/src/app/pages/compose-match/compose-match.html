@@ -14,8 +14,8 @@
 
   @if (fixedPlayers().length > 0) {
     <p class="uitleg">
-      Invallen is vrijwillig — kies wie wil meespelen. Voor wie al speelde telt deze
-      tweede match niet mee voor zijn stand.
+      Invallen is vrijwillig — kies wie wil meespelen. Voor wie al speelde telt deze tweede match
+      niet mee voor zijn stand.
     </p>
   }
 
@@ -28,13 +28,17 @@
     <ul class="gekozen">
       @for (player of fixedPlayers(); track player.id) {
         <li class="speler vast">
-          <span>{{ player.fullName }} <span class="bonus">({{ player.bonusPoints }})</span></span>
+          <span
+            >{{ player.fullName }} <span class="bonus">({{ player.bonusPoints }})</span></span
+          >
           <span class="tag">wacht</span>
         </li>
       }
       @for (player of chosen(); track player.id) {
         <li class="speler">
-          <span>{{ player.fullName }} <span class="bonus">({{ player.bonusPoints }})</span></span>
+          <span
+            >{{ player.fullName }} <span class="bonus">({{ player.bonusPoints }})</span></span
+          >
           <button type="button" class="gevaar klein" (click)="remove(player)">Verwijder</button>
         </li>
       }
@@ -50,11 +54,17 @@
       @for (player of availableCandidates(); track player.id) {
         <li>
           <button type="button" [disabled]="slotsLeft() === 0" (click)="choose(player)">
-            <span class="naam">{{ player.fullName }} <span class="bonus">({{ player.bonusPoints }})</span></span>
+            <span class="naam"
+              >{{ player.fullName }} <span class="bonus">({{ player.bonusPoints }})</span></span
+            >
             <span class="gespeeld">
-              @if (player.gamesPlayed === 0) { nog niet gespeeld }
-              @else if (player.gamesPlayed === 1) { 1 match gespeeld }
-              @else { {{ player.gamesPlayed }} matches gespeeld }
+              @if (player.gamesPlayed === 0) {
+                nog niet gespeeld
+              } @else if (player.gamesPlayed === 1) {
+                1 match gespeeld
+              } @else {
+                {{ player.gamesPlayed }} matches gespeeld
+              }
             </span>
           </button>
         </li>
@@ -79,7 +89,9 @@
       @for (player of lateArrivals(); track player.id) {
         <li>
           <button type="button" [disabled]="slotsLeft() === 0" (click)="choose(player)">
-            <span class="naam">{{ player.fullName }} <span class="bonus">({{ player.bonusPoints }})</span></span>
+            <span class="naam"
+              >{{ player.fullName }} <span class="bonus">({{ player.bonusPoints }})</span></span
+            >
             <span class="gespeeld">nog niet aanwezig</span>
           </button>
         </li>
@@ -90,7 +102,12 @@
   </section>
 
   <footer class="knoppen">
-    <button type="button" class="primair groot" [disabled]="!isReady() || busy()" (click)="confirm()">
+    <button
+      type="button"
+      class="primair groot"
+      [disabled]="!isReady() || busy()"
+      (click)="confirm()"
+    >
       {{ busy() ? 'Bezig…' : 'Match bevestigen' }}
     </button>
     <button type="button" (click)="close()">Annuleren</button>

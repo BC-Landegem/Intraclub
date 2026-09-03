@@ -1,10 +1,7 @@
 <header class="kop">
   <div>
     <h2>Wedstrijden van vanavond</h2>
-    <p class="onder">
-      Tik een wedstrijd aan voor de sets per duo — moet ze nog gespeeld worden, dan staat er
-      waarop elke set begint.
-    </p>
+    <p class="onder">Tik een wedstrijd aan voor de sets per duo.</p>
   </div>
   @if (openCount() === 0) {
     <span class="alles-binnen">
@@ -14,16 +11,42 @@
       Alle uitslagen zijn binnen
     </span>
   } @else {
-    <span class="te-gaan">Nog <strong>{{ openCount() }}</strong> te gaan</span>
+    <span class="te-gaan"
+      >Nog <strong>{{ openCount() }}</strong> te gaan</span
+    >
   }
 </header>
 
 <ul class="bord">
   @for (row of rows(); track row.game.id) {
     <li>
-      <button type="button" class="vak" [class.leeg]="!row.line" [routerLink]="['/wedstrijd', row.game.id]">
-        <span class="wie"><strong class="nr">Nr. {{ row.number }}</strong> · {{ row.who }}</span>
-        <span class="stand">{{ row.line ?? 'moet nog gespeeld worden' }}</span>
+      <button
+        type="button"
+        class="vak"
+        [class.leeg]="!row.line"
+        [routerLink]="['/wedstrijd', row.game.id]"
+      >
+        <span class="wie"
+          ><strong class="nr">Nr. {{ row.number }}</strong> · {{ row.who }}</span
+        >
+        @if (row.line; as stand) {
+          <span class="stand">{{ stand }}</span>
+        } @else {
+          <!--
+            Deze rij is het leespad naar de beginstanden, en ze zei "moet nog
+            gespeeld worden" — in accentoranje, met een gestippelde rand. De
+            opmaak beloofde dus iets en de woorden spraken haar tegen. De woorden
+            wonnen, want mensen lezen. De cijfers zelf staan er niet: de handicap
+            is richtinggevoelig — je moet weten of jullie de +3 of de −3 zijn — en
+            dat kost de duonamen erbij, wat deze rij verdubbelt.
+          -->
+          <span class="stand uitnodiging">
+            beginstanden bekijken
+            <svg viewBox="0 0 24 24" class="icoon pijl" aria-hidden="true">
+              <path d="M9.5 5.5 16 12l-6.5 6.5" />
+            </svg>
+          </span>
+        }
       </button>
     </li>
   } @empty {

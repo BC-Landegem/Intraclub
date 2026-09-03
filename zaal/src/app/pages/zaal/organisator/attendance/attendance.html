@@ -1,0 +1,26 @@
+<div class="search-row">
+  <label class="visually-hidden" for="player-search">Zoek een speler</label>
+  <input
+    id="player-search"
+    type="search"
+    placeholder="Zoek een speler…"
+    [value]="searchTerm()"
+    (input)="searchTerm.set($any($event.target).value)"
+  />
+  <button type="button" routerLink="nieuwe-speler">+ Nieuwe speler</button>
+</div>
+
+<app-attendance-list [players]="filteredPlayers()" />
+
+<button
+  type="button"
+  class="primair wide"
+  [disabled]="api.isBusy() || api.presentCount() < 4"
+  (click)="draw()"
+>
+  Loten ({{ api.presentCount() }} aanwezig)
+</button>
+
+<button type="button" class="afmelden" (click)="signOut()">Afmelden</button>
+
+<router-outlet />

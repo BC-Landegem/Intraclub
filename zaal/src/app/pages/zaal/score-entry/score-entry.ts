@@ -31,6 +31,10 @@ interface SetRow {
  * Er is ook geen validatie meer. Elke knop die de speler te zien krijgt is per
  * constructie een legale setstand (zie score-rules.ts), dus een onmogelijke stand
  * kan niet ingegeven worden en hoeft niet gemeld te worden.
+ *
+ * `me` mag leeg zijn. Wie via zijn naam binnenkwam ziet die in de kop staan; wie
+ * dit scherm vanaf het bord van de avond opent komt er zonder. Dat scheelt geen
+ * rechten — invullen mocht sowieso door elk van de vier — enkel de aanspreking.
  */
 @Component({
   selector: 'app-score-entry',
@@ -41,7 +45,12 @@ export class ScoreEntry {
   protected readonly api = inject(ZaalApi);
 
   readonly game = input.required<Game>();
-  readonly me = input.required<PlayerSummary>();
+
+  /** Wie er staat, of null wanneer dit scherm vanaf het bord geopend is. */
+  readonly me = input<PlayerSummary | null>(null);
+
+  /** Het nummer van de wedstrijd op de speeldag; de kop zonder naam leunt erop. */
+  readonly number = input.required<number>();
 
   /** Het setmaximum van het seizoen, en het plafond op een verlenging. */
   readonly target = input.required<number>();
@@ -49,7 +58,7 @@ export class ScoreEntry {
 
   /** Alle drie de sets staan er; de wedstrijd is af. */
   readonly done = output<void>();
-  /** Dit is niet mijn wedstrijd — terug naar de namen. */
+  /** Dit is niet mijn wedstrijd — terug naar waar dit scherm vandaan kwam. */
   readonly leave = output<void>();
 
   /** De set die de speler bewust opnieuw ingeeft; anders volgt de app de sets. */
@@ -60,6 +69,21 @@ export class ScoreEntry {
 
   /** De verlengingen staan dicht tot iemand zegt dat de set er een was. */
   protected readonly showExtensions = signal(false);
+
+  /**
+   * De set waarvan de stand nu naar de server onderweg is, of null.
+   *
+   * Nodig omdat `ZaalApi.isSaving()` per wedstrijd werkt en de cijfers lokaal al
+   * in de toestand staan vóór het verzoek vertrekt. Zonder dit zegt de setregel
+   * "bewaard" op het moment dat er nog niets bewaard ís — en dat is precies wat
+   * `applyScoresLocally` in zijn docblock afspreekt níét te doen.
+   */
+  private readonly savingIndex = signal<number | null>(null);
+
+  /** Staat de stand van deze set nog op de lijn? */
+  protected isSending(index: number): boolean {
+    return this.savingIndex() === index && this.api.isSaving(this.game().id);
+  }
 
   protected readonly rows = computed<SetRow[]>(() =>
     this.game().sets.map((set, index) => ({
@@ -78,7 +102,17 @@ export class ScoreEntry {
     })),
   );
 
-  /** Welke set nu aan de beurt is: de gekozen, of de eerste die nog leeg staat. */
+  /**
+   * Welke set nu aan de beurt is: de gekozen, of de eerste die nog leeg staat.
+   *
+   * De doorloop is een gemak, geen volgorde die de app oplegt: elke setregel is
+   * aantikbaar, dus wie met een andere paring begon zet zelf een andere set open.
+   *
+   * Is er nergens nog een gat, dan is er geen actieve set. Een volledige wedstrijd
+   * opent dus dicht: drie afgeronde regels, en pas na een tik op "wijzig" valt er
+   * iets te veranderen. Dat is wat dit scherm veilig maakt voor de tweede ingang,
+   * die geen naam meer vraagt — een verdwaalde tik verandert niets.
+   */
   protected readonly activeIndex = computed(() => {
     const chosen = this.editing();
     if (chosen !== null) {
@@ -96,14 +130,25 @@ export class ScoreEntry {
     return index === null ? null : (this.rows()[index] ?? null);
   });
 
-  /** De namen van de vier, met die van de speler zelf vooraan. */
-  protected readonly foursome = computed(() => {
-    const mine = this.me().id;
-    const others = this.game()
-      .players.filter((player) => player.id !== mine)
-      .map((player) => this.api.nameOf(player));
+  /**
+   * De namen van de vier. Staat er iemand bij naam, dan komt die vooraan en de
+   * rest erachter; zonder naam is het gewoon het viertal, in de volgorde van de
+   * loting.
+   */
+  protected readonly foursome = computed<{ me: string | null; others: string[] }>(() => {
+    const mine = this.me();
+    const players = this.game().players;
 
-    return { me: this.api.nameOf(this.me()), others };
+    if (mine === null) {
+      return { me: null, others: players.map((player) => this.api.nameOf(player)) };
+    }
+
+    return {
+      me: this.api.nameOf(mine),
+      others: players
+        .filter((player) => player.id !== mine.id)
+        .map((player) => this.api.nameOf(player)),
+    };
   });
 
   /** Het duo dat de set verloor — dat is het getal dat we nog nodig hebben. */
@@ -147,10 +192,15 @@ export class ScoreEntry {
     this.pendingWinner.set(null);
     this.editing.set(null);
     this.showExtensions.set(false);
+    this.savingIndex.set(index);
 
     const finished = Object.values(scores).every((value) => value !== null);
 
-    await this.api.saveScores(this.game().id, scores);
+    try {
+      await this.api.saveScores(this.game().id, scores);
+    } finally {
+      this.savingIndex.set(null);
+    }
 
     if (finished && this.api.errorMessage() === '') {
       this.done.emit();
@@ -162,7 +212,11 @@ export class ScoreEntry {
     return players.map((player) => this.api.nameOf(player)).join(' + ');
   }
 
-  /** Een set opnieuw ingeven. De oude stand blijft staan tot er een nieuwe is. */
+  /**
+   * Een set openzetten: een die al een stand heeft om te verbeteren, of een die
+   * nog wacht om ze voor te kruipen. De oude stand blijft staan tot er een
+   * nieuwe is, dus openzetten alleen wist niets.
+   */
   protected redo(index: number): void {
     this.editing.set(index);
     this.pendingWinner.set(null);

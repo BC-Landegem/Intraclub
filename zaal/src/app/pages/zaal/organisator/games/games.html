@@ -56,9 +56,13 @@
 }
 
 <!--
-  De afwerklijst. Geen formulieren: één regel per wedstrijd, wat nog geen score
-  heeft bovenaan. Dit is waar de organisator ziet wie hij nog moet aanspreken —
-  invullen doen de spelers zelf, bij hun eigen naam.
+  De afwerklijst: één regel per wedstrijd, wat nog geen score heeft bovenaan. Dit
+  is waar de organisator ziet wie hij nog moet aanspreken — en sinds kort is die
+  regel ook aantikbaar. Ze was dat niet, omdat invullen bij de speler hoort, bij
+  zijn eigen naam. Maar om 22u30, met drie open wedstrijden en de helft van de
+  spelers al vertrokken, was dat het scherm dat het probleem toont en er niets
+  mee kan. De tik leidt naar hetzelfde wedstrijdscherm als het bord van de avond;
+  wie daar invult tikt eerst een naam.
 -->
 @if (api.games().length > 0) {
   <div class="paneel">
@@ -77,35 +81,37 @@
     <ul class="afwerklijst">
       @for (item of progress(); track item.game.id) {
         <li [class.open]="!item.game.isComplete">
-          <span class="regel-nr">Nr. {{ item.number }}</span>
-          <!--
-            De bonuspunten staan erbij omdat de organisator ze omroept bij het
-            afkondigen van de match. Ze stonden al bij de voorstellen en bij wie
-            uitgeloot is; ze wegdenken zodra een match bevestigd is, betekende dat
-            net de lijst waaruit omgeroepen wordt ze niet had.
-          -->
-          <span class="regel-wie">
-            @for (player of item.game.players; track player.id) {
-              {{ api.nameOf(player) }}<span class="bonus">&nbsp;({{ player.bonusPoints }})</span>
-              @if (!$last) {
-                ,&nbsp;
-              }
-            }
-          </span>
-          @if (item.game.isComplete) {
-            <span class="regel-stand">
-              @for (set of item.game.sets; track set.number) {
-                {{ set.home.score }}–{{ set.away.score }}
+          <button type="button" class="regel" [routerLink]="['/wedstrijd', item.game.id]">
+            <span class="regel-nr">Nr. {{ item.number }}</span>
+            <!--
+              De bonuspunten staan erbij omdat de organisator ze omroept bij het
+              afkondigen van de match. Ze stonden al bij de voorstellen en bij wie
+              uitgeloot is; ze wegdenken zodra een match bevestigd is, betekende dat
+              net de lijst waaruit omgeroepen wordt ze niet had.
+            -->
+            <span class="regel-wie">
+              @for (player of item.game.players; track player.id) {
+                {{ api.nameOf(player) }}<span class="bonus">&nbsp;({{ player.bonusPoints }})</span>
                 @if (!$last) {
-                  ·
+                  ,&nbsp;
                 }
               }
             </span>
-          } @else {
-            <span class="regel-open">
-              <span class="stip" aria-hidden="true"></span>geen score
-            </span>
-          }
+            @if (item.game.isComplete) {
+              <span class="regel-stand">
+                @for (set of item.game.sets; track set.number) {
+                  {{ set.home.score }}–{{ set.away.score }}
+                  @if (!$last) {
+                    ·
+                  }
+                }
+              </span>
+            } @else {
+              <span class="regel-open">
+                <span class="stip" aria-hidden="true"></span>geen score
+              </span>
+            }
+          </button>
         </li>
       }
     </ul>

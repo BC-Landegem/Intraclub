@@ -1,0 +1,27 @@
+@if (letter() === null) {
+  <h2 class="vraag">Wie is er vanavond?</h2>
+  <p class="onder">
+    Tik de eerste letter van je voornaam.
+    @if (api.presentCount() > 0) {
+      <span class="teller">{{ api.presentCount() }} aanwezig</span>
+    }
+  </p>
+
+  <div class="alfabet">
+    @for (initial of letters(); track initial) {
+      <button type="button" class="letter" (click)="letter.set(initial)">{{ initial }}</button>
+    }
+  </div>
+} @else {
+  <button type="button" class="terug" (click)="letter.set(null)">
+    <svg viewBox="0 0 24 24" class="icoon" aria-hidden="true">
+      <path d="M14.5 5.5 8 12l6.5 6.5" />
+    </svg>
+    Andere letter
+  </button>
+
+  <h2 class="vraag">Tik je naam aan</h2>
+  <p class="onder">Nog eens tikken haalt je er weer af.</p>
+
+  <app-attendance-list [players]="named()" [groot]="true" (checkedIn)="onCheckedIn()" />
+}
