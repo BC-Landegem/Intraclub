@@ -1,0 +1,168 @@
+/* Matchkaart: bedoeld om op een tablet in te vullen, vlak na het spelen. */
+.match {
+  display: grid;
+  gap: 1rem;
+}
+
+.match.done {
+  border-color: var(--goed);
+  background: rgb(23 163 74 / 0.08);
+}
+
+.match-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.match-header h2 {
+  margin: 0;
+  font-size: 1.25rem;
+}
+
+.status,
+.bewaard {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.icoon {
+  width: 17px;
+  height: 17px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2.6;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.status {
+  padding: 0.35rem 0.8rem;
+  border-radius: 999px;
+  font-size: 0.95rem;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.status.done {
+  background: rgb(23 163 74 / 0.18);
+  color: #4ade80;
+}
+
+.status.todo {
+  background: rgb(245 165 36 / 0.18);
+  color: var(--accent);
+}
+
+/* Eén set: links het ene duo, rechts het andere, met hun punten eronder. */
+.set {
+  display: grid;
+  grid-template-columns: auto 1fr auto 1fr;
+  align-items: center;
+  gap: 1rem;
+  padding: 1rem;
+  border: 1px solid var(--paneel-rand);
+  border-radius: var(--straal);
+}
+
+.set.filled {
+  border-color: rgb(23 163 74 / 0.5);
+}
+
+.set-number {
+  color: var(--tekst-zacht);
+  font-size: 1rem;
+  font-weight: 600;
+  writing-mode: horizontal-tb;
+}
+
+.side {
+  display: grid;
+  gap: 0.5rem;
+  justify-items: center;
+}
+
+.pair {
+  display: grid;
+  gap: 0.15rem;
+  justify-items: center;
+}
+
+.pair-name {
+  font-size: 1.15rem;
+  font-weight: 600;
+  line-height: 1.25;
+  text-align: center;
+}
+
+.bonus {
+  color: var(--accent);
+  font-weight: 700;
+}
+
+.side input {
+  width: 100%;
+  max-width: 180px;
+  min-height: 76px;
+  text-align: center;
+  font-size: 2.25rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Een vakje dat op zichzelf al niet kan, en de set die niet kan bestaan. */
+.side:has(.veld-fout) input,
+.set:has(.set-fout) input {
+  border-color: var(--fout);
+}
+
+.veld-fout,
+.set-fout {
+  margin: 0;
+  color: #fca5a5;
+  font-size: 0.9rem;
+}
+
+.set-fout {
+  grid-column: 1 / -1;
+  text-align: center;
+}
+
+.versus {
+  color: var(--tekst-zacht);
+  font-size: 1.1rem;
+}
+
+.match-footer {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+button.groot {
+  min-height: 68px;
+  padding: 0 2rem;
+  font-size: 1.15rem;
+}
+
+.bewaard {
+  padding: 0.5rem 1rem;
+  border-radius: 999px;
+  background: rgb(23 163 74 / 0.18);
+  color: #4ade80;
+  font-size: 1.05rem;
+  font-weight: 700;
+}
+
+@media (max-width: 720px) {
+  .set {
+    grid-template-columns: 1fr auto 1fr;
+    row-gap: 0.75rem;
+  }
+
+  .set-number {
+    grid-column: 1 / -1;
+  }
+}

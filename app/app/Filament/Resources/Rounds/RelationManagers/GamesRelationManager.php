@@ -2,7 +2,9 @@
 
 namespace App\Filament\Resources\Rounds\RelationManagers;
 
+use App\Enums\PointsPerSet;
 use App\Models\Player;
+use Closure;
 use Filament\Actions\CreateAction;
 use Filament\Actions\DeleteAction;
 use Filament\Actions\EditAction;
@@ -11,6 +13,7 @@ use Filament\Forms\Components\TextInput;
 use Filament\Resources\RelationManagers\RelationManager;
 use Filament\Schemas\Components\Group;
 use Filament\Schemas\Components\Section;
+use Filament\Schemas\Components\Utilities\Get;
 use Filament\Schemas\Schema;
 use Filament\Support\Enums\Width;
 use Filament\Tables\Columns\IconColumn;
@@ -47,18 +50,19 @@ class GamesRelationManager extends RelationManager
                     ->columnSpanFull()
                     ->columns(3)
                     ->schema([
-                        self::setGroup(1, '1+2', '3+4'),
-                        self::setGroup(2, '1+3', '2+4'),
-                        self::setGroup(3, '1+4', '2+3'),
+                        $this->setGroup(1, '1+2', '3+4'),
+                        $this->setGroup(2, '1+3', '2+4'),
+                        $this->setGroup(3, '1+4', '2+3'),
                     ]),
             ]);
     }
 
-    private static function setGroup(int $set, string $homeTeam, string $awayTeam): Group
+    private function setGroup(int $set, string $homeTeam, string $awayTeam): Group
     {
         return Group::make([
-            self::scoreInput("set{$set}_home", "Set {$set}: {$homeTeam}"),
-            self::scoreInput("set{$set}_away", "Set {$set}: {$awayTeam}"),
+            $this->scoreInput("set{$set}_home", "Set {$set}: {$homeTeam}")
+                ->rule(fn (Get $get): Closure => $this->setIsPlayable($get, $set)),
+            $this->scoreInput("set{$set}_away", "Set {$set}: {$awayTeam}"),
         ]);
     }
 
@@ -126,13 +130,50 @@ class GamesRelationManager extends RelationManager
         return $select;
     }
 
-    private static function scoreInput(string $name, string $label): TextInput
+    /**
+     * De grenzen komen uit de puntenschaal van het seizoen: hoger dan de cap kan
+     * een setstand niet gaan. De regel over de twee getallen sámen hangt aan het
+     * thuisvak van de set, zodat de melding maar één keer verschijnt.
+     */
+    private function scoreInput(string $name, string $label): TextInput
     {
         return TextInput::make($name)
             ->label($label)
             ->numeric()
             ->minValue(0)
-            ->maxValue(50)
+            ->maxValue(fn (): int => $this->pointsPerSet()->cap())
+            ->validationMessages([
+                'max' => fn (): string => "Meer dan {$this->pointsPerSet()->cap()} punten kan niet in een set.",
+                'min' => 'Een setstand kan niet negatief zijn.',
+            ])
             ->nullable();
+    }
+
+    /** De setstand als paar: beide leeg, of een stand die echt gespeeld kan zijn. */
+    private function setIsPlayable(Get $get, int $set): Closure
+    {
+        return function (string $attribute, mixed $value, Closure $fail) use ($get, $set): void {
+            $pointsPerSet = $this->pointsPerSet();
+            $home = self::toScore($get("set{$set}_home"));
+            $away = self::toScore($get("set{$set}_away"));
+
+            if ($pointsPerSet->allowsSet($home, $away)) {
+                return;
+            }
+
+            $fail($home === null || $away === null
+                ? "Set {$set}: vul beide punten in of laat beide leeg."
+                : "Set {$set}: {$home}-{$away} kan niet. {$pointsPerSet->setRule()}");
+        };
+    }
+
+    private function pointsPerSet(): PointsPerSet
+    {
+        return $this->getOwnerRecord()->season->points_per_set;
+    }
+
+    private static function toScore(mixed $value): ?int
+    {
+        return ($value === null || $value === '') ? null : (int) $value;
     }
 }

@@ -6,6 +6,8 @@ export interface RoundInfo {
   date: string;
   seasonId: number;
   pointsPerSet: number;
+  /** Het plafond op een verlenging: 21 bij sets tot 15, 30 bij sets tot 21. */
+  maxScore: number;
   isCalculated: boolean;
   isToday: boolean;
 }
@@ -63,6 +65,7 @@ export interface RoundState {
   latestRound?: LatestRound | null;
   seasonName?: string | null;
   pointsPerSet?: number | null;
+  maxScore?: number | null;
 }
 
 export interface CurrentUser {

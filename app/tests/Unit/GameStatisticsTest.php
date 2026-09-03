@@ -98,15 +98,17 @@ class GameStatisticsTest extends TestCase
         $this->assertSame([1 => 1, 2 => 1, 3 => 3, 4 => 1], $statistics->setsWon);
     }
 
-    public function test_dezelfde_verlenging_weegt_anders_op_15_dan_op_21(): void
+    public function test_dezelfde_stand_weegt_anders_op_15_dan_op_21(): void
     {
-        // 24-22: op 15 herschaald naar 15, op 21 naar 21.
-        $tot15 = GameStatistics::fromScores(24, 22, 15, 10, 15, 10, PointsPerSet::Fifteen->value);
-        $tot21 = GameStatistics::fromScores(24, 22, 21, 10, 21, 10, PointsPerSet::TwentyOne->value);
+        // 21-19 is de enige stand die op béide schalen kan bestaan: op 15 is het de
+        // langst mogelijke verlenging, op 21 een gewone rechtstreekse winst. Op 15
+        // wordt hij dus herschaald, op 21 blijft hij precies zoals hij is.
+        $tot15 = GameStatistics::fromScores(21, 19, 15, 10, 15, 10, PointsPerSet::Fifteen->value);
+        $tot21 = GameStatistics::fromScores(21, 19, 21, 10, 21, 10, PointsPerSet::TwentyOne->value);
 
         $this->assertEqualsWithDelta(15.0, $tot15->averages[1], 1e-12);
         $this->assertEqualsWithDelta(21.0, $tot21->averages[1], 1e-12);
-        $this->assertEqualsWithDelta(15 / 24 * 22, 3 * $tot15->averageLosing - 10 - 10, 1e-12);
-        $this->assertEqualsWithDelta(21 / 24 * 22, 3 * $tot21->averageLosing - 10 - 10, 1e-12);
+        $this->assertEqualsWithDelta(15 / 21 * 19, 3 * $tot15->averageLosing - 10 - 10, 1e-12);
+        $this->assertEqualsWithDelta(19.0, 3 * $tot21->averageLosing - 10 - 10, 1e-12);
     }
 }

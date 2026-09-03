@@ -15,6 +15,7 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\ValidationException;
 
 /**
  * Endpoints voor de zaal-app: aanwezigheden, loting en score-invoer op de
@@ -54,6 +55,7 @@ class ZaalController extends Controller
             'games' => [],
             'seasonName' => $season?->name,
             'pointsPerSet' => $season?->points_per_set->value,
+            'maxScore' => $season?->points_per_set->cap(),
             'latestRound' => $latest === null ? null : [
                 'id' => $latest->id,
                 'number' => $latest->number,
@@ -147,15 +149,51 @@ class ZaalController extends Controller
         return response()->json($this->roundPayload($round));
     }
 
-    /** Sla de setstanden van een game op. */
+    /**
+     * Sla de setstanden van een game op.
+     *
+     * Eerst elk getal apart (een 47 is geen setstand, en dan hoort de melding bij
+     * dat vakje te staan), pas daarna de twee getallen samen tegen de regel van
+     * het seizoen. Sets die nog leeg zijn blijven leeg; half ingevuld kan niet.
+     */
     public function updateGame(Request $request, Game $game): JsonResponse
     {
-        $rules = ['nullable', 'integer', 'min:0', 'max:50'];
-        $data = $request->validate([
-            'set1_home' => $rules, 'set1_away' => $rules,
-            'set2_home' => $rules, 'set2_away' => $rules,
-            'set3_home' => $rules, 'set3_away' => $rules,
-        ]);
+        $pointsPerSet = $game->round->season->points_per_set;
+        $cap = $pointsPerSet->cap();
+
+        $rules = ['nullable', 'integer', 'min:0', "max:{$cap}"];
+        $data = $request->validate(
+            [
+                'set1_home' => $rules, 'set1_away' => $rules,
+                'set2_home' => $rules, 'set2_away' => $rules,
+                'set3_home' => $rules, 'set3_away' => $rules,
+            ],
+            [
+                'max' => "Meer dan {$cap} punten kan niet in een set.",
+                'min' => 'Een setstand kan niet negatief zijn.',
+                'integer' => 'Een setstand is een heel getal.',
+            ],
+        );
+
+        $errors = [];
+        foreach ([1, 2, 3] as $number) {
+            $home = $data["set{$number}_home"] ?? null;
+            $away = $data["set{$number}_away"] ?? null;
+
+            if ($pointsPerSet->allowsSet($home, $away)) {
+                continue;
+            }
+
+            // De melding hangt aan het thuisvak van de set: één plek, zodat de
+            // zaal-app hem niet twee keer achter elkaar toont.
+            $errors["set{$number}_home"] = ($home === null || $away === null)
+                ? "Set {$number}: vul beide punten in of laat beide leeg."
+                : "Set {$number}: {$home}-{$away} kan niet. {$pointsPerSet->setRule()}";
+        }
+
+        if ($errors !== []) {
+            throw ValidationException::withMessages($errors);
+        }
 
         $game->update($data);
 
@@ -284,6 +322,7 @@ class ZaalController extends Controller
                 'date' => $round->date->format('Y-m-d'),
                 'seasonId' => $round->season_id,
                 'pointsPerSet' => $round->season->points_per_set->value,
+                'maxScore' => $round->season->points_per_set->cap(),
                 'isCalculated' => (bool) $round->is_calculated,
                 'isToday' => $round->date->isToday(),
             ],

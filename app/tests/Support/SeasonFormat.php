@@ -28,6 +28,12 @@ final readonly class SeasonFormat
         return $this->pointsPerSet->value;
     }
 
+    /** Het plafond op een verlenging: hoger kan een setstand niet gaan. */
+    public function cap(): int
+    {
+        return $this->pointsPerSet->cap();
+    }
+
     public function win(): int
     {
         return $this->value();
@@ -49,28 +55,28 @@ final readonly class SeasonFormat
         };
     }
 
+    /**
+     * De nipste verliesstand die de regel toelaat: twee punten onder het maximum.
+     * Op de 15-schaal valt die samen met loseClose(), want 15-14 kan niet -- dan
+     * wordt er doorgespeeld.
+     */
     public function loseDeuce(): int
     {
         return match ($this->pointsPerSet) {
-            PointsPerSet::Fifteen => 14,
+            PointsPerSet::Fifteen => 13,
             PointsPerSet::TwentyOne => 19,
         };
     }
 
+    /** De langst mogelijke verlenging: op de cap beslist het volgende punt. */
     public function extensionWin(): int
     {
-        return match ($this->pointsPerSet) {
-            PointsPerSet::Fifteen => 24,
-            PointsPerSet::TwentyOne => 30,
-        };
+        return $this->pointsPerSet->cap();
     }
 
     public function extensionLose(): int
     {
-        return match ($this->pointsPerSet) {
-            PointsPerSet::Fifteen => 22,
-            PointsPerSet::TwentyOne => 29,
-        };
+        return $this->pointsPerSet->cap() - 1;
     }
 
     public function startingBasePoints(): float

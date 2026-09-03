@@ -1,17 +1,18 @@
 import { Component, computed, inject, signal } from '@angular/core';
 import { Router } from '@angular/router';
 import { Auth } from '../../core/auth';
-import { Game, GameScores, PlayerSummary, RoundPlayer } from '../../core/models';
+import { PlayerSummary, RoundPlayer } from '../../core/models';
 import { ZaalApi } from '../../core/zaal-api';
 import { AddPlayer } from '../add-player/add-player';
 import { ComposeMatch } from '../compose-match/compose-match';
 import { Standings } from '../standings/standings';
+import { MatchScores } from './match-scores/match-scores';
 
 type Tab = 'attendance' | 'matches' | 'standings';
 
 @Component({
   selector: 'app-zaal',
-  imports: [AddPlayer, ComposeMatch, Standings],
+  imports: [AddPlayer, ComposeMatch, MatchScores, Standings],
   templateUrl: './zaal.html',
   styleUrl: './zaal.css',
 })
@@ -37,14 +38,13 @@ export class Zaal {
   /** Proposed games from the last draw that still need confirming. */
   protected readonly proposals = signal<PlayerSummary[][]>([]);
 
-  /** Match that was saved most recently, so the app can confirm it on screen. */
-  protected readonly savedGameId = signal<number | null>(null);
-
   protected readonly filteredPlayers = computed(() => {
     const term = this.searchTerm().trim().toLowerCase();
     const players = this.api.players();
 
-    return term === '' ? players : players.filter((player) => player.fullName.toLowerCase().includes(term));
+    return term === ''
+      ? players
+      : players.filter((player) => player.fullName.toLowerCase().includes(term));
   });
 
   constructor() {
@@ -113,40 +113,6 @@ export class Zaal {
       }
     }
     this.proposals.set([]);
-  }
-
-  /**
-   * Saves the scores of one match. Sets that are still empty stay empty, so a
-   * match can be filled in set by set.
-   */
-  protected async saveScores(event: Event, game: Game, formElement: HTMLFormElement): Promise<void> {
-    event.preventDefault();
-    this.savedGameId.set(null);
-
-    const fields = new FormData(formElement);
-    const scores: GameScores = {};
-    for (const set of game.sets) {
-      for (const side of [set.home, set.away]) {
-        const value = fields.get(side.field);
-        scores[side.field] = value === null || value === '' ? null : Number(value);
-      }
-    }
-
-    await this.api.saveScores(game.id, scores);
-
-    if (this.api.errorMessage() === '') {
-      this.savedGameId.set(game.id);
-    }
-  }
-
-  /** How many of the three sets still need a score. */
-  protected setsRemaining(game: Game): number {
-    return game.sets.filter((set) => set.home.score === null || set.away.score === null).length;
-  }
-
-  /** Used for the screen-reader labels on the score fields. */
-  protected pairName(players: PlayerSummary[]): string {
-    return players.map((player) => player.fullName).join(' en ');
   }
 
   protected startFillingDrawnOut(): void {

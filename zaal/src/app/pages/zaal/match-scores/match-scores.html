@@ -1,0 +1,79 @@
+<form class="paneel match" [class.done]="game().isComplete" (submit)="onSubmit($event)">
+  <header class="match-header">
+    <h2>Match {{ index() + 1 }}</h2>
+    @if (game().isComplete) {
+      <span class="status done"
+        ><svg viewBox="0 0 24 24" class="icoon" aria-hidden="true">
+          <path d="M4.5 12.5l5 5 10-11" />
+        </svg>
+        Volledig ingevuld</span
+      >
+    } @else {
+      <span class="status todo">Nog {{ setsRemaining() }} van 3 sets</span>
+    }
+  </header>
+
+  @for (row of rows(); track row.set.number) {
+    <div class="set" [class.filled]="row.set.home.score !== null && row.set.away.score !== null">
+      <span class="set-number">Set {{ row.set.number }}</span>
+
+      <div class="side">
+        <span class="pair">
+          @for (player of row.set.home.players; track player.id) {
+            <span class="pair-name"
+              >{{ player.fullName }} <span class="bonus">({{ player.bonusPoints }})</span></span
+            >
+          }
+        </span>
+        <input
+          #scoreBox
+          type="number"
+          inputmode="numeric"
+          [formField]="row.home"
+          [attr.aria-label]="'Set ' + row.set.number + ', punten ' + pairName(row.set.home.players)"
+        />
+        @if (numberMessage(row.home); as message) {
+          <p class="veld-fout">{{ message }}</p>
+        }
+      </div>
+
+      <span class="versus">vs</span>
+
+      <div class="side">
+        <span class="pair">
+          @for (player of row.set.away.players; track player.id) {
+            <span class="pair-name"
+              >{{ player.fullName }} <span class="bonus">({{ player.bonusPoints }})</span></span
+            >
+          }
+        </span>
+        <input
+          #scoreBox
+          type="number"
+          inputmode="numeric"
+          [formField]="row.away"
+          [attr.aria-label]="'Set ' + row.set.number + ', punten ' + pairName(row.set.away.players)"
+        />
+        @if (numberMessage(row.away); as message) {
+          <p class="veld-fout">{{ message }}</p>
+        }
+      </div>
+
+      @if (setMessage(row.home); as message) {
+        <p class="set-fout" role="alert">{{ message }}</p>
+      }
+    </div>
+  }
+
+  <div class="match-footer">
+    <button type="submit" class="primair groot" [disabled]="api.isBusy()">Score bewaren</button>
+    @if (saved()) {
+      <span class="bewaard" role="status"
+        ><svg viewBox="0 0 24 24" class="icoon" aria-hidden="true">
+          <path d="M4.5 12.5l5 5 10-11" />
+        </svg>
+        Bewaard</span
+      >
+    }
+  </div>
+</form>

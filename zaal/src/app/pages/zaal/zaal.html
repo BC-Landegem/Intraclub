@@ -26,9 +26,7 @@
     </button>
 
     @if (api.latestRound(); as vorige) {
-      <p class="subtitle">
-        Wil je de vorige speeldag afwerken — bijvoorbeeld scores nog invullen?
-      </p>
+      <p class="subtitle">Wil je de vorige speeldag afwerken — bijvoorbeeld scores nog invullen?</p>
       <button type="button" [disabled]="api.isBusy()" (click)="openRound(vorige.id)">
         Speeldag {{ vorige.number }} van {{ vorige.date }} openen
       </button>
@@ -78,7 +76,9 @@
               (click)="checkIn($event, player)"
             >
               <span class="sweep" aria-hidden="true"></span>
-              <span class="name">{{ player.fullName }} <span class="bonus">({{ player.bonusPoints }})</span></span>
+              <span class="name"
+                >{{ player.fullName }} <span class="bonus">({{ player.bonusPoints }})</span></span
+              >
               @if (player.drawnOut) {
                 <span class="tag drawn-out">uitgeloot</span>
               }
@@ -112,8 +112,8 @@
         <div class="paneel drawn-out-block">
           <h2>Uitgeloot — spelen deze speeldag niet mee</h2>
           <p class="subtitle">
-            Deze speeldag telt niet mee voor hun gemiddelde. Komt er nog iemand bij? Bevestig dan een
-            match met hen, dan spelen ze alsnog mee en telt de speeldag weer.
+            Deze speeldag telt niet mee voor hun gemiddelde. Komt er nog iemand bij? Bevestig dan
+            een match met hen, dan spelen ze alsnog mee en telt de speeldag weer.
           </p>
           <ul class="chips">
             @for (player of api.drawnOut(); track player.id) {
@@ -131,22 +131,31 @@
           <div class="block-header">
             <h2>Voorgestelde matches</h2>
             <div class="voorstel-knoppen">
-              <button type="button" [disabled]="api.isBusy()" (click)="redraw()">Opnieuw loten</button>
-              <button type="button" class="primair" [disabled]="api.isBusy()" (click)="confirmAllProposals()">
+              <button type="button" [disabled]="api.isBusy()" (click)="redraw()">
+                Opnieuw loten
+              </button>
+              <button
+                type="button"
+                class="primair"
+                [disabled]="api.isBusy()"
+                (click)="confirmAllProposals()"
+              >
                 Alle bevestigen
               </button>
             </div>
           </div>
           <p class="subtitle herloot-uitleg">
-            Nog niets bevestigd? Dan kan je gerust opnieuw loten. Matches die je al
-            bevestigde blijven staan; enkel wie nog wacht wordt opnieuw ingedeeld.
+            Nog niets bevestigd? Dan kan je gerust opnieuw loten. Matches die je al bevestigde
+            blijven staan; enkel wie nog wacht wordt opnieuw ingedeeld.
           </p>
 
           @for (proposal of proposals(); track $index) {
             <div class="proposal">
               <ol class="foursome">
                 @for (player of proposal; track player.id) {
-                  <li>{{ player.fullName }} <span class="bonus">({{ player.bonusPoints }})</span></li>
+                  <li>
+                    {{ player.fullName }} <span class="bonus">({{ player.bonusPoints }})</span>
+                  </li>
                 }
               </ol>
               <button type="button" [disabled]="api.isBusy()" (click)="confirmProposal($index)">
@@ -162,61 +171,12 @@
       </div>
 
       @for (game of api.games(); track game.id) {
-        <form class="paneel match" [class.done]="game.isComplete" #scoreForm (submit)="saveScores($event, game, scoreForm)">
-          <header class="match-header">
-            <h2>Match {{ $index + 1 }}</h2>
-            @if (game.isComplete) {
-              <span class="status done"><svg viewBox="0 0 24 24" class="icoon" aria-hidden="true"><path d="M4.5 12.5l5 5 10-11" /></svg> Volledig ingevuld</span>
-            } @else {
-              <span class="status todo">Nog {{ setsRemaining(game) }} van 3 sets</span>
-            }
-          </header>
-
-          @for (set of game.sets; track set.number) {
-            <div class="set" [class.filled]="set.home.score !== null && set.away.score !== null">
-              <span class="set-number">Set {{ set.number }}</span>
-
-              <div class="side">
-                <span class="pair">
-                  @for (player of set.home.players; track player.id) {
-                    <span class="pair-name">{{ player.fullName }} <span class="bonus">({{ player.bonusPoints }})</span></span>
-                  }
-                </span>
-                <input
-                  type="number"
-                  inputmode="numeric"
-                  [name]="set.home.field"
-                  [attr.aria-label]="'Set ' + set.number + ', punten ' + pairName(set.home.players)"
-                  [value]="set.home.score ?? ''"
-                />
-              </div>
-
-              <span class="versus">vs</span>
-
-              <div class="side">
-                <span class="pair">
-                  @for (player of set.away.players; track player.id) {
-                    <span class="pair-name">{{ player.fullName }} <span class="bonus">({{ player.bonusPoints }})</span></span>
-                  }
-                </span>
-                <input
-                  type="number"
-                  inputmode="numeric"
-                  [name]="set.away.field"
-                  [attr.aria-label]="'Set ' + set.number + ', punten ' + pairName(set.away.players)"
-                  [value]="set.away.score ?? ''"
-                />
-              </div>
-            </div>
-          }
-
-          <div class="match-footer">
-            <button type="submit" class="primair groot" [disabled]="api.isBusy()">Score bewaren</button>
-            @if (savedGameId() === game.id) {
-              <span class="bewaard" role="status"><svg viewBox="0 0 24 24" class="icoon" aria-hidden="true"><path d="M4.5 12.5l5 5 10-11" /></svg> Bewaard</span>
-            }
-          </div>
-        </form>
+        <app-match-scores
+          [game]="game"
+          [index]="$index"
+          [target]="api.round()!.pointsPerSet"
+          [cap]="api.round()!.maxScore"
+        />
       } @empty {
         @if (proposals().length === 0) {
           <p class="paneel notice">
