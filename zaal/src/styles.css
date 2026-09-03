@@ -167,3 +167,11 @@ input[type='number']::-webkit-inner-spin-button {
   -webkit-appearance: none;
   margin: 0;
 }
+
+/*
+ * De outlet is enkel een anker in de DOM: het gerouteerde scherm komt ernaast
+ * te staan, niet erin. Zonder dit neemt hij in een raster een lege cel in.
+ */
+router-outlet {
+  display: none;
+}

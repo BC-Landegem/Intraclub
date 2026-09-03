@@ -1,4 +1,4 @@
-<div class="backdrop" (click)="closed.emit()"></div>
+<div class="backdrop" (click)="close()"></div>
 
 <div class="dialog paneel" role="dialog" aria-modal="true" aria-labelledby="add-player-title">
   <h2 id="add-player-title">Nieuwe speler</h2>
@@ -63,7 +63,7 @@
       <button type="submit" class="primair" [disabled]="busy()">
         {{ busy() ? 'Bezig…' : 'Toevoegen' }}
       </button>
-      <button type="button" [disabled]="busy()" (click)="closed.emit()">Annuleren</button>
+      <button type="button" [disabled]="busy()" (click)="close()">Annuleren</button>
     </div>
   </form>
 </div>

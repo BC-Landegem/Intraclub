@@ -1,0 +1,24 @@
+@if (game(); as wedstrijd) {
+  @if (isEntry()) {
+    <app-score-entry
+      [game]="wedstrijd"
+      [me]="me()!"
+      [target]="target()"
+      [cap]="cap()"
+      (done)="onSaved()"
+      (leave)="close()"
+    />
+  } @else {
+    <app-match-recap
+      [game]="wedstrijd"
+      [me]="me()"
+      [mode]="recapMode()"
+      [number]="number()"
+      [target]="target()"
+      (done)="close()"
+      (edit)="onEdit()"
+    />
+  }
+} @else {
+  <p class="paneel notice">Deze wedstrijd bestaat niet meer.</p>
+}

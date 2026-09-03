@@ -1,0 +1,48 @@
+:host {
+  display: grid;
+  gap: 1rem;
+  align-content: start;
+}
+
+.tabs {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 0.5rem;
+}
+
+.tabs button.active {
+  border-color: var(--accent);
+  color: var(--accent);
+  font-weight: 700;
+}
+
+/* De teller bevestigt de nieuwe aanwezige. */
+.teller {
+  display: inline-block;
+  min-width: 1.6em;
+  font-variant-numeric: tabular-nums;
+  font-weight: 700;
+}
+
+.teller.pulse {
+  animation: tel 600ms cubic-bezier(0.16, 1, 0.3, 1);
+  color: var(--goed);
+}
+
+@keyframes tel {
+  0% {
+    transform: scale(1);
+  }
+  35% {
+    transform: scale(1.35);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .teller.pulse {
+    animation: none;
+  }
+}

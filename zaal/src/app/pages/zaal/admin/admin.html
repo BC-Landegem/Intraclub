@@ -1,0 +1,11 @@
+<nav class="tabs" aria-label="Beheer">
+  <button type="button" routerLink="aanwezig" routerLinkActive="active">
+    Aanwezig
+    <span class="teller" [class.pulse]="api.justArrived()">{{ api.presentCount() }}</span>
+  </button>
+  <button type="button" routerLink="wedstrijden" routerLinkActive="active">
+    Wedstrijden ({{ api.games().length }})
+  </button>
+</nav>
+
+<router-outlet />

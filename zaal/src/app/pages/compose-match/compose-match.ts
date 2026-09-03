@@ -1,4 +1,5 @@
-import { Component, computed, inject, input, output, signal } from '@angular/core';
+import { Component, OnInit, computed, inject, input, signal } from '@angular/core';
+import { ActivatedRoute, Router } from '@angular/router';
 import { FillCandidate, PlayerSummary } from '../../core/models';
 import { ZaalApi } from '../../core/zaal-api';
 
@@ -9,6 +10,9 @@ import { ZaalApi } from '../../core/zaal-api';
  * - putting together a free match from scratch.
  *
  * The app never picks anyone: volunteering is voluntary, the hall decides.
+ *
+ * Welke van de twee dit is, zegt de route: /aanvullen zet de uitgelote spelers
+ * vast, /toevoegen begint met een leeg viertal.
  */
 @Component({
   selector: 'app-compose-match',
@@ -16,13 +20,16 @@ import { ZaalApi } from '../../core/zaal-api';
   templateUrl: './compose-match.html',
   styleUrl: './compose-match.css',
 })
-export class ComposeMatch {
+export class ComposeMatch implements OnInit {
   private readonly api = inject(ZaalApi);
+  private readonly route = inject(ActivatedRoute);
+  private readonly router = inject(Router);
+
+  /** Uit de route: vullen we een gelote match aan, of stellen we er een samen? */
+  readonly filling = input(false);
 
   /** Players who are already in the match and cannot be removed. */
-  readonly fixedPlayers = input<PlayerSummary[]>([]);
-
-  readonly closed = output<void>();
+  protected readonly fixedPlayers = signal<PlayerSummary[]>([]);
 
   protected readonly candidates = signal<FillCandidate[]>([]);
   protected readonly others = signal<FillCandidate[]>([]);
@@ -62,6 +69,17 @@ export class ComposeMatch {
     void this.loadCandidates();
   }
 
+  /**
+   * Eén momentopname van wie vastzit: het bevestigen haalt die spelers uit de
+   * uitgelote lijst, en de dialoog hoort daar in zijn laatste frame niet meer
+   * van te veranderen.
+   */
+  ngOnInit(): void {
+    if (this.filling()) {
+      this.fixedPlayers.set(this.api.drawnOut());
+    }
+  }
+
   protected choose(player: FillCandidate): void {
     if (this.slotsLeft() > 0) {
       this.chosen.update((current) => [...current, player]);
@@ -83,13 +101,23 @@ export class ComposeMatch {
       await this.api.confirmGame(playerIds);
 
       if (this.api.errorMessage() === '') {
-        this.closed.emit();
+        await this.close();
       } else {
         this.errorMessage.set(this.api.errorMessage());
       }
     } finally {
       this.busy.set(false);
     }
+  }
+
+  /**
+   * Sluiten is teruggaan naar de lijst eronder, en die opnieuw ophalen: wie hier
+   * aanwezig gezet werd, hoort er in te staan. Dat vervángt de dialoog in de
+   * geschiedenis, zodat de terugknop hem daarna niet opnieuw opent.
+   */
+  protected async close(): Promise<void> {
+    await this.router.navigate(['..'], { relativeTo: this.route, replaceUrl: true });
+    await this.api.loadCurrentRound();
   }
 
   private async loadCandidates(): Promise<void> {

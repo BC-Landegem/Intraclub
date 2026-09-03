@@ -19,7 +19,7 @@
   @for (row of rows(); track row.game.id) {
     <li>
       @if (row.line) {
-        <button type="button" class="vak" (click)="peek.emit(row.game)">
+        <button type="button" class="vak" [routerLink]="['/wedstrijd', row.game.id]">
           <span class="wie"><strong class="nr">Nr. {{ row.number }}</strong> · {{ row.who }}</span>
           <span class="stand">{{ row.line }}</span>
         </button>

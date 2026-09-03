@@ -3,6 +3,10 @@
  * afstand moet je je eigen plaats terugvinden zonder te zoeken.
  */
 
+:host {
+  display: block;
+}
+
 .stand {
   display: grid;
   gap: 1rem;

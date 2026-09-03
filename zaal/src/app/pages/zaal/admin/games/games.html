@@ -1,0 +1,111 @@
+@if (api.drawnOut().length > 0) {
+  <div class="paneel drawn-out-block">
+    <h2>Uitgeloot — spelen deze speeldag niet mee</h2>
+    <p class="subtitle">
+      Deze speeldag telt niet mee voor hun gemiddelde. Komt er nog iemand bij? Bevestig dan een
+      match met hen, dan spelen ze alsnog mee en telt de speeldag weer.
+    </p>
+    <ul class="chips">
+      @for (player of api.drawnOut(); track player.id) {
+        <li class="chip">{{ player.fullName }} ({{ player.bonusPoints }})</li>
+      }
+    </ul>
+    <button type="button" class="primair groot vullen" routerLink="aanvullen">
+      Match aanvullen
+    </button>
+  </div>
+}
+
+@if (api.pendingGames().length > 0) {
+  <div class="paneel">
+    <div class="block-header">
+      <h2>Voorgestelde matches</h2>
+      <div class="voorstel-knoppen">
+        <button type="button" [disabled]="api.isBusy()" (click)="redraw()">Opnieuw loten</button>
+        <button
+          type="button"
+          class="primair"
+          [disabled]="api.isBusy()"
+          (click)="confirmAllProposals()"
+        >
+          Alle bevestigen
+        </button>
+      </div>
+    </div>
+    <p class="subtitle herloot-uitleg">
+      Nog niets bevestigd? Dan kan je gerust opnieuw loten. Matches die je al bevestigde blijven
+      staan; enkel wie nog wacht wordt opnieuw ingedeeld.
+    </p>
+
+    @for (proposal of api.pendingGames(); track $index) {
+      <div class="proposal">
+        <ol class="foursome">
+          @for (player of proposal; track player.id) {
+            <li>
+              {{ player.fullName }}
+              <span class="bonus">({{ player.bonusPoints }})</span>
+            </li>
+          }
+        </ol>
+        <button type="button" [disabled]="api.isBusy()" (click)="confirmProposal(proposal)">
+          Bevestig
+        </button>
+      </div>
+    }
+  </div>
+}
+
+<!--
+  De afwerklijst. Geen formulieren: één regel per wedstrijd, wat nog geen score
+  heeft bovenaan. Dit is waar de organisator ziet wie hij nog moet aanspreken —
+  invullen doen de spelers zelf, bij hun eigen naam.
+-->
+@if (api.games().length > 0) {
+  <div class="paneel">
+    <div class="block-header">
+      <h2>
+        @if (api.gamesWithoutScore().length === 0) {
+          Alle {{ api.games().length }} wedstrijden hebben een score
+        } @else {
+          {{ api.gamesWithoutScore().length }} van de {{ api.games().length }}
+          wedstrijden hebben nog geen score
+        }
+      </h2>
+      <button type="button" routerLink="toevoegen">+ Match toevoegen</button>
+    </div>
+
+    <ul class="afwerklijst">
+      @for (item of progress(); track item.game.id) {
+        <li [class.open]="!item.game.isComplete">
+          <span class="regel-nr">Nr. {{ item.number }}</span>
+          <span class="regel-wie">
+            @for (player of item.game.players; track player.id) {
+              {{ api.nameOf(player) }}
+              @if (!$last) {
+                ,&nbsp;
+              }
+            }
+          </span>
+          @if (item.game.isComplete) {
+            <span class="regel-stand">
+              @for (set of item.game.sets; track set.number) {
+                {{ set.home.score }}–{{ set.away.score }}
+                @if (!$last) {
+                  ·
+                }
+              }
+            </span>
+          } @else {
+            <span class="regel-open">
+              <span class="stip" aria-hidden="true"></span>geen score
+            </span>
+          }
+        </li>
+      }
+    </ul>
+  </div>
+} @else {
+  <p class="paneel notice">Nog geen matches. Duid eerst de aanwezigen aan en druk op “Loten”.</p>
+}
+
+<router-outlet />

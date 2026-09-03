@@ -1,5 +1,33 @@
-import { Routes } from '@angular/router';
+import { inject } from '@angular/core';
+import { ResolveFn, Routes } from '@angular/router';
 import { authGuard } from './core/auth';
+import { ZaalApi } from './core/zaal-api';
+
+/**
+ * Elk scherm van de zaal-app is een route.
+ *
+ * Waarom: de tablet in de zaal heeft een terugknop, en die hoort te doen wat hij
+ * overal doet — één stap terug. Zolang de schermen toestand in een component
+ * waren, sloot die knop de hele app af. Nu staat elke stap in de URL, dus werkt
+ * ook een verversing: wie op /uitslagen of in een wedstrijd staat, blijft daar.
+ *
+ * De paden zijn Nederlands, zoals alles wat in de zaal te lezen valt.
+ */
+
+/**
+ * De speeldag staat vóór het eerste scherm er is. Zo mag elk scherm ervan
+ * uitgaan dat de toestand geladen is — ook wie rechtstreeks op een wedstrijd
+ * binnenkomt of de pagina ververst.
+ */
+const roundLoaded: ResolveFn<boolean> = async () => {
+  await inject(ZaalApi).loadCurrentRound();
+
+  return true;
+};
+
+const matchScreen = () => import('./pages/zaal/match/match').then((m) => m.Match);
+const composeScreen = () =>
+  import('./pages/compose-match/compose-match').then((m) => m.ComposeMatch);
 
 export const routes: Routes = [
   {
@@ -11,7 +39,88 @@ export const routes: Routes = [
     path: '',
     loadComponent: () => import('./pages/zaal/zaal').then((m) => m.Zaal),
     canActivate: [authGuard],
-    title: 'Intraclub zaal',
+    resolve: { round: roundLoaded },
+    children: [
+      {
+        path: '',
+        loadComponent: () => import('./pages/zaal/kiosk/kiosk').then((m) => m.Kiosk),
+        title: 'Intraclub zaal',
+      },
+      {
+        path: 'uitslagen',
+        loadComponent: () => import('./pages/zaal/results/results').then((m) => m.Results),
+        title: 'Uitslagen - Intraclub',
+      },
+      {
+        path: 'tussenstand',
+        loadComponent: () => import('./pages/standings/standings').then((m) => m.Standings),
+        title: 'Tussenstand - Intraclub',
+      },
+
+      /*
+       * Eén wedstrijd in vier gedaantes. Ze hangen alle vier aan hetzelfde
+       * scherm, dat uit `mode` opmaakt wat het te doen heeft. Wie er staat zit
+       * in het pad, want dat bepaalt wat je mag: zonder speler kijk je enkel.
+       */
+      {
+        path: 'wedstrijd/:gameId',
+        loadComponent: matchScreen,
+        data: { mode: 'peek' },
+        title: 'Wedstrijd - Intraclub',
+      },
+      {
+        path: 'wedstrijd/:gameId/speler/:playerId',
+        loadComponent: matchScreen,
+        data: { mode: 'read' },
+        title: 'Wedstrijd - Intraclub',
+      },
+      {
+        path: 'wedstrijd/:gameId/speler/:playerId/score',
+        loadComponent: matchScreen,
+        data: { mode: 'entry' },
+        title: 'Score invullen - Intraclub',
+      },
+      {
+        path: 'wedstrijd/:gameId/speler/:playerId/bewaard',
+        loadComponent: matchScreen,
+        data: { mode: 'confirm' },
+        title: 'Bewaard - Intraclub',
+      },
+
+      /*
+       * Beheer: twee schermen onder één tabbalk, en de dialogen die erbij horen
+       * als kindroute. Zo sluit de terugknop een dialoog in plaats van de app.
+       */
+      {
+        path: 'beheer',
+        loadComponent: () => import('./pages/zaal/admin/admin').then((m) => m.Admin),
+        children: [
+          { path: '', pathMatch: 'full', redirectTo: 'aanwezig' },
+          {
+            path: 'aanwezig',
+            loadComponent: () =>
+              import('./pages/zaal/admin/attendance/attendance').then((m) => m.Attendance),
+            title: 'Aanwezigheid - Intraclub',
+            children: [
+              {
+                path: 'nieuwe-speler',
+                loadComponent: () =>
+                  import('./pages/add-player/add-player').then((m) => m.AddPlayer),
+              },
+            ],
+          },
+          {
+            path: 'wedstrijden',
+            loadComponent: () => import('./pages/zaal/admin/games/games').then((m) => m.Games),
+            title: 'Wedstrijden - Intraclub',
+            children: [
+              { path: 'aanvullen', loadComponent: composeScreen, data: { filling: true } },
+              { path: 'toevoegen', loadComponent: composeScreen },
+            ],
+          },
+        ],
+      },
+    ],
   },
   { path: '**', redirectTo: '' },
 ];

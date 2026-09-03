@@ -1,3 +1,8 @@
+/* De dialoog hangt buiten de stroom, dus mag zijn plaats in de lijst niets zijn. */
+:host {
+  display: contents;
+}
+
 .backdrop {
   position: fixed;
   inset: 0;

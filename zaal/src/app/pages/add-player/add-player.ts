@@ -1,4 +1,5 @@
-import { Component, inject, output, signal } from '@angular/core';
+import { Component, inject, signal } from '@angular/core';
+import { ActivatedRoute, Router } from '@angular/router';
 import { FormField, form, max, maxLength, min, required, submit } from '@angular/forms/signals';
 import { NewPlayer } from '../../core/models';
 import { ZaalApi } from '../../core/zaal-api';
@@ -6,6 +7,9 @@ import { ZaalApi } from '../../core/zaal-api';
 /**
  * Adds a player during the matchday. The new player is marked present right
  * away, so they can join the very next draw.
+ *
+ * De dialoog is een kindroute van de aanwezigheidslijst, dus sluit de terugknop
+ * van de tablet hem in plaats van de app.
  */
 @Component({
   selector: 'app-add-player',
@@ -15,8 +19,8 @@ import { ZaalApi } from '../../core/zaal-api';
 })
 export class AddPlayer {
   private readonly api = inject(ZaalApi);
-
-  readonly closed = output<void>();
+  private readonly route = inject(ActivatedRoute);
+  private readonly router = inject(Router);
 
   protected readonly model = signal<NewPlayer>({
     firstName: '',
@@ -49,7 +53,7 @@ export class AddPlayer {
       try {
         await this.api.addPlayer(this.model());
         if (this.api.errorMessage() === '') {
-          this.closed.emit();
+          await this.close();
         } else {
           this.errorMessage.set(this.api.errorMessage());
         }
@@ -57,5 +61,13 @@ export class AddPlayer {
         this.busy.set(false);
       }
     });
+  }
+
+  /**
+   * Sluiten is teruggaan naar de lijst eronder. Dat vervángt de dialoog in de
+   * geschiedenis, zodat de terugknop hem daarna niet opnieuw opent.
+   */
+  protected close(): Promise<boolean> {
+    return this.router.navigate(['..'], { relativeTo: this.route, replaceUrl: true });
   }
 }

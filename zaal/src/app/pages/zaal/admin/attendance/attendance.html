@@ -1,0 +1,54 @@
+<div class="search-row">
+  <label class="visually-hidden" for="player-search">Zoek een speler</label>
+  <input
+    id="player-search"
+    type="search"
+    placeholder="Zoek een speler…"
+    [value]="searchTerm()"
+    (input)="searchTerm.set($any($event.target).value)"
+  />
+  <button type="button" routerLink="nieuwe-speler">+ Nieuwe speler</button>
+</div>
+
+<ul class="player-list">
+  @for (player of filteredPlayers(); track player.id) {
+    <li>
+      <button
+        type="button"
+        class="player-button"
+        [class.present]="player.present"
+        [disabled]="api.isBusy()"
+        (click)="checkIn($event, player)"
+      >
+        <span class="sweep" aria-hidden="true"></span>
+        <span class="name"
+          >{{ player.fullName }} <span class="bonus">({{ player.bonusPoints }})</span></span
+        >
+        @if (player.drawnOut) {
+          <span class="tag drawn-out">uitgeloot</span>
+        }
+        <span class="check" aria-hidden="true">
+          <svg viewBox="0 0 24 24">
+            <circle cx="12" cy="12" r="10" class="ring" />
+            <path d="M7.5 12.4l3.2 3.2 6-6.4" class="vink" />
+          </svg>
+        </span>
+      </button>
+    </li>
+  } @empty {
+    <li class="empty">Geen spelers gevonden.</li>
+  }
+</ul>
+
+<button
+  type="button"
+  class="primair wide"
+  [disabled]="api.isBusy() || api.presentCount() < 4"
+  (click)="draw()"
+>
+  Loten ({{ api.presentCount() }} aanwezig)
+</button>
+
+<button type="button" class="afmelden" (click)="signOut()">Afmelden</button>
+
+<router-outlet />

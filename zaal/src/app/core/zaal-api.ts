@@ -4,6 +4,9 @@ import { Observable, firstValueFrom } from 'rxjs';
 import { FillCandidates, Game, GameScores, NewPlayer, PlayerSummary, RoundState } from './models';
 import { shortLabels } from './player-names';
 
+/** Hoe lang de teller een nieuwe aanwezige mag vieren. */
+const PULSE_MS = 600;
+
 /**
  * Praat met de zaal-API. Elke wijziging geeft de volledige toestand van de
  * speeldag terug, dus houden we die als één signaal bij.
@@ -19,6 +22,23 @@ export class ZaalApi {
   /** Games waarvoor op dit moment een score onderweg is naar de server. */
   private readonly inFlight = signal<readonly number[]>([]);
 
+  /**
+   * Voorstellen uit de laatste loting die nog bevestigd moeten worden.
+   *
+   * Waarom hier en niet in het scherm dat ze toont: de loting begint bij de
+   * aanwezigheidslijst en eindigt op het wedstrijdenscherm, dus de lijst moet een
+   * navigatie overleven. En een bevestiging stuurt de voorstellen niet meer mee
+   * in het antwoord, dus de server kan er niet aan herinneren.
+   */
+  private readonly pending = signal<PlayerSummary[][]>([]);
+
+  /**
+   * Kort waar na een aanmelding, zodat de teller de nieuwe aanwezige kan
+   * bevestigen. Die teller staat in de tabbalk, dus in een ander component dan de
+   * tegel die aangetikt werd: dit is de toestand die ze delen.
+   */
+  private readonly arrival = signal(false);
+
   readonly round = computed(() => this.state()?.round ?? null);
   readonly players = computed(() => this.state()?.players ?? []);
   readonly games = computed(() => this.state()?.games ?? []);
@@ -30,6 +50,8 @@ export class ZaalApi {
   readonly seasonName = computed(() => this.state()?.seasonName ?? null);
   readonly isBusy = this.busy.asReadonly();
   readonly errorMessage = this.failure.asReadonly();
+  readonly pendingGames = this.pending.asReadonly();
+  readonly justArrived = this.arrival.asReadonly();
 
   /** Games zonder volledige score: waar de organisator nog achter moet. */
   readonly gamesWithoutScore = computed(() => this.games().filter((game) => !game.isComplete));
@@ -86,20 +108,43 @@ export class ZaalApi {
     return this.run(() => this.http.get<RoundState>('/api/zaal/round'));
   }
 
-  setAttendance(playerId: number, present: boolean): Promise<void> {
-    return this.run(() =>
+  async setAttendance(playerId: number, present: boolean): Promise<void> {
+    await this.run(() =>
       this.http.post<RoundState>(`/api/zaal/rounds/${this.roundId()}/attendance`, { playerId, present }),
     );
+
+    if (present && this.failure() === '') {
+      this.arrival.set(true);
+      setTimeout(() => this.arrival.set(false), PULSE_MS);
+    }
   }
 
-  drawRound(): Promise<void> {
-    return this.run(() => this.http.post<RoundState>(`/api/zaal/rounds/${this.roundId()}/draw`, {}));
+  /**
+   * Loot de speeldag. Matches die al bevestigd zijn houden hun spelers, dus dit
+   * verdeelt enkel wie nog wacht. Loopt de loting mis, dan blijven de voorstellen
+   * staan die er al wachtten.
+   */
+  async drawRound(): Promise<void> {
+    await this.run(() => this.http.post<RoundState>(`/api/zaal/rounds/${this.roundId()}/draw`, {}));
+
+    if (this.failure() === '') {
+      this.pending.set(this.proposedGames());
+    }
   }
 
   confirmGame(playerIds: number[]): Promise<void> {
     return this.run(() =>
       this.http.post<RoundState>(`/api/zaal/rounds/${this.roundId()}/games`, { playerIds }),
     );
+  }
+
+  /** Bevestigt één voorstel; gelukt, dan is het geen voorstel meer. */
+  async confirmProposal(proposal: PlayerSummary[]): Promise<void> {
+    await this.confirmGame(proposal.map((player) => player.id));
+
+    if (this.failure() === '') {
+      this.pending.update((current) => current.filter((item) => item !== proposal));
+    }
   }
 
   /**

@@ -1,0 +1,47 @@
+@if (api.games().length === 0) {
+  <div class="paneel start">
+    <h2>De loting moet nog gebeuren</h2>
+    <p class="subtitle">
+      Zodra de wedstrijden verdeeld zijn, kan je hier je score invullen. Duid de aanwezigen aan en
+      loot via <strong>Beheer</strong>.
+    </p>
+    <button type="button" class="primair groot" routerLink="/beheer">Naar Beheer</button>
+  </div>
+} @else {
+  <app-player-finder
+    [players]="api.presentPlayers()"
+    [games]="api.games()"
+    (picked)="onPicked($event)"
+  />
+}
+
+<!--
+  De twee bestemmingen waarvoor spelers zelf langskomen, in het leespad onder het
+  alfabet in plaats van als ghost-knop in de rechterbovenhoek. Ze vullen de
+  ruimte die daar toch al leeg stond.
+-->
+<nav class="bestemmingen" aria-label="Bekijken">
+  <button
+    type="button"
+    class="bestemming"
+    routerLink="/uitslagen"
+    [disabled]="api.games().length === 0"
+  >
+    <span class="bestemming-titel">Uitslagen van vanavond</span>
+    <span class="bestemming-onder">
+      @if (api.games().length === 0) {
+        nog geen wedstrijden
+      } @else if (api.gamesWithoutScore().length === 0) {
+        alle {{ api.games().length }} wedstrijden binnen
+      } @else {
+        {{ api.games().length - api.gamesWithoutScore().length }} van de
+        {{ api.games().length }} wedstrijden binnen
+      }
+    </span>
+  </button>
+
+  <button type="button" class="bestemming" routerLink="/tussenstand">
+    <span class="bestemming-titel">Tussenstand</span>
+    <span class="bestemming-onder">het klassement van het seizoen</span>
+  </button>
+</nav>

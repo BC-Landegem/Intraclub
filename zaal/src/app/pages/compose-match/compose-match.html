@@ -1,4 +1,4 @@
-<div class="backdrop" (click)="closed.emit()"></div>
+<div class="backdrop" (click)="close()"></div>
 
 <div class="dialog paneel" role="dialog" aria-modal="true" aria-labelledby="compose-title">
   <header class="kop">
@@ -9,7 +9,7 @@
         Match toevoegen
       }
     </h2>
-    <button type="button" (click)="closed.emit()">Sluiten</button>
+    <button type="button" (click)="close()">Sluiten</button>
   </header>
 
   @if (fixedPlayers().length > 0) {
@@ -93,6 +93,6 @@
     <button type="button" class="primair groot" [disabled]="!isReady() || busy()" (click)="confirm()">
       {{ busy() ? 'Bezig…' : 'Match bevestigen' }}
     </button>
-    <button type="button" (click)="closed.emit()">Annuleren</button>
+    <button type="button" (click)="close()">Annuleren</button>
   </footer>
 </div>

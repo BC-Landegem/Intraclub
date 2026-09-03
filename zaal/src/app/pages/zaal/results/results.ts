@@ -1,5 +1,5 @@
-import { Component, computed, inject, input, output } from '@angular/core';
-import { Game } from '../../../core/models';
+import { Component, computed, inject } from '@angular/core';
+import { RouterLink } from '@angular/router';
 import { ZaalApi } from '../../../core/zaal-api';
 
 /**
@@ -13,18 +13,15 @@ import { ZaalApi } from '../../../core/zaal-api';
  */
 @Component({
   selector: 'app-results',
+  imports: [RouterLink],
   templateUrl: './results.html',
   styleUrl: './results.css',
 })
 export class Results {
   private readonly api = inject(ZaalApi);
 
-  readonly games = input.required<Game[]>();
-
-  readonly peek = output<Game>();
-
   protected readonly rows = computed(() =>
-    this.games().map((game, index) => ({
+    this.api.games().map((game, index) => ({
       game,
       number: index + 1,
       who: game.players.map((player) => this.api.nameOf(player)).join(', '),
@@ -34,7 +31,5 @@ export class Results {
     })),
   );
 
-  protected readonly openCount = computed(
-    () => this.games().filter((game) => !game.isComplete).length,
-  );
+  protected readonly openCount = computed(() => this.api.gamesWithoutScore().length);
 }
