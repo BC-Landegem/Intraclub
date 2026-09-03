@@ -1,0 +1,82 @@
+<header class="kop">
+  <p class="wie">
+    Jouw wedstrijd — <strong>{{ foursome().me }}</strong>, {{ foursome().others.join(', ') }}
+  </p>
+  <div class="kop-rechts">
+    @if (api.isSaving(game().id)) {
+      <span class="bezig" role="status">bewaren…</span>
+    }
+    <button type="button" class="uitweg" (click)="leave.emit()">Niet jouw wedstrijd?</button>
+  </div>
+</header>
+
+<div class="sets">
+  @for (row of rows(); track row.number) {
+    @if (row.index === activeIndex()) {
+      <section class="set actief">
+        <div class="set-regel">
+          <span class="set-nr">Set {{ row.number }}</span>
+          <span class="duos"><strong>{{ row.home }}</strong> tegen <strong>{{ row.away }}</strong></span>
+        </div>
+
+        @if (pendingWinner() === null) {
+          <p class="vraag">Wie won deze set?</p>
+          <div class="kandidaten">
+            <button type="button" class="duo" (click)="pickWinner(0)">{{ row.home }}</button>
+            <button type="button" class="duo" (click)="pickWinner(1)">{{ row.away }}</button>
+          </div>
+        } @else {
+          <p class="vraag">En <span>hoeveel haalden</span> {{ losingPair() }}?</p>
+          <div class="raster">
+            @for (option of direct(); track option.loser) {
+              <button type="button" class="punt" (click)="pickScore(option)">
+                {{ option.loser }}
+              </button>
+            }
+          </div>
+
+          @if (showExtensions()) {
+            <div class="raster verlenging">
+              @for (option of extensions(); track option.winner * 100 + option.loser) {
+                <button type="button" class="punt breed" (click)="pickScore(option)">
+                  {{ option.winner }}–{{ option.loser }}
+                </button>
+              }
+            </div>
+          } @else {
+            <button type="button" class="klap-open" (click)="showExtensions.set(true)">
+              <svg viewBox="0 0 24 24" class="icoon" aria-hidden="true">
+                <path d="M5.5 9.5 12 16l6.5-6.5" />
+              </svg>
+              de set ging in verlenging
+            </button>
+          }
+        }
+      </section>
+    } @else if (row.score) {
+      <section class="set klaar">
+        <div class="set-regel">
+          <span class="set-nr">Set {{ row.number }}</span>
+          <span class="duos"><strong>{{ row.home }}</strong> tegen <strong>{{ row.away }}</strong></span>
+          <span class="stand">
+            <span class="cijfers">{{ row.score.home }} – {{ row.score.away }}</span>
+            <span class="merk">
+              <svg viewBox="0 0 24 24" class="icoon" aria-hidden="true">
+                <path d="M4.5 12.5l5 5 10-11" />
+              </svg>
+              bewaard
+            </span>
+            <button type="button" class="wijzig" (click)="redo(row.index)">wijzig</button>
+          </span>
+        </div>
+      </section>
+    } @else {
+      <section class="set wachtend">
+        <div class="set-regel">
+          <span class="set-nr">Set {{ row.number }}</span>
+          <span class="duos">{{ row.home }} tegen {{ row.away }}</span>
+        </div>
+      </section>
+    }
+  }
+</div>

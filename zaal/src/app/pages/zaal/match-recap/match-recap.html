@@ -1,0 +1,90 @@
+<header class="kop">
+  <span class="zegel" [class.lezen]="mode() !== 'confirm'" aria-hidden="true">
+    @if (mode() === 'confirm') {
+      <svg viewBox="0 0 24 24">
+        <path d="M4.5 12.5l5 5 10-11" />
+      </svg>
+    } @else {
+      <svg viewBox="0 0 24 24">
+        <circle cx="12" cy="12" r="9" />
+        <path d="M12 8v.01" />
+        <path d="M12 12v4" />
+      </svg>
+    }
+  </span>
+
+  <div>
+    <h2>
+      @switch (mode()) {
+        @case ('confirm') {
+          Bewaard.
+        }
+        @case ('read') {
+          Al ingevuld
+        }
+        @case ('peek') {
+          Wedstrijd {{ number() }}
+        }
+      }
+    </h2>
+    <p>
+      @switch (mode()) {
+        @case ('confirm') {
+          De drie sets staan in het klassement.
+          @if (savedAt()) {
+            Bewaard om {{ savedAt() }}.
+          }
+        }
+        @case ('read') {
+          Iemand van jouw wedstrijd was je voor@if (savedAt()) { — bewaard om {{ savedAt() }}}.
+        }
+        @case ('peek') {
+          @if (savedAt()) {
+            Ingevuld om {{ savedAt() }}.
+          } @else {
+            Ingevuld.
+          }
+        }
+      }
+    </p>
+  </div>
+</header>
+
+<ol class="sets">
+  @for (row of rows(); track row.number) {
+    <li>
+      <span class="set-nr">Set {{ row.number }}</span>
+      <span class="duos"><strong>{{ row.home }}</strong> tegen <strong>{{ row.away }}</strong></span>
+      <span class="cijfers">{{ row.homeScore }} – {{ row.awayScore }}</span>
+    </li>
+  }
+</ol>
+
+<section class="telling">
+  <h3>Naar het klassement</h3>
+  <ul>
+    @for (item of tally(); track item.player.id) {
+      <li [class.ik]="item.isMe">
+        <span class="naam">{{ name(item.player) }}</span>
+        <span class="gemiddelde">{{ formatAverage(item.average) }}</span>
+        <span class="context">
+          {{ item.setsWon }} van 3 {{ item.setsWon === 1 ? 'set' : 'sets' }} gewonnen
+        </span>
+      </li>
+    }
+  </ul>
+</section>
+
+<footer class="acties">
+  <button type="button" class="primair groot" (click)="done.emit()">Klaar</button>
+
+  @if (mode() !== 'peek') {
+    <button type="button" class="tweede" (click)="edit.emit()">
+      {{ mode() === 'confirm' ? 'Toch iets aanpassen' : 'Score aanpassen' }}
+    </button>
+  }
+
+  @if (mode() === 'confirm') {
+    <span class="zelf">Dit scherm sluit vanzelf.</span>
+  }
+</footer>

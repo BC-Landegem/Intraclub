@@ -1,0 +1,266 @@
+/*
+ * Score-invoer op een tablet die in de sporthal staat: alle drie de sets blijven
+ * zichtbaar, één ervan staat open. Zo is een correctie één tik en geen navigatie,
+ * en zie je in één blik wat er al vast staat.
+ */
+:host {
+  display: grid;
+  gap: 0.9rem;
+  align-content: start;
+}
+
+.kop {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.wie {
+  margin: 0;
+  color: var(--tekst-zacht);
+  font-size: 0.98rem;
+}
+
+.wie strong {
+  color: var(--tekst);
+  font-weight: 600;
+}
+
+.kop-rechts {
+  display: flex;
+  align-items: center;
+  gap: 0.9rem;
+}
+
+.bezig {
+  color: var(--tekst-zacht);
+  font-size: 0.9rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.uitweg {
+  min-height: 0;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--tekst-zacht);
+  font-size: 0.9rem;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.uitweg:hover {
+  color: var(--tekst);
+}
+
+.sets {
+  display: grid;
+  gap: 0.6rem;
+}
+
+.set {
+  padding: 0.85rem 1.15rem;
+  border: 1px solid var(--paneel-rand);
+  border-radius: var(--straal);
+  background: var(--paneel);
+}
+
+.set-regel {
+  display: flex;
+  align-items: center;
+  gap: 0.9rem;
+  min-height: 40px;
+  flex-wrap: wrap;
+}
+
+.set-nr {
+  flex: none;
+  color: var(--tekst-zacht);
+  font-size: 0.82rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.duos {
+  color: var(--tekst-zacht);
+  font-size: 1.05rem;
+}
+
+.duos strong {
+  color: var(--tekst);
+  font-weight: 600;
+}
+
+/* De set die aan de beurt is, is de enige met een accentrand. */
+.set.actief {
+  border-color: var(--accent);
+  background: #1b2029;
+  padding-bottom: 1.1rem;
+}
+
+.set.actief .set-nr {
+  color: var(--tekst);
+}
+
+/* Een afgeronde set krimpt tot één regel en draagt zijn eigen bewaard-merk. */
+.set.klaar {
+  border-color: rgb(23 163 74 / 0.45);
+  background: rgb(23 163 74 / 0.09);
+}
+
+.set.klaar .set-nr {
+  color: var(--tekst);
+}
+
+.set.wachtend {
+  background: transparent;
+  opacity: 0.5;
+}
+
+.stand {
+  display: flex;
+  align-items: center;
+  gap: 0.8rem;
+  margin-left: auto;
+}
+
+.cijfers {
+  font-size: 1.45rem;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  font-variant-numeric: tabular-nums;
+}
+
+.merk {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  color: #4ade80;
+  font-size: 0.9rem;
+  white-space: nowrap;
+}
+
+.wijzig {
+  min-height: 0;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--tekst-zacht);
+  font-size: 0.9rem;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.wijzig:hover {
+  color: var(--tekst);
+}
+
+.icoon {
+  width: 17px;
+  height: 17px;
+  flex: none;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2.5;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.vraag {
+  margin: 0.9rem 0 0.55rem;
+  font-size: 1.15rem;
+  font-weight: 600;
+}
+
+.vraag span {
+  color: var(--tekst-zacht);
+  font-weight: 400;
+}
+
+.kandidaten {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.75rem;
+}
+
+.duo {
+  min-height: 76px;
+  padding: 0.6rem 0.9rem;
+  background: var(--achtergrond);
+  font-size: 1.2rem;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  text-align: center;
+  transition:
+    background 140ms ease-out,
+    border-color 140ms ease-out;
+}
+
+.duo:hover {
+  background: #22262f;
+  border-color: var(--accent);
+}
+
+/*
+ * Het puntenraster. Elke knop is een legale stand: bij sets tot 15 zijn dat de
+ * veertien uitslagen waarin de winnaar op 15 eindigt, bij sets tot 21 twintig.
+ * Auto-fit houdt de rijen vol op elke breedte.
+ */
+.raster {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(72px, 1fr));
+  gap: 0.6rem;
+}
+
+.punt {
+  min-height: 62px;
+  padding: 0;
+  background: var(--achtergrond);
+  font-size: 1.45rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  transition:
+    background 140ms ease-out,
+    border-color 140ms ease-out;
+}
+
+.punt:hover {
+  background: #22262f;
+  border-color: var(--accent);
+}
+
+.raster.verlenging {
+  grid-template-columns: repeat(auto-fit, minmax(104px, 1fr));
+  margin-top: 0.6rem;
+}
+
+.punt.breed {
+  font-size: 1.15rem;
+}
+
+.klap-open {
+  justify-self: start;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  min-height: 48px;
+  margin-top: 0.65rem;
+  padding: 0 1rem 0 0.75rem;
+  color: var(--tekst-zacht);
+  font-size: 0.95rem;
+}
+
+.klap-open:hover {
+  color: var(--tekst);
+  border-color: #39414d;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .duo,
+  .punt {
+    transition: none;
+  }
+}

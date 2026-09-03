@@ -1,8 +1,21 @@
 :host {
   display: block;
-  max-width: 900px;
+  max-width: 1100px;
   margin: 0 auto;
   padding: 1rem 1rem 3rem;
+}
+
+.bar-titel h1 {
+  margin: 0;
+  font-size: 1.5rem;
+  letter-spacing: -0.02em;
+}
+
+.bar-acties {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  justify-content: flex-end;
 }
 
 .bar {
@@ -24,7 +37,7 @@
 
 .tabs {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(2, 1fr);
   gap: 0.5rem;
   margin-bottom: 1rem;
 }
@@ -327,4 +340,154 @@ button.groot {
   border-radius: var(--straal);
   background: rgb(245 165 36 / 0.12);
   color: var(--accent);
+}
+
+/*
+ * De twee bestemmingen waarvoor spelers zelf langskomen. Ze staan onder het
+ * alfabet omdat dat het leespad is: een rechtopstaand iemand aan een tafel kijkt
+ * daar, niet in de rechterbovenhoek. De ondertitel doet dubbel werk — hij zegt
+ * wat er achter zit én hoe ver de avond staat, dus de losse voortgangsregel die
+ * hier eerst stond is niet meer nodig.
+ */
+.bestemmingen {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 0.75rem;
+  margin-top: 1.75rem;
+}
+
+.bestemming {
+  display: grid;
+  gap: 0.2rem;
+  min-height: 82px;
+  padding: 0.85rem 1.25rem;
+  text-align: left;
+  transition:
+    background 140ms ease-out,
+    border-color 140ms ease-out;
+}
+
+.bestemming:not(:disabled):hover {
+  background: #20252e;
+  border-color: var(--accent);
+}
+
+.bestemming-titel {
+  font-size: 1.15rem;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+
+.bestemming-onder {
+  color: var(--tekst-zacht);
+  font-size: 0.92rem;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Beheer is voor één persoon, één keer per avond: geen knopgewicht. */
+.bar-acties .stil {
+  min-height: 44px;
+  padding: 0 0.85rem;
+  border-color: transparent;
+  background: none;
+  color: var(--tekst-zacht);
+  font-size: 0.92rem;
+}
+
+.bar-acties .stil:hover {
+  border-color: var(--paneel-rand);
+  color: var(--tekst);
+}
+
+/*
+ * De afwerklijst in Beheer: één regel per wedstrijd, wat nog geen score heeft
+ * bovenaan. Bij twaalf wedstrijden past dat op één schermvulling — een lijst om
+ * te lezen, niet om in te vullen.
+ */
+.afwerklijst {
+  display: grid;
+  gap: 0.3rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.afwerklijst li {
+  display: flex;
+  align-items: center;
+  gap: 0.9rem;
+  min-height: 46px;
+  padding: 0.35rem 0.9rem;
+  border: 1px solid var(--paneel-rand);
+  border-radius: 10px;
+  flex-wrap: wrap;
+  opacity: 0.7;
+}
+
+.afwerklijst li.open {
+  border-color: var(--accent);
+  background: rgb(245 165 36 / 0.07);
+  opacity: 1;
+}
+
+.regel-nr {
+  flex: none;
+  width: 4.5rem;
+  color: var(--tekst-zacht);
+  font-size: 0.8rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.regel-wie {
+  min-width: 0;
+}
+
+.regel-stand,
+.regel-open {
+  margin-left: auto;
+  font-size: 0.95rem;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
+.regel-stand {
+  color: var(--tekst-zacht);
+}
+
+.regel-open {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  color: var(--accent);
+  font-weight: 600;
+}
+
+.regel-open .stip {
+  width: 9px;
+  height: 9px;
+  flex: none;
+  border-radius: 50%;
+  background: var(--accent);
+}
+
+/* Afmelden hoort bij beheer, niet bij een tablet waar spelers aan staan. */
+.afmelden {
+  justify-self: start;
+  margin-top: 0.5rem;
+  color: var(--tekst-zacht);
+}
+
+.afmelden:hover {
+  color: var(--tekst);
+}
+
+.tag.drawn-out {
+  padding: 0.2rem 0.55rem;
+  border: 1px solid var(--accent);
+  border-radius: 999px;
+  color: var(--accent);
+  font-size: 0.8rem;
+  white-space: nowrap;
 }

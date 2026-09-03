@@ -74,6 +74,17 @@ class Game extends Model
         return [$this->player1_id, $this->player2_id, $this->player3_id, $this->player4_id];
     }
 
+    /**
+     * Staat er al één cijfer in? Dan zegt updated_at iets over het bewaren van
+     * een score; bij een pas aangemaakte game zegt het enkel wanneer de loting was.
+     */
+    protected function hasScore(): Attribute
+    {
+        return Attribute::get(fn (): bool => $this->set1_home !== null || $this->set1_away !== null
+            || $this->set2_home !== null || $this->set2_away !== null
+            || $this->set3_home !== null || $this->set3_away !== null);
+    }
+
     /** Een game telt pas mee wanneer alle drie de sets ingevuld zijn. */
     protected function isComplete(): Attribute
     {

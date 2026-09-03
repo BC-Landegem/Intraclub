@@ -1,20 +1,40 @@
 import { Component, computed, inject, signal } from '@angular/core';
 import { Router } from '@angular/router';
 import { Auth } from '../../core/auth';
-import { PlayerSummary, RoundPlayer } from '../../core/models';
+import { Game, PlayerSummary, RoundPlayer } from '../../core/models';
 import { ZaalApi } from '../../core/zaal-api';
 import { AddPlayer } from '../add-player/add-player';
 import { ComposeMatch } from '../compose-match/compose-match';
 import { Standings } from '../standings/standings';
-import { MatchScores } from './match-scores/match-scores';
+import { MatchRecap, RecapMode } from './match-recap/match-recap';
+import { PlayerFinder } from './player-finder/player-finder';
+import { Results } from './results/results';
+import { ScoreEntry } from './score-entry/score-entry';
 
-type Tab = 'attendance' | 'matches' | 'standings';
+/** Waar de tablet op staat. `kiosk` is de rusttoestand: "wie heeft er gespeeld?". */
+type View = 'kiosk' | 'results' | 'standings' | 'admin';
+
+/**
+ * De stap binnen de kiosk. `finder` is de rusttoestand; de andere twee horen bij
+ * één wedstrijd en dragen zelf waar "Klaar" naartoe terugkeert.
+ */
+type Step =
+  | { kind: 'finder' }
+  | { kind: 'entry'; me: PlayerSummary; gameId: number }
+  | { kind: 'recap'; me: PlayerSummary | null; gameId: number; mode: RecapMode; back: View };
+
+/** Na zoveel stilte staat de tablet weer op de beginvraag. */
+const IDLE_MS = 120_000;
 
 @Component({
   selector: 'app-zaal',
-  imports: [AddPlayer, ComposeMatch, MatchScores, Standings],
+  imports: [AddPlayer, ComposeMatch, MatchRecap, PlayerFinder, Results, ScoreEntry, Standings],
   templateUrl: './zaal.html',
   styleUrl: './zaal.css',
+  host: {
+    '(pointerdown)': 'keepAwake()',
+    '(keydown)': 'keepAwake()',
+  },
 })
 export class Zaal {
   private readonly auth = inject(Auth);
@@ -22,7 +42,10 @@ export class Zaal {
 
   protected readonly api = inject(ZaalApi);
 
-  protected readonly tab = signal<Tab>('attendance');
+  protected readonly view = signal<View>('kiosk');
+  protected readonly step = signal<Step>({ kind: 'finder' });
+
+  protected readonly adminTab = signal<'attendance' | 'games'>('attendance');
   protected readonly showAddPlayer = signal(false);
 
   /**
@@ -38,6 +61,29 @@ export class Zaal {
   /** Proposed games from the last draw that still need confirming. */
   protected readonly proposals = signal<PlayerSummary[][]>([]);
 
+  private idleTimer: ReturnType<typeof setTimeout> | undefined;
+
+  /** De stap die het scherm overneemt, of null wanneer de kiosk in rust is. */
+  protected readonly activeStep = computed(() => {
+    const step = this.step();
+
+    return step.kind === 'finder' ? null : step;
+  });
+
+  /** De wedstrijd van de actieve stap, altijd zoals de server hem nú kent. */
+  protected readonly activeGame = computed(() => {
+    const step = this.activeStep();
+
+    return step === null ? null : (this.api.games().find((game) => game.id === step.gameId) ?? null);
+  });
+
+  /** Het nummer waaronder die wedstrijd op de speeldag staat, 1-gebaseerd. */
+  protected readonly activeNumber = computed(() => {
+    const game = this.activeGame();
+
+    return game === null ? 0 : this.api.games().indexOf(game) + 1;
+  });
+
   protected readonly filteredPlayers = computed(() => {
     const term = this.searchTerm().trim().toLowerCase();
     const players = this.api.players();
@@ -47,9 +93,103 @@ export class Zaal {
       : players.filter((player) => player.fullName.toLowerCase().includes(term));
   });
 
+  /** De afwerklijst voor de organisator: wat nog geen score heeft, bovenaan. */
+  protected readonly progress = computed(() =>
+    this.api
+      .games()
+      .map((game, index) => ({ game, number: index + 1 }))
+      .sort((one, other) => Number(one.game.isComplete) - Number(other.game.isComplete)),
+  );
+
   constructor() {
     void this.api.loadCurrentRound();
   }
+
+  // ---------------------------------------------------------------- kioskpad
+
+  /**
+   * Iemand heeft zijn naam aangetikt. Staat de score er al, dan is dit een
+   * leesscherm; anders begint de invoer. In beide gevallen komt hij in zijn éigen
+   * wedstrijd terecht, dus die van iemand anders kan hij niet openen.
+   */
+  protected onPicked(player: RoundPlayer): void {
+    const game = this.api.games().find((item) => item.players.some((one) => one.id === player.id));
+
+    if (game === undefined) {
+      return;
+    }
+
+    this.step.set(
+      game.isComplete
+        ? { kind: 'recap', me: player, gameId: game.id, mode: 'read', back: 'kiosk' }
+        : { kind: 'entry', me: player, gameId: game.id },
+    );
+    this.keepAwake();
+  }
+
+  protected onEntryDone(): void {
+    const step = this.step();
+
+    if (step.kind === 'entry') {
+      this.step.set({
+        kind: 'recap',
+        me: step.me,
+        gameId: step.gameId,
+        mode: 'confirm',
+        back: 'kiosk',
+      });
+    }
+  }
+
+  /** Uit de uitslagen: je bekijkt een wedstrijd waar je zelf niets aan doet. */
+  protected onPeek(game: Game): void {
+    this.step.set({ kind: 'recap', me: null, gameId: game.id, mode: 'peek', back: 'results' });
+  }
+
+  protected onRecapEdit(): void {
+    const step = this.step();
+
+    if (step.kind === 'recap' && step.me !== null) {
+      this.step.set({ kind: 'entry', me: step.me, gameId: step.gameId });
+    }
+  }
+
+  /** Terug naar waar deze stap vandaan kwam. */
+  protected closeStep(): void {
+    const step = this.step();
+
+    this.view.set(step.kind === 'recap' ? step.back : 'kiosk');
+    this.step.set({ kind: 'finder' });
+  }
+
+  /** De rusttoestand: de beginvraag, niets geopend. */
+  protected goHome(): void {
+    this.step.set({ kind: 'finder' });
+    this.view.set('kiosk');
+    this.searchTerm.set('');
+  }
+
+  protected show(view: View): void {
+    this.step.set({ kind: 'finder' });
+    this.view.set(view);
+  }
+
+  /**
+   * Elke aanraking schuift de terugvalklok op. Staat de tablet al op de
+   * beginvraag, dan is er niets om naar terug te vallen en loopt er geen klok —
+   * anders zou het scherm zich om de twee minuten voor niets verversen.
+   */
+  protected keepAwake(): void {
+    clearTimeout(this.idleTimer);
+
+    if (this.view() === 'kiosk' && this.step().kind === 'finder') {
+      return;
+    }
+
+    this.idleTimer = setTimeout(() => this.goHome(), IDLE_MS);
+  }
+
+  // -------------------------------------------------------------- organisator
 
   /**
    * Checking in is the one moment in this app that is about the player, not the
@@ -81,7 +221,7 @@ export class Zaal {
 
   protected async draw(): Promise<void> {
     await this.redraw();
-    this.tab.set('matches');
+    this.adminTab.set('games');
   }
 
   /**

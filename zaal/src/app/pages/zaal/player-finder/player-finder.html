@@ -1,0 +1,67 @@
+@if (letter() === null) {
+  <h2 class="vraag">Wie heeft er gespeeld?</h2>
+  <p class="onder">Tik de eerste letter van je voornaam.</p>
+
+  <div class="alfabet">
+    @for (item of letters(); track item.initial) {
+      <button
+        type="button"
+        class="letter"
+        [class.rust]="item.settled"
+        (click)="letter.set(item.initial)"
+      >
+        {{ item.initial }}
+      </button>
+    }
+  </div>
+} @else {
+  <button type="button" class="terug" (click)="letter.set(null)">
+    <svg viewBox="0 0 24 24" class="icoon" aria-hidden="true">
+      <path d="M14.5 5.5 8 12l6.5 6.5" />
+    </svg>
+    Andere letter
+  </button>
+
+  <h2 class="vraag">Wie ben je?</h2>
+
+  <ul class="namen">
+    @for (item of named(); track item.player.id) {
+      <li>
+        <button
+          type="button"
+          class="naam"
+          [class.open]="item.state === 'open'"
+          [class.bewaard]="item.state === 'saved'"
+          [class.uitgeloot]="item.state === 'drawn'"
+          [disabled]="item.state === 'drawn'"
+          (click)="choose(item)"
+        >
+          <span class="wie">{{ item.player.fullName }}</span>
+
+          @switch (item.state) {
+            @case ('open') {
+              <span class="toestand"><span class="stip" aria-hidden="true"></span>score nog in te vullen</span>
+            }
+            @case ('saved') {
+              <span class="toestand">
+                <svg viewBox="0 0 24 24" class="icoon" aria-hidden="true">
+                  <path d="M4.5 12.5l5 5 10-11" />
+                </svg>
+                @if (item.savedAt) {
+                  bewaard om {{ item.savedAt }}
+                } @else {
+                  bewaard
+                }
+              </span>
+            }
+            @case ('drawn') {
+              <span class="toestand">uitgeloot — je speelde niet mee</span>
+            }
+          }
+        </button>
+      </li>
+    } @empty {
+      <li class="leeg">Niemand onder deze letter.</li>
+    }
+  </ul>
+}

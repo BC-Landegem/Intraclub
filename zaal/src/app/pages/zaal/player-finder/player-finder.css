@@ -1,0 +1,177 @@
+/*
+ * De vinder is het rustscherm van de zaal: hier staat de tablet als er niemand
+ * aan is. Daarom groot, kalm en zonder iets dat om aandacht vraagt.
+ */
+:host {
+  display: grid;
+  gap: 0;
+  align-content: start;
+}
+
+.vraag {
+  margin: 0;
+  font-size: clamp(1.75rem, 4.5vw, 2.4rem);
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+
+.onder {
+  margin: 0.35rem 0 0;
+  color: var(--tekst-zacht);
+  font-size: 1.05rem;
+}
+
+/* Alfabet: altijd één schermvulling, nooit een schuifbalk. */
+.alfabet {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(96px, 1fr));
+  gap: 0.75rem;
+  margin-top: 1.35rem;
+}
+
+.letter {
+  min-height: 104px;
+  padding: 0;
+  font-size: 2.4rem;
+  font-weight: 700;
+  line-height: 1;
+  transition:
+    background 140ms ease-out,
+    border-color 140ms ease-out;
+}
+
+.letter:hover {
+  background: #20252e;
+  border-color: #39414d;
+}
+
+/*
+ * Een gedoofde letter verliest haar nadruk, niet haar lichaam: ze blijft een
+ * tegel die je kan aantikken. Zo krimpt het zoekgebied zichtbaar in de loop van
+ * de avond zonder dat er iets verdwijnt waar je nog naar zou zoeken.
+ */
+.letter.rust {
+  background: #13161b;
+  border-color: #20252d;
+  color: #5c6674;
+}
+
+.letter.rust:hover {
+  background: #181c22;
+  color: var(--tekst-zacht);
+}
+
+.terug {
+  justify-self: start;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  min-height: 48px;
+  margin-bottom: 1.1rem;
+  padding: 0 1rem 0 0.75rem;
+  color: var(--tekst-zacht);
+  font-size: 0.95rem;
+}
+
+.terug:hover {
+  color: var(--tekst);
+  border-color: #39414d;
+}
+
+.icoon {
+  width: 18px;
+  height: 18px;
+  flex: none;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2.4;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.namen {
+  display: grid;
+  gap: 0.6rem;
+  margin: 1.1rem 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.naam {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  width: 100%;
+  min-height: 84px;
+  padding: 0.75rem 1.25rem;
+  text-align: left;
+  transition:
+    background 140ms ease-out,
+    border-color 140ms ease-out;
+}
+
+.naam:not(:disabled):hover {
+  background: #20252e;
+  border-color: var(--accent);
+}
+
+.wie {
+  font-size: 1.4rem;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+
+.toestand {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  margin-left: auto;
+  font-size: 0.95rem;
+  white-space: nowrap;
+}
+
+.naam.open .toestand {
+  color: var(--accent);
+  font-weight: 600;
+}
+
+.naam.bewaard {
+  background: transparent;
+}
+
+.naam.bewaard .toestand {
+  color: #4ade80;
+}
+
+/*
+ * Uitgeloot is geen fout en geen wachtstand — er is voor deze speler vanavond
+ * niets in te vullen. De tegel zegt dat en doet verder niets.
+ */
+.naam.uitgeloot {
+  background: transparent;
+  border-style: dashed;
+}
+
+.naam.uitgeloot:disabled {
+  opacity: 1;
+  color: var(--tekst-zacht);
+}
+
+.stip {
+  width: 10px;
+  height: 10px;
+  flex: none;
+  border-radius: 50%;
+  background: var(--accent);
+}
+
+.leeg {
+  color: var(--tekst-zacht);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .letter,
+  .naam {
+    transition: none;
+  }
+}

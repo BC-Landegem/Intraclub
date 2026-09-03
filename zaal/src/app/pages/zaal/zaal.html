@@ -1,13 +1,22 @@
 <header class="bar">
-  <div>
-    <h1>Intraclub</h1>
+  <div class="bar-titel">
+    <h1>{{ view() === 'admin' ? 'Beheer' : 'Intraclub' }}</h1>
     @if (api.round(); as round) {
       <p class="subtitle">Speeldag {{ round.number }} · {{ round.date }}</p>
     } @else {
       <p class="subtitle">Geen speeldag gevonden</p>
     }
   </div>
-  <button type="button" (click)="signOut()">Afmelden</button>
+
+  @if (api.round() !== null) {
+    <nav class="bar-acties" aria-label="Schermen">
+      @if (activeStep() !== null || view() !== 'kiosk') {
+        <button type="button" (click)="goHome()">Terug naar de zaal</button>
+      } @else {
+        <button type="button" class="stil" (click)="show('admin')">Beheer</button>
+      }
+    </nav>
+  }
 </header>
 
 @if (api.errorMessage(); as message) {
@@ -39,158 +48,294 @@
       Alles wat je hier invult, hoort bij die dag.
     </p>
   }
-  <nav class="tabs">
-    <button type="button" [class.active]="tab() === 'attendance'" (click)="tab.set('attendance')">
-      Aanwezig <span class="teller" [class.pulse]="countPulse()">{{ api.presentCount() }}</span>
-    </button>
-    <button type="button" [class.active]="tab() === 'matches'" (click)="tab.set('matches')">
-      Matches ({{ api.games().length }})
-    </button>
-    <button type="button" [class.active]="tab() === 'standings'" (click)="tab.set('standings')">
-      Tussenstand
-    </button>
-  </nav>
 
-  @if (tab() === 'attendance') {
+  <!--
+    Eén wedstrijd neemt het scherm over, of de tablet staat in rust. Zo staat er
+    nooit meer dan één invulbaar formulier open: precies de reden dat je niet meer
+    per ongeluk in de wedstrijd van iemand anders kan tikken.
+  -->
+  @if (activeStep(); as stap) {
     <section class="content">
-      <div class="search-row">
-        <label class="visually-hidden" for="player-search">Zoek een speler</label>
-        <input
-          id="player-search"
-          type="search"
-          placeholder="Zoek een speler…"
-          [value]="searchTerm()"
-          (input)="searchTerm.set($any($event.target).value)"
-        />
-        <button type="button" (click)="showAddPlayer.set(true)">+ Nieuwe speler</button>
-      </div>
+      @if (activeGame(); as game) {
+        @if (stap.kind === 'entry') {
+          <app-score-entry
+            [game]="game"
+            [me]="stap.me"
+            [target]="api.round()!.pointsPerSet"
+            [cap]="api.round()!.maxScore"
+            (done)="onEntryDone()"
+            (leave)="goHome()"
+          />
+        } @else {
+          <app-match-recap
+            [game]="game"
+            [me]="stap.me"
+            [mode]="stap.mode"
+            [number]="activeNumber()"
+            [target]="api.round()!.pointsPerSet"
+            (done)="closeStep()"
+            (edit)="onRecapEdit()"
+          />
+        }
+      } @else {
+        <p class="paneel notice">Deze wedstrijd bestaat niet meer.</p>
+      }
+    </section>
+  } @else {
+    @switch (view()) {
+      @case ('kiosk') {
+        <section class="content">
+          @if (api.games().length === 0) {
+            <div class="paneel start">
+              <h2>De loting moet nog gebeuren</h2>
+              <p class="subtitle">
+                Zodra de wedstrijden verdeeld zijn, kan je hier je score invullen. Duid de
+                aanwezigen aan en loot via <strong>Beheer</strong>.
+              </p>
+              <button type="button" class="primair groot" (click)="show('admin')">
+                Naar Beheer
+              </button>
+            </div>
+          } @else {
+            <app-player-finder
+              [players]="api.presentPlayers()"
+              [games]="api.games()"
+              (picked)="onPicked($event)"
+            />
 
-      <ul class="player-list">
-        @for (player of filteredPlayers(); track player.id) {
-          <li>
+          }
+
+          <!--
+            De twee bestemmingen waarvoor spelers zelf langskomen, in het leespad
+            onder het alfabet in plaats van als ghost-knop in de rechterbovenhoek.
+            Ze vullen de ruimte die daar toch al leeg stond.
+          -->
+          <nav class="bestemmingen" aria-label="Bekijken">
             <button
               type="button"
-              class="player-button"
-              [class.present]="player.present"
-              [disabled]="api.isBusy()"
-              (click)="checkIn($event, player)"
+              class="bestemming"
+              [disabled]="api.games().length === 0"
+              (click)="show('results')"
             >
-              <span class="sweep" aria-hidden="true"></span>
-              <span class="name"
-                >{{ player.fullName }} <span class="bonus">({{ player.bonusPoints }})</span></span
-              >
-              @if (player.drawnOut) {
-                <span class="tag drawn-out">uitgeloot</span>
-              }
-              <span class="check" aria-hidden="true">
-                <svg viewBox="0 0 24 24">
-                  <circle cx="12" cy="12" r="10" class="ring" />
-                  <path d="M7.5 12.4l3.2 3.2 6-6.4" class="vink" />
-                </svg>
+              <span class="bestemming-titel">Uitslagen van vanavond</span>
+              <span class="bestemming-onder">
+                @if (api.games().length === 0) {
+                  nog geen wedstrijden
+                } @else if (api.gamesWithoutScore().length === 0) {
+                  alle {{ api.games().length }} wedstrijden binnen
+                } @else {
+                  {{ api.games().length - api.gamesWithoutScore().length }} van de
+                  {{ api.games().length }} wedstrijden binnen
+                }
               </span>
             </button>
-          </li>
-        } @empty {
-          <li class="empty">Geen spelers gevonden.</li>
-        }
-      </ul>
 
-      <button
-        type="button"
-        class="primair wide"
-        [disabled]="api.isBusy() || api.presentCount() < 4"
-        (click)="draw()"
-      >
-        Loten ({{ api.presentCount() }} aanwezig)
-      </button>
-    </section>
-  }
+            <button type="button" class="bestemming" (click)="show('standings')">
+              <span class="bestemming-titel">Tussenstand</span>
+              <span class="bestemming-onder">het klassement van het seizoen</span>
+            </button>
+          </nav>
+        </section>
+      }
 
-  @if (tab() === 'matches') {
-    <section class="content">
-      @if (api.drawnOut().length > 0) {
-        <div class="paneel drawn-out-block">
-          <h2>Uitgeloot — spelen deze speeldag niet mee</h2>
-          <p class="subtitle">
-            Deze speeldag telt niet mee voor hun gemiddelde. Komt er nog iemand bij? Bevestig dan
-            een match met hen, dan spelen ze alsnog mee en telt de speeldag weer.
-          </p>
-          <ul class="chips">
-            @for (player of api.drawnOut(); track player.id) {
-              <li class="chip">{{ player.fullName }} ({{ player.bonusPoints }})</li>
+      @case ('results') {
+        <section class="content">
+          <app-results [games]="api.games()" (peek)="onPeek($event)" />
+        </section>
+      }
+
+      @case ('standings') {
+        <section class="content">
+          <app-standings />
+        </section>
+      }
+
+      @case ('admin') {
+        <section class="content">
+          <nav class="tabs" aria-label="Beheer">
+            <button
+              type="button"
+              [class.active]="adminTab() === 'attendance'"
+              (click)="adminTab.set('attendance')"
+            >
+              Aanwezig
+              <span class="teller" [class.pulse]="countPulse()">{{ api.presentCount() }}</span>
+            </button>
+            <button
+              type="button"
+              [class.active]="adminTab() === 'games'"
+              (click)="adminTab.set('games')"
+            >
+              Wedstrijden ({{ api.games().length }})
+            </button>
+          </nav>
+
+          @if (adminTab() === 'attendance') {
+            <div class="search-row">
+              <label class="visually-hidden" for="player-search">Zoek een speler</label>
+              <input
+                id="player-search"
+                type="search"
+                placeholder="Zoek een speler…"
+                [value]="searchTerm()"
+                (input)="searchTerm.set($any($event.target).value)"
+              />
+              <button type="button" (click)="showAddPlayer.set(true)">+ Nieuwe speler</button>
+            </div>
+
+            <ul class="player-list">
+              @for (player of filteredPlayers(); track player.id) {
+                <li>
+                  <button
+                    type="button"
+                    class="player-button"
+                    [class.present]="player.present"
+                    [disabled]="api.isBusy()"
+                    (click)="checkIn($event, player)"
+                  >
+                    <span class="sweep" aria-hidden="true"></span>
+                    <span class="name"
+                      >{{ player.fullName }}
+                      <span class="bonus">({{ player.bonusPoints }})</span></span
+                    >
+                    @if (player.drawnOut) {
+                      <span class="tag drawn-out">uitgeloot</span>
+                    }
+                    <span class="check" aria-hidden="true">
+                      <svg viewBox="0 0 24 24">
+                        <circle cx="12" cy="12" r="10" class="ring" />
+                        <path d="M7.5 12.4l3.2 3.2 6-6.4" class="vink" />
+                      </svg>
+                    </span>
+                  </button>
+                </li>
+              } @empty {
+                <li class="empty">Geen spelers gevonden.</li>
+              }
+            </ul>
+
+            <button
+              type="button"
+              class="primair wide"
+              [disabled]="api.isBusy() || api.presentCount() < 4"
+              (click)="draw()"
+            >
+              Loten ({{ api.presentCount() }} aanwezig)
+            </button>
+
+            <button type="button" class="afmelden" (click)="signOut()">Afmelden</button>
+          } @else {
+            @if (api.drawnOut().length > 0) {
+              <div class="paneel drawn-out-block">
+                <h2>Uitgeloot — spelen deze speeldag niet mee</h2>
+                <p class="subtitle">
+                  Deze speeldag telt niet mee voor hun gemiddelde. Komt er nog iemand bij? Bevestig
+                  dan een match met hen, dan spelen ze alsnog mee en telt de speeldag weer.
+                </p>
+                <ul class="chips">
+                  @for (player of api.drawnOut(); track player.id) {
+                    <li class="chip">{{ player.fullName }} ({{ player.bonusPoints }})</li>
+                  }
+                </ul>
+                <button type="button" class="primair groot vullen" (click)="startFillingDrawnOut()">
+                  Match aanvullen
+                </button>
+              </div>
             }
-          </ul>
-          <button type="button" class="primair groot vullen" (click)="startFillingDrawnOut()">
-            Match aanvullen
-          </button>
-        </div>
-      }
 
-      @if (proposals().length > 0) {
-        <div class="paneel">
-          <div class="block-header">
-            <h2>Voorgestelde matches</h2>
-            <div class="voorstel-knoppen">
-              <button type="button" [disabled]="api.isBusy()" (click)="redraw()">
-                Opnieuw loten
-              </button>
-              <button
-                type="button"
-                class="primair"
-                [disabled]="api.isBusy()"
-                (click)="confirmAllProposals()"
-              >
-                Alle bevestigen
-              </button>
-            </div>
-          </div>
-          <p class="subtitle herloot-uitleg">
-            Nog niets bevestigd? Dan kan je gerust opnieuw loten. Matches die je al bevestigde
-            blijven staan; enkel wie nog wacht wordt opnieuw ingedeeld.
-          </p>
+            @if (proposals().length > 0) {
+              <div class="paneel">
+                <div class="block-header">
+                  <h2>Voorgestelde matches</h2>
+                  <div class="voorstel-knoppen">
+                    <button type="button" [disabled]="api.isBusy()" (click)="redraw()">
+                      Opnieuw loten
+                    </button>
+                    <button
+                      type="button"
+                      class="primair"
+                      [disabled]="api.isBusy()"
+                      (click)="confirmAllProposals()"
+                    >
+                      Alle bevestigen
+                    </button>
+                  </div>
+                </div>
+                <p class="subtitle herloot-uitleg">
+                  Nog niets bevestigd? Dan kan je gerust opnieuw loten. Matches die je al bevestigde
+                  blijven staan; enkel wie nog wacht wordt opnieuw ingedeeld.
+                </p>
 
-          @for (proposal of proposals(); track $index) {
-            <div class="proposal">
-              <ol class="foursome">
-                @for (player of proposal; track player.id) {
-                  <li>
-                    {{ player.fullName }} <span class="bonus">({{ player.bonusPoints }})</span>
-                  </li>
+                @for (proposal of proposals(); track $index) {
+                  <div class="proposal">
+                    <ol class="foursome">
+                      @for (player of proposal; track player.id) {
+                        <li>
+                          {{ player.fullName }}
+                          <span class="bonus">({{ player.bonusPoints }})</span>
+                        </li>
+                      }
+                    </ol>
+                    <button type="button" [disabled]="api.isBusy()" (click)="confirmProposal($index)">
+                      Bevestig
+                    </button>
+                  </div>
                 }
-              </ol>
-              <button type="button" [disabled]="api.isBusy()" (click)="confirmProposal($index)">
-                Bevestig
-              </button>
-            </div>
+              </div>
+            }
+
+            <!--
+              De afwerklijst. Geen formulieren: één regel per wedstrijd, wat nog geen
+              score heeft bovenaan. Dit is waar de organisator ziet wie hij nog moet
+              aanspreken — invullen doen de spelers zelf, bij hun eigen naam.
+            -->
+            @if (api.games().length > 0) {
+              <div class="paneel">
+                <div class="block-header">
+                  <h2>
+                    @if (api.gamesWithoutScore().length === 0) {
+                      Alle {{ api.games().length }} wedstrijden hebben een score
+                    } @else {
+                      {{ api.gamesWithoutScore().length }} van de {{ api.games().length }}
+                      wedstrijden hebben nog geen score
+                    }
+                  </h2>
+                  <button type="button" (click)="startFreeMatch()">+ Match toevoegen</button>
+                </div>
+
+                <ul class="afwerklijst">
+                  @for (item of progress(); track item.game.id) {
+                    <li [class.open]="!item.game.isComplete">
+                      <span class="regel-nr">Nr. {{ item.number }}</span>
+                      <span class="regel-wie">
+                        @for (player of item.game.players; track player.id) {
+                          {{ api.nameOf(player) }}@if (!$last) {,&nbsp;}
+                        }
+                      </span>
+                      @if (item.game.isComplete) {
+                        <span class="regel-stand">
+                          @for (set of item.game.sets; track set.number) {
+                            {{ set.home.score }}–{{ set.away.score }}@if (!$last) { · }
+                          }
+                        </span>
+                      } @else {
+                        <span class="regel-open">
+                          <span class="stip" aria-hidden="true"></span>geen score
+                        </span>
+                      }
+                    </li>
+                  }
+                </ul>
+              </div>
+            } @else {
+              <p class="paneel notice">
+                Nog geen matches. Duid eerst de aanwezigen aan en druk op “Loten”.
+              </p>
+            }
           }
-        </div>
+        </section>
       }
-
-      <div class="acties">
-        <button type="button" (click)="startFreeMatch()">+ Match toevoegen</button>
-      </div>
-
-      @for (game of api.games(); track game.id) {
-        <app-match-scores
-          [game]="game"
-          [index]="$index"
-          [target]="api.round()!.pointsPerSet"
-          [cap]="api.round()!.maxScore"
-        />
-      } @empty {
-        @if (proposals().length === 0) {
-          <p class="paneel notice">
-            Nog geen matches. Duid eerst de aanwezigen aan en druk op “Loten”.
-          </p>
-        }
-      }
-    </section>
-  }
-
-  @if (tab() === 'standings') {
-    <section class="content">
-      <app-standings />
-    </section>
+    }
   }
 }
 

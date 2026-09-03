@@ -51,6 +51,8 @@ export interface Game {
   players: PlayerSummary[];
   sets: GameSet[];
   isComplete: boolean;
+  /** Wanneer de score bewaard werd (ISO), of null zolang er niets ingevuld is. */
+  savedAt: string | null;
 }
 
 export interface RoundState {

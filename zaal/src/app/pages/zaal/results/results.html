@@ -1,0 +1,36 @@
+<header class="kop">
+  <div>
+    <h2>Uitslagen van vanavond</h2>
+    <p class="onder">Tik een wedstrijd aan voor de sets per duo.</p>
+  </div>
+  @if (openCount() === 0) {
+    <span class="alles-binnen">
+      <svg viewBox="0 0 24 24" class="icoon" aria-hidden="true">
+        <path d="M4.5 12.5l5 5 10-11" />
+      </svg>
+      Alle uitslagen zijn binnen
+    </span>
+  } @else {
+    <span class="te-gaan">Nog <strong>{{ openCount() }}</strong> te gaan</span>
+  }
+</header>
+
+<ul class="bord">
+  @for (row of rows(); track row.game.id) {
+    <li>
+      @if (row.line) {
+        <button type="button" class="vak" (click)="peek.emit(row.game)">
+          <span class="wie"><strong class="nr">Nr. {{ row.number }}</strong> · {{ row.who }}</span>
+          <span class="stand">{{ row.line }}</span>
+        </button>
+      } @else {
+        <div class="vak leeg">
+          <span class="wie"><strong class="nr">Nr. {{ row.number }}</strong> · {{ row.who }}</span>
+          <span class="stand">nog geen score</span>
+        </div>
+      }
+    </li>
+  } @empty {
+    <li class="niets">Nog geen wedstrijden. De loting moet nog gebeuren.</li>
+  }
+</ul>

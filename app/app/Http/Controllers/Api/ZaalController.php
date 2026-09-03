@@ -378,6 +378,9 @@ class ZaalController extends Controller
             'players' => array_map(fn (Player $player): array => $this->playerSummary($player), array_values($players)),
             'sets' => $sets,
             'isComplete' => $game->is_complete,
+            // Wanneer de score bewaard werd. Null zolang er niets ingevuld is: dan
+            // gaat updated_at over het aanmaken van de game, niet over een score.
+            'savedAt' => $game->has_score ? $game->updated_at?->toIso8601String() : null,
         ];
     }
 
