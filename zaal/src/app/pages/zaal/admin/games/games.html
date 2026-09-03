@@ -78,9 +78,15 @@
       @for (item of progress(); track item.game.id) {
         <li [class.open]="!item.game.isComplete">
           <span class="regel-nr">Nr. {{ item.number }}</span>
+          <!--
+            De bonuspunten staan erbij omdat de organisator ze omroept bij het
+            afkondigen van de match. Ze stonden al bij de voorstellen en bij wie
+            uitgeloot is; ze wegdenken zodra een match bevestigd is, betekende dat
+            net de lijst waaruit omgeroepen wordt ze niet had.
+          -->
           <span class="regel-wie">
             @for (player of item.game.players; track player.id) {
-              {{ api.nameOf(player) }}
+              {{ api.nameOf(player) }}<span class="bonus">&nbsp;({{ player.bonusPoints }})</span>
               @if (!$last) {
                 ,&nbsp;
               }

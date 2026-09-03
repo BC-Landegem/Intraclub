@@ -408,6 +408,40 @@ class ZaalApiTest extends TestCase
         $this->assertSame(4, $spelers[$this->players[1]->id]['bonusPoints']);
     }
 
+    public function test_elke_set_toont_de_stand_waarop_de_duos_beginnen(): void
+    {
+        $this->actingAs($this->user);
+
+        // Bonussommen die per set een ander verschil geven: 4, 5, 6 en 7.
+        $this->players[2]->update(['plays_competition' => false]);
+        $this->players[3]->update(['gender' => 'female']);
+        $this->players[4]->update(['gender' => 'female', 'plays_competition' => false]);
+
+        $playerIds = collect(range(1, 4))->map(fn (int $i): int => $this->players[$i]->id)->all();
+        $created = $this->postJson("/api/zaal/rounds/{$this->round->id}/games", ['playerIds' => $playerIds])->assertOk();
+        $gameId = $created->json('games.0.id');
+
+        // Set 1: 4+5 tegen 6+7 → verschil 4, het uitduo is zwakker.
+        $created->assertJsonPath('games.0.sets.0.home.start', -2);
+        $created->assertJsonPath('games.0.sets.0.away.start', 2);
+
+        // Set 2: 4+6 tegen 5+7 → verschil 2.
+        $created->assertJsonPath('games.0.sets.1.home.start', -1);
+        $created->assertJsonPath('games.0.sets.1.away.start', 1);
+
+        // Set 3: 4+7 tegen 5+6 → even sterk, dus beide op nul en geen uitzondering.
+        $created->assertJsonPath('games.0.sets.2.home.start', 0);
+        $created->assertJsonPath('games.0.sets.2.away.start', 0);
+
+        // Zodra een set een stand heeft, is dát de waarheid over die set: de
+        // startstand verdwijnt en de andere twee houden de hunne.
+        $this->putJson("/api/zaal/games/{$gameId}", $this->format->firstSetOnly())
+            ->assertOk()
+            ->assertJsonPath('games.0.sets.0.home.start', null)
+            ->assertJsonPath('games.0.sets.0.away.start', null)
+            ->assertJsonPath('games.0.sets.1.away.start', 1);
+    }
+
     public function test_zonder_speeldag_van_vandaag_wordt_er_geen_oude_speeldag_geopend(): void
     {
         $this->actingAs($this->user);

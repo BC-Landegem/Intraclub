@@ -4,6 +4,7 @@ namespace App\Http\Resources;
 
 use App\Models\Game;
 use App\Models\Player;
+use App\Services\Handicap;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
@@ -57,14 +58,18 @@ class GameResource extends JsonResource
             $away = $this->{"set{$number}_away"};
             $isPlayed = $home !== null && $away !== null;
 
+            $homeBonus = $this->bonus($players, $homeSlots);
+            $awayBonus = $this->bonus($players, $awaySlots);
+            $start = Handicap::between($homeBonus, $awayBonus);
+
             $sets[] = [
                 'number' => $number,
                 'is_played' => $isPlayed,
                 // Gelijkspel telt als winst voor het uitduo: zo rekende de legacy-API
                 // en zo staan de gemiddeldes in de databank. Zie GameStatistics.
                 'winner' => $isPlayed ? ((int) $home > (int) $away ? 'home' : 'away') : null,
-                'home' => $this->side($players, $homeSlots, $home),
-                'away' => $this->side($players, $awaySlots, $away),
+                'home' => $this->side($players, $homeSlots, $home, $homeBonus, $isPlayed ? null : $start->home),
+                'away' => $this->side($players, $awaySlots, $away, $awayBonus, $isPlayed ? null : $start->away),
             ];
         }
 
@@ -76,12 +81,25 @@ class GameResource extends JsonResource
      * @param  array<int, int>  $slots
      * @return array<string, mixed>
      */
-    private function side(array $players, array $slots, ?int $score): array
+    private function side(array $players, array $slots, ?int $score, int $bonus, ?int $start): array
     {
         return [
             'player_ids' => array_map(fn (int $slot): int => $players[$slot]->id, $slots),
             'score' => $score === null ? null : (int) $score,
-            'bonus' => array_sum(array_map(fn (int $slot): int => $players[$slot]->bonus_points, $slots)),
+            'bonus' => $bonus,
+            // De stand waarop dit duo begint, of null zodra de set gespeeld is: dan
+            // is er een echte stand en zou een startstand een bewering zijn over hoe
+            // die set gespeeld werd. Zie App\Services\Handicap.
+            'start' => $start,
         ];
+    }
+
+    /**
+     * @param  array<int, Player>  $players
+     * @param  array<int, int>  $slots
+     */
+    private function bonus(array $players, array $slots): int
+    {
+        return array_sum(array_map(fn (int $slot): int => $players[$slot]->bonus_points, $slots));
     }
 }

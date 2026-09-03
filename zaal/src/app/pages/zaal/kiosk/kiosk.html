@@ -24,10 +24,10 @@
   <button
     type="button"
     class="bestemming"
-    routerLink="/uitslagen"
+    routerLink="/wedstrijden"
     [disabled]="api.games().length === 0"
   >
-    <span class="bestemming-titel">Uitslagen van vanavond</span>
+    <span class="bestemming-titel">Wedstrijden van vanavond</span>
     <span class="bestemming-onder">
       @if (api.games().length === 0) {
         nog geen wedstrijden

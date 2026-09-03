@@ -39,10 +39,16 @@
           Iemand van jouw wedstrijd was je voor@if (savedAt()) { — bewaard om {{ savedAt() }}}.
         }
         @case ('peek') {
-          @if (savedAt()) {
-            Ingevuld om {{ savedAt() }}.
+          @if (isComplete()) {
+            @if (savedAt()) {
+              Ingevuld om {{ savedAt() }}.
+            } @else {
+              Ingevuld.
+            }
+          } @else if (hasAnyScore()) {
+            Nog niet af. Wat nog gespeeld moet worden, begint op de stand hieronder.
           } @else {
-            Ingevuld.
+            Nog niet gespeeld. Elke set begint op de stand hieronder.
           }
         }
       }
@@ -52,28 +58,47 @@
 
 <ol class="sets">
   @for (row of rows(); track row.number) {
-    <li>
+    <li [class.vooraf]="row.score === null && row.start !== null">
       <span class="set-nr">Set {{ row.number }}</span>
-      <span class="duos"><strong>{{ row.home }}</strong> tegen <strong>{{ row.away }}</strong></span>
-      <span class="cijfers">{{ row.homeScore }} – {{ row.awayScore }}</span>
+
+      @if (row.score; as stand) {
+        <span class="duos"><strong>{{ row.home }}</strong> tegen <strong>{{ row.away }}</strong></span>
+        <span class="cijfers">{{ stand.home }} – {{ stand.away }}</span>
+      } @else if (row.start; as start) {
+        <span class="bord">
+          <span class="kant">
+            <span class="duo">{{ row.home }}</span>
+            <span class="getal">{{ start.home }}</span>
+          </span>
+          <span class="kant">
+            <span class="duo">{{ row.away }}</span>
+            <span class="getal">{{ start.away }}</span>
+          </span>
+        </span>
+      } @else {
+        <span class="duos"><strong>{{ row.home }}</strong> tegen <strong>{{ row.away }}</strong></span>
+        <span class="cijfers wacht">nog niet ingevuld</span>
+      }
     </li>
   }
 </ol>
 
-<section class="telling">
-  <h3>Naar het klassement</h3>
-  <ul>
-    @for (item of tally(); track item.player.id) {
-      <li [class.ik]="item.isMe">
-        <span class="naam">{{ name(item.player) }}</span>
-        <span class="gemiddelde">{{ formatAverage(item.average) }}</span>
-        <span class="context">
-          {{ item.setsWon }} van 3 {{ item.setsWon === 1 ? 'set' : 'sets' }} gewonnen
-        </span>
-      </li>
-    }
-  </ul>
-</section>
+@if (isComplete()) {
+  <section class="telling">
+    <h3>Naar het klassement</h3>
+    <ul>
+      @for (item of tally(); track item.player.id) {
+        <li [class.ik]="item.isMe">
+          <span class="naam">{{ name(item.player) }}</span>
+          <span class="gemiddelde">{{ formatAverage(item.average) }}</span>
+          <span class="context">
+            {{ item.setsWon }} van 3 {{ item.setsWon === 1 ? 'set' : 'sets' }} gewonnen
+          </span>
+        </li>
+      }
+    </ul>
+  </section>
+}
 
 <footer class="acties">
   <button type="button" class="primair groot" (click)="done.emit()">Klaar</button>

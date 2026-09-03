@@ -17,6 +17,9 @@
         <div class="set-regel">
           <span class="set-nr">Set {{ row.number }}</span>
           <span class="duos"><strong>{{ row.home }}</strong> tegen <strong>{{ row.away }}</strong></span>
+          @if (row.start) {
+            <span class="startstand">begint op {{ row.start }}</span>
+          }
         </div>
 
         @if (pendingWinner() === null) {
@@ -75,6 +78,9 @@
         <div class="set-regel">
           <span class="set-nr">Set {{ row.number }}</span>
           <span class="duos">{{ row.home }} tegen {{ row.away }}</span>
+          @if (row.start) {
+            <span class="startstand">begint op {{ row.start }}</span>
+          }
         </div>
       </section>
     }

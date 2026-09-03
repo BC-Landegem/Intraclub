@@ -11,6 +11,7 @@ use App\Models\PlayerSeasonStatistic;
 use App\Models\Round;
 use App\Models\Season;
 use App\Services\DrawService;
+use App\Services\Handicap;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -358,16 +359,30 @@ class ZaalController extends Controller
 
         $sets = [];
         foreach ($pairings as $number => [$home, $away]) {
+            $homeScore = $game->{"set{$number}_home"};
+            $awayScore = $game->{"set{$number}_away"};
+
+            // De startstand hoort bij een set die nog gespeeld moet worden. Staat er
+            // een stand, dan is dát de waarheid over die set en zou een startstand
+            // een bewering zijn over hoe ze gespeeld werd. Zie App\Services\Handicap.
+            $bonus = fn (array $slots): int => array_sum(
+                array_map(fn (int $slot): int => $players[$slot]->bonus_points, $slots)
+            );
+            $isPlayed = $homeScore !== null && $awayScore !== null;
+            $start = Handicap::between($bonus($home), $bonus($away));
+
             $sets[] = [
                 'number' => $number,
                 'home' => [
                     'players' => array_map(fn (int $slot): array => $this->playerSummary($players[$slot]), $home),
-                    'score' => $game->{"set{$number}_home"},
+                    'score' => $homeScore,
+                    'start' => $isPlayed ? null : $start->home,
                     'field' => "set{$number}_home",
                 ],
                 'away' => [
                     'players' => array_map(fn (int $slot): array => $this->playerSummary($players[$slot]), $away),
-                    'score' => $game->{"set{$number}_away"},
+                    'score' => $awayScore,
+                    'start' => $isPlayed ? null : $start->away,
                     'field' => "set{$number}_away",
                 ],
             ];

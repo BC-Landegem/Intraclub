@@ -9,7 +9,7 @@ import { ZaalApi } from './core/zaal-api';
  * Waarom: de tablet in de zaal heeft een terugknop, en die hoort te doen wat hij
  * overal doet — één stap terug. Zolang de schermen toestand in een component
  * waren, sloot die knop de hele app af. Nu staat elke stap in de URL, dus werkt
- * ook een verversing: wie op /uitslagen of in een wedstrijd staat, blijft daar.
+ * ook een verversing: wie op /wedstrijden of in een wedstrijd staat, blijft daar.
  *
  * De paden zijn Nederlands, zoals alles wat in de zaal te lezen valt.
  */
@@ -47,9 +47,9 @@ export const routes: Routes = [
         title: 'Intraclub zaal',
       },
       {
-        path: 'uitslagen',
+        path: 'wedstrijden',
         loadComponent: () => import('./pages/zaal/results/results').then((m) => m.Results),
-        title: 'Uitslagen - Intraclub',
+        title: 'Wedstrijden - Intraclub',
       },
       {
         path: 'tussenstand',

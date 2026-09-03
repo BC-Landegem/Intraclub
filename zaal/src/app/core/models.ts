@@ -37,6 +37,13 @@ export interface RoundPlayer extends PlayerSummary {
 export interface SetSide {
   players: PlayerSummary[];
   score: number | null;
+  /**
+   * De stand waarop dit duo aan de set begint — het gesplitste bonusverschil, dus
+   * negatief voor het sterkere duo. Null zodra de set gespeeld is: dan is `score`
+   * de waarheid en zou een startstand een bewering zijn over hoe er gespeeld werd.
+   * De server rekent dit uit (`App\Services\Handicap`), de app rekent niets na.
+   */
+  start: number | null;
   field: string;
 }
 

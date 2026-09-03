@@ -3,13 +3,18 @@ import { RouterLink } from '@angular/router';
 import { ZaalApi } from '../../../core/zaal-api';
 
 /**
- * Alle uitslagen van vanavond, om te lezen.
+ * Het bord van de avond: wie speelt tegen wie, en wat is het geworden.
  *
- * Soms wil iemand gewoon zien hoe de rest het deed. Dat is een leesscherm, geen
- * invoerscherm: een wedstrijd zonder score staat er gestippeld bij en is bewust
- * níet aantikbaar. Zou dat wel kunnen, dan bestond er weer een invoerpad dat niet
- * bij je eigen naam begint — en dat is precies de deur waardoor het per ongeluk
- * aanpassen binnenkwam.
+ * Dit was "Uitslagen", maar het scherm lijstte altijd al álle wedstrijden — ook
+ * die zonder score. Zolang die rijen dood waren viel dat niet op; nu ze het pad
+ * zijn naar de startstanden van een wedstrijd die nog moet, is "uitslagen" het
+ * verkeerde woord voor twee derde van wat hier staat.
+ *
+ * Een lege wedstrijd is dus wél aantikbaar, en dat opent geen invoerpad: invullen
+ * vereist een speler, en een speler komt uit het `speler/:playerId`-segment van de
+ * route. Deze tegels linken naar `/wedstrijd/:id` zonder speler, en dan is er per
+ * constructie enkel te kijken. De oude, grovere regel ("leeg = niet aantikbaar")
+ * hield hetzelfde tegen met een botter mes.
  */
 @Component({
   selector: 'app-results',

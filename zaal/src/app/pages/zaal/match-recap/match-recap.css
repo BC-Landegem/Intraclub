@@ -101,6 +101,56 @@
   font-variant-numeric: tabular-nums;
 }
 
+.cijfers.wacht {
+  color: var(--tekst-zacht);
+  font-size: 1rem;
+  font-weight: 600;
+}
+
+/*
+ * Een set die nog gespeeld moet worden, in de vorm van het bord waarop ze straks
+ * bijgehouden wordt: naam links, startstand rechts, de twee duo's onder elkaar.
+ * Er staat bewust geen label bij — de kop van het scherm zegt één keer wat deze
+ * getallen zijn, en drie keer hetzelfde woord boven drie identieke blokken is ruis.
+ */
+.sets li.vooraf {
+  align-items: stretch;
+  padding: 0.7rem 1.1rem;
+}
+
+.bord {
+  display: grid;
+  gap: 0.3rem;
+  flex: 1;
+  min-width: 0;
+}
+
+.kant {
+  display: flex;
+  align-items: baseline;
+  gap: 0.9rem;
+}
+
+.duo {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 1.05rem;
+  font-weight: 600;
+}
+
+.getal {
+  flex: none;
+  min-width: 2.4ch;
+  text-align: right;
+  font-size: 1.55rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  font-variant-numeric: tabular-nums;
+}
+
 /*
  * De telling is de reden dat dit scherm meer doet dan bevestigen: hiermee kan
  * een speler natrekken of wat er bewaard is klopt met wat hij gespeeld heeft.

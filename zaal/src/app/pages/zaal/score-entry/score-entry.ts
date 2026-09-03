@@ -2,6 +2,7 @@ import { Component, computed, inject, input, output, signal } from '@angular/cor
 import { Game, GameScores, PlayerSummary } from '../../../core/models';
 import { SetOption, directWins, extensionWins } from '../../../core/score-rules';
 import { ZaalApi } from '../../../core/zaal-api';
+import { signed } from '../match-recap/match-recap';
 
 /** Eén set op het scherm: de twee duo's, de stand, en wat er nog moet gebeuren. */
 interface SetRow {
@@ -11,6 +12,13 @@ interface SetRow {
   away: string;
   /** De stand zoals de server hem kent, of null zolang de set niet ingevuld is. */
   score: { home: number; away: number } | null;
+  /**
+   * De stand waarop de twee duo's aan deze set begonnen, in dezelfde volgorde als
+   * de namen erboven. Null zodra de set ingevuld is. Hier is dit geen speelinfo
+   * meer maar een controlemiddel: klopt het cijfer dat ik intik met de set die we
+   * net gespeeld hebben?
+   */
+  start: string | null;
 }
 
 /**
@@ -63,6 +71,10 @@ export class ScoreEntry {
         set.home.score === null || set.away.score === null
           ? null
           : { home: set.home.score, away: set.away.score },
+      start:
+        set.home.start === null || set.away.start === null
+          ? null
+          : `${signed(set.home.start)} tegen ${signed(set.away.start)}`,
     })),
   );
 

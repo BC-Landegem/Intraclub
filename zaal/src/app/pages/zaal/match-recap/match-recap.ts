@@ -11,10 +11,24 @@ import { timeOfDay } from '../player-finder/player-finder';
  *   bewaard is, zodat de speler zijn invoer kan natrekken vóór hij weggaat.
  * - `read`: iemand van je viertal was je voor. Geen formulier meer, een uitslag
  *   om te lezen — met een aparte, bewuste knop om alsnog te wijzigen.
- * - `peek`: je bekijkt een wedstrijd uit de uitslagen. Dan ben je kijker, niet
- *   deelnemer: geen naam geaccentueerd en niets te wijzigen.
+ * - `peek`: je bekijkt een wedstrijd van het bord van de avond. Dan ben je kijker,
+ *   niet deelnemer: geen naam geaccentueerd en niets te wijzigen.
+ *
+ * En één toestand die daar dwars doorheen loopt: een set die nog gespeeld moet
+ * worden heeft geen cijfers maar een startstand. Dat is waarvoor de vier spelers
+ * hier vóór hun wedstrijd langskomen — de duo's roteren per set, dus hun voorsprong
+ * verschilt per set en is niet uit het hoofd te doen.
  */
 export type RecapMode = 'confirm' | 'read' | 'peek';
+
+/** Eén setregel: ofwel de stand die er staat, ofwel de stand waarop ze begint. */
+interface RecapRow {
+  number: number;
+  home: string;
+  away: string;
+  score: { home: number; away: number } | null;
+  start: { home: string; away: string } | null;
+}
 
 @Component({
   selector: 'app-match-recap',
@@ -41,13 +55,27 @@ export class MatchRecap {
 
   protected readonly savedAt = computed(() => timeOfDay(this.game().savedAt));
 
-  protected readonly rows = computed(() =>
+  /** Staan alle drie de sets er? Enkel dan valt er iets te tellen. */
+  protected readonly isComplete = computed(() => this.game().isComplete);
+
+  /** Is er al één set ingevuld? Zo niet, dan is dit een vooruitblik. */
+  protected readonly hasAnyScore = computed(() =>
+    this.game().sets.some((set) => set.home.score !== null && set.away.score !== null),
+  );
+
+  protected readonly rows = computed<RecapRow[]>(() =>
     this.game().sets.map((set) => ({
       number: set.number,
       home: set.home.players.map((player) => this.api.nameOf(player)).join(' + '),
       away: set.away.players.map((player) => this.api.nameOf(player)).join(' + '),
-      homeScore: set.home.score,
-      awayScore: set.away.score,
+      score:
+        set.home.score === null || set.away.score === null
+          ? null
+          : { home: set.home.score, away: set.away.score },
+      start:
+        set.home.start === null || set.away.start === null
+          ? null
+          : { home: signed(set.home.start), away: signed(set.away.start) },
     })),
   );
 
@@ -79,4 +107,15 @@ export class MatchRecap {
   protected formatAverage(average: number): string {
     return average.toFixed(2).replace('.', ',');
   }
+}
+
+/**
+ * Een startstand met een echt minteken (−, U+2212) in plaats van een koppelteken.
+ * Op anderhalve meter afstand is dat het verschil tussen een getal en een streepje.
+ *
+ * Staat hier en niet in `core/`, om dezelfde reden als `timeOfDay` in de
+ * player-finder: het is opmaak van één scherm, en het invulscherm leent het.
+ */
+export function signed(value: number): string {
+  return value < 0 ? `−${Math.abs(value)}` : `${value}`;
 }

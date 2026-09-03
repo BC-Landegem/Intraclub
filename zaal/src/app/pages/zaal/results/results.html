@@ -1,7 +1,10 @@
 <header class="kop">
   <div>
-    <h2>Uitslagen van vanavond</h2>
-    <p class="onder">Tik een wedstrijd aan voor de sets per duo.</p>
+    <h2>Wedstrijden van vanavond</h2>
+    <p class="onder">
+      Tik een wedstrijd aan voor de sets per duo — moet ze nog gespeeld worden, dan staat er
+      waarop elke set begint.
+    </p>
   </div>
   @if (openCount() === 0) {
     <span class="alles-binnen">
@@ -18,17 +21,10 @@
 <ul class="bord">
   @for (row of rows(); track row.game.id) {
     <li>
-      @if (row.line) {
-        <button type="button" class="vak" [routerLink]="['/wedstrijd', row.game.id]">
-          <span class="wie"><strong class="nr">Nr. {{ row.number }}</strong> · {{ row.who }}</span>
-          <span class="stand">{{ row.line }}</span>
-        </button>
-      } @else {
-        <div class="vak leeg">
-          <span class="wie"><strong class="nr">Nr. {{ row.number }}</strong> · {{ row.who }}</span>
-          <span class="stand">nog geen score</span>
-        </div>
-      }
+      <button type="button" class="vak" [class.leeg]="!row.line" [routerLink]="['/wedstrijd', row.game.id]">
+        <span class="wie"><strong class="nr">Nr. {{ row.number }}</strong> · {{ row.who }}</span>
+        <span class="stand">{{ row.line ?? 'moet nog gespeeld worden' }}</span>
+      </button>
     </li>
   } @empty {
     <li class="niets">Nog geen wedstrijden. De loting moet nog gebeuren.</li>

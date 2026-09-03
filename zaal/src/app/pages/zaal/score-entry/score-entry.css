@@ -94,6 +94,20 @@
   font-weight: 600;
 }
 
+/*
+ * De stand waarop de set begon, in dezelfde volgorde als de namen ernaast. Hier is
+ * dat geen speelinformatie meer — die stond op het bord vóór de wedstrijd — maar
+ * een controle: klopt het cijfer dat ik zo aantik met wat we gespeeld hebben?
+ * Dus zacht en klein, naast de namen, niet in de weg van het toetsenbord eronder.
+ */
+.startstand {
+  margin-left: auto;
+  flex: none;
+  color: var(--tekst-zacht);
+  font-size: 0.9rem;
+  font-variant-numeric: tabular-nums;
+}
+
 /* De set die aan de beurt is, is de enige met een accentrand. */
 .set.actief {
   border-color: var(--accent);

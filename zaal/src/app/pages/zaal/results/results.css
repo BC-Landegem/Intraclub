@@ -110,7 +110,8 @@ button.vak:hover {
   font-variant-numeric: tabular-nums;
 }
 
-/* Nog geen score: leesbaar aanwezig, maar niets om aan te tikken. */
+/* Nog geen score: gestippeld, want er valt hier iets anders te lezen dan een
+   uitslag — de stand waarop de drie sets beginnen. */
 .vak.leeg {
   background: transparent;
   border-style: dashed;
@@ -120,6 +121,10 @@ button.vak:hover {
   color: var(--accent);
   font-size: 1rem;
   font-weight: 600;
+}
+
+button.vak.leeg:hover {
+  background: #1a1f27;
 }
 
 .niets {

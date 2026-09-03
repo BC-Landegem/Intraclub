@@ -82,9 +82,9 @@ export class Match {
     void this.step('score');
   }
 
-  /** Terug naar waar dit scherm vandaan kwam: de uitslagen, of de zaal. */
+  /** Terug naar waar dit scherm vandaan kwam: het bord van de avond, of de zaal. */
   protected close(): void {
-    void this.router.navigate([this.mode() === 'peek' ? '/uitslagen' : '/'], { replaceUrl: true });
+    void this.router.navigate([this.mode() === 'peek' ? '/wedstrijden' : '/'], { replaceUrl: true });
   }
 
   private step(to: 'score' | 'bewaard'): Promise<boolean> {

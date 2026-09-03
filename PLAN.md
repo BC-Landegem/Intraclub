@@ -395,6 +395,74 @@ Dat is precies de voorwaarde die fase 11 nodig heeft: de vijf kolommen (plaats �
 - Een speler die in de zaal-app wordt toegevoegd heeft `average = null` tot de eerstvolgende herberekening, en is dus kort onzichtbaar in `?members=0`. Herberekening loopt bij score-invoer, dus binnen dezelfde avond.
 - Het archief kent geen `is_calculated`; daar blijft "laatste speeldag op datum" het criterium.
 
+### Fase 13 — Handicap per set zichtbaar (H/2-variant) ✅ (afgerond 03-09)
+
+De intraclub speelt met een handicap: het verschil tussen de bonussommen van de twee duo's is de voorsprong waarmee het zwakkere duo aan een set begint. Tot en met 2025-2026 kreeg dat duo het hele verschil (6 → 6-0). Vanaf 2026-2027 wordt dat verschil **gesplitst**.
+
+De regel, in één zin:
+
+> **Het zwakke duo begint op `ceil(H/2)`, het sterke op `-floor(H/2)`.** Dus H=6 → 3 en −3, H=7 → 4 en −3. De afstand tussen de twee blijft exact H; alleen ligt ze nu rond nul in plaats van erboven.
+
+**Waarom, en het is geen speelgevoel.** Het klassement draait op het getrimde puntengemiddelde per set (`GameStatistics::$averages` → `SeasonCalculator`), niet op gewonnen sets. Onder de oude regel gingen die gratis voorsprongpunten dus rechtstreeks in het seizoensgemiddelde van één kant. Gemeten over de 1737 sets met een stand in de productiedump:
+
+| | punten die de regel per set injecteert |
+|---|---|
+| Volledige voorsprong aan het zwakke duo | **3,02** |
+| H/2 | **0,50** (alleen nog de afronding bij oneven H) |
+
+Op een schaal waar een seizoen met basispunten 19,0 begint, is drie punten per set geen detail: wie tegen sterke tegenstanders werd uitgeloot kreeg zijn gemiddelde gratis opgetild, en wie sterk was kreeg er niets voor terug. H/2 haalt die scheefheid er bijna volledig uit.
+
+**De handicap verschilt per set, en dat is de hele reden dat dit per set moet.** De duo's roteren (1+2 vs 3+4, dan 1+3 vs 2+4, dan 1+4 vs 2+3), dus één wedstrijd heeft drie verschillende verschillen, in mogelijk drie richtingen. Van de 579 wedstrijden met een stand hebben er 449 in geen enkele set H=0.
+
+| H per set | sets | aandeel |
+|---|---|---|
+| 0 | 213 | 12,3 % |
+| 1–2 | 622 | 35,8 % |
+| 3–5 | 660 | 38,0 % |
+| 6–11 | 242 | 13,9 % |
+
+Gemiddelde H = 3,02; hoogste ooit gemeten = 11.
+
+**Negatieve setstanden hoeven niet ondersteund te worden.** Dat is de vraag waar dit op stond: als het sterke duo op −3 begint, kan de eindstand onder nul blijven, en `unsignedTinyInteger` / `min:0` / `PointsPerSet::allowsSet()` weigeren dat allemaal. Nagerekend in plaats van geraden — uit elke historische set de rally-winstkans van de sterke kant gehaald en die set opnieuw gesimuleerd onder H/2 (400 trials per set):
+
+| | verwachte negatieve setstanden op 1737 sets |
+|---|---|
+| sets tot 21 | 0,0 (0,00 %) |
+| sets tot 15 | 0,4 (0,03 %) — ±1 per 109 speeldagen |
+
+Zelfs bij sets tot 15 is dat één keer per zes seizoenen. Het scoremodel blijft dus onaangeroerd: geen migratie, geen wijziging aan `allowsSet()`, `isPlayableSet()`, `directWins()` of de validatie in `ZaalController`. Als dat ene geval ooit opduikt, tikt iemand 15–0 in.
+
+**De regel staat server-side, niet als seizoenskolom.** `points_per_set` moést een seizoensattribuut worden omdat er mee gerekend wordt — `trim()` herschaalt ermee, `startingBasePoints()` hangt ervan af. De handicapverdeling raakt géén enkele berekening: ze komt niet in `SeasonCalculator`, niet in `GameStatistics`, niet in de validatie, en bepaalt geen enkel bewaard getal. Ze bepaalt alleen hoe vier mensen hun bord zetten. Een kolom die door niets gelezen wordt behalve een label is een instelling die je later moet uitleggen. Dus één plek server-side, uitgeleverd via beide payloads: `ZaalController::gamePayload()` voor de zaal en `GameResource` voor de site, waar al `bonus` per setkant staat.
+
+**Het historische-eerlijkheidsprobleem lost zich op met één regel.** Seizoen 2025-2026 werd met de volle voorsprong gespeeld; een oude speeldag tonen met "4 om −3" zou een leugen zijn over hoe die set gespeeld is. Dat is precies waarom een seizoenskolom aantrekkelijk lijkt. Maar:
+
+> **De startstand verschijnt alleen bij een set zonder score.**
+
+Een gespeelde set toont zijn echte cijfers, een ongespeelde zijn startstand. Alle historische data is compleet, dus daar verschijnt de startstand per constructie nooit — en op het invulscherm verdwijnt hij per set zodra die ingevuld is. Geen kolom, geen `isToday`-controle, geen vlag.
+
+**Waar je het ziet, en waarom niet gewoon op het invulscherm.** Elk oppervlak van de zaal-app staat ná de wedstrijd: de naam-tik gaat bij een open wedstrijd rechtstreeks naar "Wie won set 1?", en `/uitslagen` maakt een wedstrijd zónder score bewust niet aantikbaar. De startstand moet je vóór het spelen weten, dus er is een leespad nodig. Dat bestond al bijna: `/uitslagen` lijst álle wedstrijden met de vier namen, alleen was de tik dood.
+
+- **`/uitslagen` wordt `/wedstrijden`**, tegel en kop worden "Wedstrijden van vanavond". Dat woord was al lichtjes fout — het scherm lijstte ongespeelde wedstrijden met "nog geen score" — maar zolang die rijen dood waren viel het niet op. Als ze het enige pad naar de startstanden worden, is "Uitslagen" actief misleidend.
+- **Lege wedstrijden worden aantikbaar naar `peek`.** Dat opent géén invoerpad: invullen vereist `me() !== null`, wat een `speler/:playerId`-segment in de route vereist. De vrees in het oude docblock van `Results` ging over scores, en `peek` heeft geen wijzigknop. De grove regel ("leeg = niet aantikbaar") wordt de fijne ("leeg = aantikbaar, maar alleen zonder naam in de URL").
+- **`peek` krijgt een vijfde gedaante:** scorebordvorm, duonaam links, groot getal rechts, twee regels per set. Eén regel uitleg bovenaan het scherm, géén label per set — drie keer hetzelfde woord boven drie identieke blokken is ruis. De klassementstelling verdwijnt daar, want bij een ongespeelde wedstrijd is er niets te tellen.
+- **`score-entry` krijgt de startstand op de setregel** in inline vorm ("begint op 4"). Daar is het geen speelinformatie meer maar een controlemiddel: klopt de stand die ik intik met de set die we gespeeld hebben?
+
+Bij H=0 staat er **0 en 0**, bij H=1 **1 en 0**. Altijd twee getallen op dezelfde plek: 12,3 % van de sets zou anders een uitzondering zijn die de speler ter plekke moet interpreteren.
+
+**Wat niet doorgaat.** Geen seizoenskolom voor de variant. Geen extra stop in het invulpad — de naam-tik blijft rechtstreeks naar de score gaan, want wie zijn score komt intikken kent zijn startstand al. Geen ruwe bonussommen naast de startstand (9 tegen 10 tonen náást 4 en −3 nodigt uit tot narekenen). En géén startstanden per set op het wedstrijdenscherm van de organisator: H≥10 komt in 0,6 % van de sets voor, te weinig om die lijst dichter te maken. De **bonuspunten per speler** staan daar wél bij, ook in de afwerklijst — die roept de organisator om bij het afkondigen van een match, en ze stonden al bij de voorstellen en bij wie uitgeloot is. Ze wegdenken zodra een match bevestigd was, betekende dat net de lijst waaruit omgeroepen wordt ze niet had.
+
+**Nog te doen**
+
+- [x] `App\Services\Handicap`: per set de twee startstanden uit de bonussommen, `ceil`/`floor` zoals de regel
+- [x] `start` per setkant in `ZaalController::gamePayload()` en in `GameResource::side()`, naast `score` en `bonus` — null zodra de set gespeeld is, dus de regel staat in de payload en niet in twee frontends
+- [x] `SetSide.start` in `zaal/src/app/core/models.ts`
+- [x] `/uitslagen` → `/wedstrijden` in `app.routes.ts`, `kiosk.html`, `results.html` en `Match::close()`; docblock van `Results` herschreven
+- [x] Lege wedstrijden aantikbaar in `results.html` ("moet nog gespeeld worden" in plaats van "nog geen score")
+- [x] `match-recap`: scorebordvorm voor sets zonder score, tellingsectie verborgen bij een onvolledige wedstrijd, koptekst voor het nieuwe geval. Mintekens zijn U+2212, niet het koppelteken — op anderhalve meter is dat het verschil tussen een getal en een streepje
+- [x] `score-entry`: "begint op 4 tegen −3" op de setregel van elke nog niet ingevulde set
+- [x] Tests: `HandicapTest` (splitsing, richting, afstand blijft H, injectie blijft 0 of 1), `start` in beide payloads via `ZaalApiTest` en `PublicApiTest`. Volledige suite groen: 340 tests
+- [x] Bonuspunten per speler in de afwerklijst van `admin/games`
+
 ## Lokale dev-omgeving (opgezet 26-08-2026)
 
 - PHP 8.4.24 via winget (`%LOCALAPPDATA%\Microsoft\WinGet\Packages\PHP.PHP.8.4_...`), php.ini met pdo_mysql/mbstring/intl/curl/zip/gd/opcache. Oude PHP 7.4 staat nog op `C:\tools\php74` maar is uit de PATH gehaald. **VS Code/terminal herstarten om de nieuwe PATH op te pikken.**

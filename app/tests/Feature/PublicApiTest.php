@@ -299,7 +299,12 @@ class PublicApiTest extends TestCase
             ->assertJsonPath('data.games.0.sets.1.is_played', false)
             ->assertJsonPath('data.games.0.sets.1.home.score', null)
             ->assertJsonPath('data.games.0.sets.1.winner', null)
-            ->assertJsonPath('data.games.0.is_complete', false);
+            ->assertJsonPath('data.games.0.is_complete', false)
+            // Set 2 moet nog: bonussommen 11 tegen 8, dus het thuisduo begint op 2
+            // en het uitduo op −1. Set 1 is gespeeld en heeft dus geen startstand meer.
+            ->assertJsonPath('data.games.0.sets.1.home.start', 2)
+            ->assertJsonPath('data.games.0.sets.1.away.start', -1)
+            ->assertJsonPath('data.games.0.sets.0.home.start', null);
 
         $this->assertSame($game->id, $this->getJson("/api/rounds/{$round->id}")->json('data.games.0.id'));
     }
