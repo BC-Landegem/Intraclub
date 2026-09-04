@@ -31,7 +31,7 @@ export class AttendanceList {
    * Wat er staat als er geen tegels zijn. Het scherm dat de namen aanlevert weet
    * waaróm de lijst leeg is — een zoekterm, een filter — en deze component niet.
    */
-  readonly leeg = input('Geen spelers gevonden.');
+  readonly leeg = input('Niemand onder deze letter.');
 
   /** Iemand heeft zichzelf zojuist áán gezet; afvinken meldt niets. */
   readonly checkedIn = output<RoundPlayer>();

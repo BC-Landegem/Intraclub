@@ -33,7 +33,7 @@ export const routes: Routes = [
   {
     path: 'login',
     loadComponent: () => import('./pages/login/login').then((m) => m.Login),
-    title: 'Aanmelden - Intraclub',
+    title: 'Aanmelden · Intraclub',
   },
   {
     path: '',
@@ -49,12 +49,12 @@ export const routes: Routes = [
       {
         path: 'wedstrijden',
         loadComponent: () => import('./pages/zaal/results/results').then((m) => m.Results),
-        title: 'Wedstrijden - Intraclub',
+        title: 'Wedstrijden · Intraclub',
       },
       {
         path: 'tussenstand',
         loadComponent: () => import('./pages/standings/standings').then((m) => m.Standings),
-        title: 'Tussenstand - Intraclub',
+        title: 'Tussenstand · Intraclub',
       },
 
       /*
@@ -72,37 +72,37 @@ export const routes: Routes = [
         path: 'wedstrijd/:gameId',
         loadComponent: matchScreen,
         data: { mode: 'recap' },
-        title: 'Wedstrijd - Intraclub',
+        title: 'Wedstrijd · Intraclub',
       },
       {
         path: 'wedstrijd/:gameId/score',
         loadComponent: matchScreen,
         data: { mode: 'entry' },
-        title: 'Score invullen - Intraclub',
+        title: 'Score invullen · Intraclub',
       },
       {
         path: 'wedstrijd/:gameId/bewaard',
         loadComponent: matchScreen,
         data: { mode: 'confirm' },
-        title: 'Bewaard - Intraclub',
+        title: 'Bewaard · Intraclub',
       },
       {
         path: 'wedstrijd/:gameId/speler/:playerId',
         loadComponent: matchScreen,
         data: { mode: 'recap' },
-        title: 'Wedstrijd - Intraclub',
+        title: 'Wedstrijd · Intraclub',
       },
       {
         path: 'wedstrijd/:gameId/speler/:playerId/score',
         loadComponent: matchScreen,
         data: { mode: 'entry' },
-        title: 'Score invullen - Intraclub',
+        title: 'Score invullen · Intraclub',
       },
       {
         path: 'wedstrijd/:gameId/speler/:playerId/bewaard',
         loadComponent: matchScreen,
         data: { mode: 'confirm' },
-        title: 'Bewaard - Intraclub',
+        title: 'Bewaard · Intraclub',
       },
 
       /*
@@ -119,7 +119,7 @@ export const routes: Routes = [
             path: 'aanwezig',
             loadComponent: () =>
               import('./pages/zaal/organisator/attendance/attendance').then((m) => m.Attendance),
-            title: 'Aanwezigheid - Intraclub',
+            title: 'Aanwezigheid · Intraclub',
             children: [
               {
                 path: 'nieuwe-speler',
@@ -132,7 +132,7 @@ export const routes: Routes = [
             path: 'wedstrijden',
             loadComponent: () =>
               import('./pages/zaal/organisator/games/games').then((m) => m.Games),
-            title: 'Wedstrijden - Intraclub',
+            title: 'Wedstrijden · Intraclub',
             children: [
               { path: 'aanvullen', loadComponent: composeScreen, data: { filling: true } },
               { path: 'toevoegen', loadComponent: composeScreen },

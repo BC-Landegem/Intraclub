@@ -32,7 +32,7 @@
   @if (errorMessage()) {
     <p class="foutmelding">{{ errorMessage() }}</p>
   } @else if (loading()) {
-    <p class="melding">Tussenstand wordt geladen…</p>
+    <p class="melding">De stand komt eraan…</p>
   } @else {
     <ol class="lijst">
       @for (entry of visibleEntries(); track entry.id) {
@@ -66,7 +66,7 @@
           <span class="gemiddelde">{{ formatAverage(entry.average) }}</span>
         </li>
       } @empty {
-        <li class="melding">Geen speler gevonden.</li>
+        <li class="melding">Niemand met deze naam.</li>
       }
     </ol>
   }

@@ -2,8 +2,8 @@
   <div class="paneel drawn-out-block">
     <h2>Uitgeloot — spelen deze speeldag niet mee</h2>
     <p class="subtitle">
-      Deze speeldag telt niet mee voor hun gemiddelde. Komt er nog iemand bij? Bevestig dan een
-      match met hen, dan spelen ze alsnog mee en telt de speeldag weer.
+      Voor hen telt deze speeldag niet mee. Komt er nog volk toe, vul dan een match met hen aan —
+      dan spelen ze mee en telt de dag alsnog.
     </p>
     <ul class="chips">
       @for (player of api.drawnOut(); track player.id) {
@@ -19,7 +19,7 @@
 @if (api.pendingGames().length > 0) {
   <div class="paneel">
     <div class="block-header">
-      <h2>Voorgestelde matches</h2>
+      <h2>Nog te bevestigen</h2>
       <div class="voorstel-knoppen">
         <button type="button" [disabled]="api.isBusy()" (click)="redraw()">Opnieuw loten</button>
         <button
@@ -33,8 +33,8 @@
       </div>
     </div>
     <p class="subtitle herloot-uitleg">
-      Nog niets bevestigd? Dan kan je gerust opnieuw loten. Matches die je al bevestigde blijven
-      staan; enkel wie nog wacht wordt opnieuw ingedeeld.
+      Opnieuw loten mag altijd: wat je al bevestigde blijft staan, alleen wie hier nog wacht wordt
+      herverdeeld.
     </p>
 
     @for (proposal of api.pendingGames(); track $index) {
@@ -69,10 +69,10 @@
     <div class="block-header">
       <h2>
         @if (api.gamesWithoutScore().length === 0) {
-          Alle {{ api.games().length }} wedstrijden hebben een score
+          Alle {{ api.games().length }} uitslagen zijn binnen
         } @else {
           {{ api.gamesWithoutScore().length }} van de {{ api.games().length }}
-          wedstrijden hebben nog geen score
+          uitslagen zijn nog niet binnen
         }
       </h2>
       <button type="button" routerLink="toevoegen">+ Match toevoegen</button>
@@ -108,7 +108,7 @@
               </span>
             } @else {
               <span class="regel-open">
-                <span class="stip" aria-hidden="true"></span>geen score
+                <span class="stip" aria-hidden="true"></span>nog niet binnen
               </span>
             }
           </button>
@@ -117,7 +117,7 @@
     </ul>
   </div>
 } @else {
-  <p class="paneel notice">Nog geen matches. Duid eerst de aanwezigen aan en druk op “Loten”.</p>
+  <p class="paneel notice">Nog geen matches. Duid eerst aan wie er is, dan kan je loten.</p>
 }
 
 <router-outlet />

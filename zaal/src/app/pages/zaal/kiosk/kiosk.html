@@ -33,18 +33,18 @@
     <span class="bestemming-titel">Wedstrijden van vanavond</span>
     <span class="bestemming-onder">
       @if (api.games().length === 0) {
-        nog geen wedstrijden
+        de loting moet nog gebeuren
       } @else if (api.gamesWithoutScore().length === 0) {
-        alle {{ api.games().length }} wedstrijden binnen
+        alle {{ api.games().length }} uitslagen binnen
       } @else {
         {{ api.games().length - api.gamesWithoutScore().length }} van de
-        {{ api.games().length }} wedstrijden binnen
+        {{ api.games().length }} uitslagen binnen
       }
     </span>
   </button>
 
   <button type="button" class="bestemming" routerLink="/tussenstand">
     <span class="bestemming-titel">Tussenstand</span>
-    <span class="bestemming-onder">het klassement van het seizoen</span>
+    <span class="bestemming-onder">hoe je ervoor staat dit seizoen</span>
   </button>
 </nav>

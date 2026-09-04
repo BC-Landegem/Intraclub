@@ -107,7 +107,7 @@ export class Standings {
       // /api/rounds/latestCalculated nodig; die route bestaat niet meer.
       this.ranking.set(await firstValueFrom(this.http.get<RankingResponse>('/api/rankings')));
     } catch {
-      this.errorMessage.set('De tussenstand kon niet geladen worden.');
+      this.errorMessage.set('De tussenstand kon niet geladen worden. Probeer opnieuw.');
     } finally {
       this.loading.set(false);
     }

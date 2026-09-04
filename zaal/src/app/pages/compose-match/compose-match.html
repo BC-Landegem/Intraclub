@@ -14,8 +14,8 @@
 
   @if (fixedPlayers().length > 0) {
     <p class="uitleg">
-      Invallen is vrijwillig — kies wie wil meespelen. Voor wie al speelde telt deze tweede match
-      niet mee voor zijn stand.
+      Vraag wie er nog een match wil; niemand moet. Wie al speelde, doet deze erbij: ze telt niet
+      mee voor zijn stand.
     </p>
   }
 
@@ -69,14 +69,14 @@
           </button>
         </li>
       } @empty {
-        <li class="leeg-melding">Geen aanwezige spelers meer beschikbaar.</li>
+        <li class="leeg-melding">Alle aanwezigen staan al in deze match.</li>
       }
     </ul>
   </section>
 
   <section>
     <h3>Net toegekomen</h3>
-    <p class="uitleg">Wie je hier kiest, wordt meteen aanwezig gezet.</p>
+    <p class="uitleg">Wie je hier kiest, zetten we meteen aanwezig.</p>
     <label class="visually-hidden" for="late-search">Zoek een speler</label>
     <input
       id="late-search"
@@ -96,7 +96,7 @@
           </button>
         </li>
       } @empty {
-        <li class="leeg-melding">Geen spelers gevonden.</li>
+        <li class="leeg-melding">Niemand met deze naam.</li>
       }
     </ul>
   </section>

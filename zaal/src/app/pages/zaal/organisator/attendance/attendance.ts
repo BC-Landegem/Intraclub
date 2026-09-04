@@ -109,11 +109,11 @@ export class Attendance {
 
     switch (this.filter()) {
       case 'aanwezig':
-        return zoekt ? 'Geen aanwezige speler met deze naam.' : 'Nog niemand aangeduid.';
+        return zoekt ? 'Niemand binnen met deze naam.' : 'Nog niemand binnen.';
       case 'afwezig':
-        return zoekt ? 'Geen afwezige speler met deze naam.' : 'Iedereen is aangeduid.';
+        return zoekt ? 'Geen afwezige met deze naam.' : 'Iedereen is er.';
       default:
-        return zoekt ? 'Geen speler met deze naam.' : 'Nog geen spelers.';
+        return zoekt ? 'Niemand met deze naam.' : 'Nog geen spelers.';
     }
   });
 

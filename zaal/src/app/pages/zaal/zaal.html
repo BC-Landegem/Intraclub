@@ -4,7 +4,7 @@
     @if (api.round(); as round) {
       <p class="subtitle">Speeldag {{ round.number }} · {{ round.date }}</p>
     } @else {
-      <p class="subtitle">Geen speeldag gevonden</p>
+      <p class="subtitle">Vandaag geen intraclub</p>
     }
   </div>
 
@@ -37,7 +37,7 @@
 
 @if (api.round() === null) {
   <section class="paneel start">
-    <h2>Nog geen speeldag voor vandaag</h2>
+    <h2>De speeldag moet nog beginnen</h2>
     @if (api.seasonName(); as seizoen) {
       <p class="subtitle">Seizoen {{ seizoen }}</p>
     }
@@ -47,7 +47,7 @@
     </button>
 
     @if (api.latestRound(); as vorige) {
-      <p class="subtitle">Wil je de vorige speeldag afwerken — bijvoorbeeld scores nog invullen?</p>
+      <p class="subtitle">Moeten er nog scores van de vorige keer in?</p>
       <button type="button" [disabled]="api.isBusy()" (click)="openRound(vorige.id)">
         Speeldag {{ vorige.number }} van {{ vorige.date }} openen
       </button>
@@ -56,8 +56,8 @@
 } @else {
   @if (!api.round()!.isToday) {
     <p class="waarschuwing notice">
-      Let op: dit is speeldag {{ api.round()!.number }} van {{ api.round()!.date }}, niet vandaag.
-      Alles wat je hier invult, hoort bij die dag.
+      Dit is speeldag {{ api.round()!.number }} van {{ api.round()!.date }}, niet vandaag. Alles wat
+      je hier invult, hoort bij die dag.
     </p>
   }
 
