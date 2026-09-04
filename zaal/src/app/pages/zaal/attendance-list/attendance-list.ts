@@ -2,6 +2,9 @@ import { Component, inject, input, output } from '@angular/core';
 import { RoundPlayer } from '../../../core/models';
 import { ZaalApi } from '../../../core/zaal-api';
 
+/** Veeg (460ms) plus vinkje (180ms wachten, 320ms schrijven), met wat marge. */
+const CEREMONIE_MS = 540;
+
 /**
  * Het tegelraster waarin iemand zichzelf aanwezig zet.
  *
@@ -56,6 +59,12 @@ export class AttendanceList {
     const bounds = tile.getBoundingClientRect();
     tile.style.setProperty('--tap-x', `${event.clientX - bounds.left}px`);
     tile.style.setProperty('--tap-y', `${event.clientY - bounds.top}px`);
+
+    // De ceremonie hoort bij déze tik. Zonder deze klasse hangt ze aan `.present`
+    // en speelt ze dus ook af bij elke hertekening — het scherm openen, filteren,
+    // een letter typen — en veegt het halve raster tegelijk open.
+    tile.classList.add('getikt');
+    setTimeout(() => tile.classList.remove('getikt'), CEREMONIE_MS);
 
     const wordtAanwezig = !player.present;
 

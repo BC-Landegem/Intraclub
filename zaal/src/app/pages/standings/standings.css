@@ -31,6 +31,23 @@
   color: var(--tekst-zacht);
 }
 
+/* De mededeling dat de lopende speeldag er nog niet in zit. Ze hoort gelezen te
+   worden vóór iemand zijn eigen plaats zoekt, maar mag de stand zelf niet
+   overschreeuwen: vandaar een kantlijn in het accent en geen vol vlak. */
+.loopt {
+  margin: 0;
+  padding: 0.7rem 0.9rem;
+  border-left: 3px solid var(--accent);
+  border-radius: 0 var(--straal) var(--straal) 0;
+  background: rgb(245 165 36 / 0.1);
+  color: var(--tekst-zacht);
+  line-height: 1.45;
+}
+
+.loopt strong {
+  color: var(--tekst);
+}
+
 .kop input {
   width: min(320px, 100%);
 }
@@ -191,4 +208,15 @@
     font-size: 1.15rem;
     color: var(--tekst-zacht);
   }
+}
+
+/* Verversen hoort bij de mededeling en niet bij de kop: het is het antwoord op
+   precies die ene zin, niet een knop die er altijd staat. */
+.ververs {
+  min-height: 40px;
+  margin-left: 0.5rem;
+  padding: 0 0.9rem;
+  border-radius: 999px;
+  font-size: 0.95rem;
+  vertical-align: middle;
 }

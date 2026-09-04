@@ -1,6 +1,7 @@
-import { Component, computed, inject, signal } from '@angular/core';
+import { Component, DestroyRef, computed, inject, signal } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { firstValueFrom } from 'rxjs';
+import { ZaalApi } from '../../core/zaal-api';
 
 type Category = 'general' | 'women' | 'veterans' | 'recreants';
 
@@ -47,6 +48,7 @@ interface RankingResponse {
 })
 export class Standings {
   private readonly http = inject(HttpClient);
+  private readonly zaal = inject(ZaalApi);
 
   protected readonly categories: { key: Category; label: string }[] = [
     { key: 'general', label: 'Algemeen' },
@@ -61,7 +63,35 @@ export class Standings {
   protected readonly errorMessage = signal('');
 
   private readonly ranking = signal<RankingResponse | null>(null);
-  protected readonly latestRound = computed(() => this.ranking()?.meta.round ?? null);
+
+  /** Pas wanneer de stand binnen is, valt er iets over te zeggen. */
+  protected readonly loaded = computed(() => this.ranking() !== null);
+
+  /** De laatste speeldag die in deze stand verrekend is; null = stand op basispunten. */
+  protected readonly standingsRound = computed(() => this.ranking()?.meta.round ?? null);
+
+  /**
+   * De speeldag die in de zaal openstaat maar nog niet in deze stand zit.
+   *
+   * Waarom op nummer vergeleken en niet op de `isCalculated`-vlag van de speeldag:
+   * de stand komt vers van de server, de toestand van de zaal kan van een half uur
+   * geleden zijn. Staat de stand al op speeldag 6, dan ís speeldag 6 verrekend,
+   * wat een oudere vlag ook beweert.
+   */
+  protected readonly pendingRound = computed(() => {
+    const shown = this.ranking()?.meta.round;
+    const open = this.zaal.round();
+
+    if (shown === undefined || open === null) {
+      return null;
+    }
+
+    return shown !== null && open.number <= shown.number ? null : open;
+  });
+
+  /** Wedstrijden van die speeldag die nog een score missen — wat er nog te doen is. */
+  protected readonly missingScores = computed(() => this.zaal.gamesWithoutScore().length);
+  protected readonly openGames = computed(() => this.zaal.games().length);
 
   protected readonly entries = computed(() => this.ranking()?.data[this.category()] ?? []);
 
@@ -84,6 +114,27 @@ export class Standings {
   });
 
   constructor() {
+    void this.load();
+
+    /*
+     * De stand wordt één keer opgehaald en daarna nooit meer, en dat is precies
+     * mis op het scherm waar de tablet blijft staan: de laatste scores komen
+     * binnen, de speeldag wordt verrekend, en hier verandert niets. Terugkeren
+     * naar de app is het moment waarop iemand opnieuw kijkt, dus dat is ook het
+     * moment om opnieuw te halen. Wie erop blijft staren heeft de knop.
+     */
+    const opnieuw = (): void => {
+      if (document.visibilityState === 'visible') {
+        void this.load();
+      }
+    };
+
+    document.addEventListener('visibilitychange', opnieuw);
+    inject(DestroyRef).onDestroy(() => document.removeEventListener('visibilitychange', opnieuw));
+  }
+
+  /** Opnieuw ophalen op vraag: de knop bij "de stand hierboven is nog van daarvoor". */
+  protected refresh(): void {
     void this.load();
   }
 

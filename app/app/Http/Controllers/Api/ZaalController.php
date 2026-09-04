@@ -14,6 +14,7 @@ use App\Services\DrawService;
 use App\Services\Handicap;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Http\Response;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
@@ -86,8 +87,10 @@ class ZaalController extends Controller
         return response()->json($this->roundPayload($round));
     }
 
-    /** Zet een speler aanwezig of afwezig. */
-    public function setAttendance(Request $request, Round $round): JsonResponse
+    /**
+     * Zet een speler aanwezig of afwezig.
+     */
+    public function setAttendance(Request $request, Round $round): Response
     {
         $data = $request->validate([
             'playerId' => ['required', 'integer', Rule::exists('players', 'id')],
@@ -99,7 +102,7 @@ class ZaalController extends Controller
             ['is_present' => $data['present']] + ($data['present'] ? [] : ['is_drawn_out' => false]),
         );
 
-        return response()->json($this->roundPayload($round));
+        return response()->noContent();
     }
 
     /** Loot de speeldag; bewaart meteen wie uitgeloot is. */

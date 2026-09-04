@@ -2,8 +2,10 @@
   <header class="kop">
     <div>
       <h2>Tussenstand</h2>
-      @if (latestRound(); as round) {
+      @if (standingsRound(); as round) {
         <p class="na">na speeldag {{ round.number }}</p>
+      } @else if (loaded()) {
+        <p class="na">nog geen speeldag verrekend — dit is de stand op de basispunten</p>
       }
     </div>
 
@@ -16,6 +18,27 @@
       (input)="searchTerm.set($any($event.target).value)"
     />
   </header>
+
+  <!--
+    Wie hier voor zijn eigen plaats komt kijken, wil weten of wat hij vanavond
+    speelde erin zit. Een speeldag telt pas mee wanneer ze volledig ingevuld is,
+    dus zolang dat niet zo is, staat het hier met zoveel woorden.
+  -->
+  @if (pendingRound(); as round) {
+    <p class="loopt">
+      <strong>Speeldag {{ round.number }} telt nog niet mee.</strong>
+      @if (openGames() === 0) {
+        Er staat nog geen wedstrijd op.
+      } @else if (missingScores() > 0) {
+        Nog {{ missingScores() }} van de {{ openGames() }} wedstrijden in te vullen.
+      } @else {
+        Alles is ingevuld — de stand hierboven is nog van daarvoor.
+        <button type="button" class="ververs" [disabled]="loading()" (click)="refresh()">
+          {{ loading() ? 'Bezig…' : 'Ververs' }}
+        </button>
+      }
+    </p>
+  }
 
   <nav class="categorieen">
     @for (item of categories; track item.key) {
@@ -31,8 +54,14 @@
 
   @if (errorMessage()) {
     <p class="foutmelding">{{ errorMessage() }}</p>
-  } @else if (loading()) {
-    <p class="melding">De stand komt eraan…</p>
+  }
+
+  <!-- Verversen laat de lijst staan: die vervangen door "komt eraan" zou van een
+       bijwerking een herstart maken, en je plaats onder je ogen weghalen. -->
+  @if (!loaded()) {
+    @if (loading()) {
+      <p class="melding">De stand komt eraan…</p>
+    }
   } @else {
     <ol class="lijst">
       @for (entry of visibleEntries(); track entry.id) {

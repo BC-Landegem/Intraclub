@@ -10,6 +10,9 @@ const PULSE_MS = 600;
 /**
  * Praat met de zaal-API. Elke wijziging geeft de volledige toestand van de
  * speeldag terug, dus houden we die als één signaal bij.
+ *
+ * Op één na: aanmelden antwoordt leeg (204). Dat gebeurt in stoten, en we weten
+ * zelf wat een tik verandert — zie `setAttendance`.
  */
 @Injectable({ providedIn: 'root' })
 export class ZaalApi {
@@ -119,6 +122,14 @@ export class ZaalApi {
    * dat jij groen werd. Dat is precies wat een aanmelding niet mag doen: de tik
    * krijgt hier meteen antwoord, de server hoort het daarna.
    *
+   * Het antwoord gaat bewust níét in de toestand. Elke aanroep geeft de volledige
+   * speeldag terug zoals ze was toen de server hem opbouwde, en bij tikken kort na
+   * elkaar lopen die antwoorden door elkaar: dat op de eerste tik weet nog niet van
+   * de tweede en zet die weer op afwezig, tot diens eigen antwoord binnenkomt. Dat
+   * is het groen-zwart-groen — en omdat de tegel bij elke omslag opnieuw open veegt,
+   * meteen ook waarom het scherm loom aanvoelde. We weten zelf precies wat een tik
+   * verandert, dus zetten we dat lokaal en horen we van de aanroep enkel of ze lukte.
+   *
    * Loopt het mis, dan halen we de echte toestand op. Wie zich aangemeld dacht te
    * hebben ziet zichzelf dan terugvallen, met de foutmelding erbij.
    */
@@ -132,13 +143,8 @@ export class ZaalApi {
     }
 
     try {
-      this.state.set(
-        await firstValueFrom(
-          this.http.post<RoundState>(`/api/zaal/rounds/${this.roundId()}/attendance`, {
-            playerId,
-            present,
-          }),
-        ),
+      await firstValueFrom(
+        this.http.post(`/api/zaal/rounds/${this.roundId()}/attendance`, { playerId, present }),
       );
     } catch (error: unknown) {
       this.failure.set(describeError(error));
@@ -178,10 +184,10 @@ export class ZaalApi {
    * Bewaart de setstanden van één game zónder de zaal te blokkeren.
    *
    * Waarom apart van `run()`: die zet een globale busy-vlag en laat het hele
-   * scherm wachten. Score-invoer gebeurt per set, en elke save laat de server het
-   * volledige seizoen herrekenen — met `run()` zou elke tik een spinner geven.
-   * Hier gaan de cijfers dus eerst lokaal in de toestand, zodat de tik meteen
-   * antwoord krijgt, en pas daarna naar de server.
+   * scherm wachten. Score-invoer gebeurt per set, en de laatste set van de laatste
+   * match laat de server het volledige seizoen herrekenen — met `run()` zou elke
+   * tik een spinner geven. Hier gaan de cijfers dus eerst lokaal in de toestand,
+   * zodat de tik meteen antwoord krijgt, en pas daarna naar de server.
    *
    * Loopt het mis, dan halen we de echte toestand op: de speler ziet dan wat er
    * werkelijk in de databank staat en niet wat hij hoopte.
@@ -250,7 +256,11 @@ export class ZaalApi {
   /**
    * Zet de aanwezigheid meteen in de lokale toestand, in dezelfde vorm waarin de
    * server ze zou terugsturen — de teller inbegrepen, want die staat in de tabbalk
-   * en op de loten-knop.
+   * en op de loten-knop, en de uitgelotenlijst, want wie afgemeld wordt is ook niet
+   * langer uitgeloot (`ZaalController::setAttendance` wist daar dezelfde vlag).
+   *
+   * Dit ís de toestand na een tik: het antwoord van de server wordt niet meer
+   * ingelezen, dus wat hier niet gebeurt, gebeurt nergens.
    */
   private applyAttendanceLocally(playerId: number, present: boolean): void {
     this.state.update((current) => {
@@ -259,13 +269,16 @@ export class ZaalApi {
       }
 
       const players = current.players.map((player) =>
-        player.id === playerId ? { ...player, present } : player,
+        player.id === playerId
+          ? { ...player, present, drawnOut: present && player.drawnOut }
+          : player,
       );
 
       return {
         ...current,
         players,
         presentCount: players.filter((player) => player.present).length,
+        drawnOut: players.filter((player) => player.drawnOut),
       };
     });
   }

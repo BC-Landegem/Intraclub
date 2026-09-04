@@ -57,7 +57,19 @@
   pointer-events: none;
 }
 
+/*
+ * Groen zijn is een toestand, open vegen is een gebeurtenis. Ze uit elkaar houden
+ * scheelt: stond de veeg aan `.present` alleen, dan speelde ze ook af telkens de
+ * tegel opnieuw getekend werd — bij het openen van het scherm veegde het halve
+ * raster tegelijk open, en bij elke letter in het zoekveld opnieuw. `.getikt`
+ * zet `AttendanceList` er zelf op, voor de duur van de ceremonie.
+ */
 .player-button.present .sweep {
+  width: 220%;
+  height: 700%;
+}
+
+.player-button.present.getikt .sweep {
   animation: veeg 460ms cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
 
@@ -112,12 +124,24 @@
   stroke: var(--goed);
 }
 
-/* Het vinkje wordt geschreven, niet ingeplakt: het wacht tot de veeg voorbij is. */
 .player-button.present .check .vink {
-  animation: schrijf 320ms cubic-bezier(0.16, 1, 0.3, 1) 180ms forwards;
+  stroke-dashoffset: 0;
+}
+
+/*
+ * Het vinkje wordt geschreven, niet ingeplakt: het wacht tot de veeg voorbij is.
+ * `both` en niet `forwards`, want tijdens die 180ms wachten hoort het vinkje nog
+ * onzichtbaar te zijn — anders staat het er al en schrijft het zichzelf daarna
+ * nog eens over.
+ */
+.player-button.present.getikt .check .vink {
+  animation: schrijf 320ms cubic-bezier(0.16, 1, 0.3, 1) 180ms both;
 }
 
 @keyframes schrijf {
+  from {
+    stroke-dashoffset: 16;
+  }
   to {
     stroke-dashoffset: 0;
   }
@@ -130,13 +154,15 @@
     transition: none;
   }
 
-  .player-button.present .sweep {
+  .player-button.present .sweep,
+  .player-button.present.getikt .sweep {
     animation: none;
     width: 220%;
     height: 700%;
   }
 
-  .player-button.present .check .vink {
+  .player-button.present .check .vink,
+  .player-button.present.getikt .check .vink {
     animation: none;
     stroke-dashoffset: 0;
   }

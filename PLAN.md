@@ -205,7 +205,7 @@ De nieuwe Astro-site (`bc-landegem.github.io/Website`) hing nog aan de legacy Sl
 - [x] `?include=games,ranking_history` op `/players/{player}`, met `/players/{player}/games` en `/players/{player}/ranking-history` ook als eigen sub-resource (`ParsesIncludes`). Een onbekende include geeft 422 met de toegelaten lijst erbij.
 - [x] `?members=0` op `/players` en `/seasons/{season}/statistics`. Nodig voor een pagina over een afgesloten seizoen: wie toen meedeed hoort in die eindstand, ook al is hij nu geen lid meer.
 - [x] Archief-API mee omgezet (`?playerId=` → `?player_id=`, `?withMatches=1` → `?include=games`, `data`/`meta` overal), want die gaat de historiek-pagina's voeden.
-- [x] `PublicCacheHeaders`: `Cache-Control: public, max-age=60` op de publieke GET's. De service worker van de site werkt network-first, dus dit vangt enkel herhaald opvragen binnen dezelfde minuut.
+- [x] `PublicCacheHeaders`: `Cache-Control: public, max-age=60` op de publieke GET's — **voorlopig uitgeschakeld**. Een minuut bleek te lang voor cijfers die veranderen terwijl er naar gekeken wordt: wie de laatste set invulde kreeg de stand van vóór zijn eigen invoer terug uit de cache van zijn eigen toestel. De middleware blijft staan, met de uitzondering voor de zaal (sessiecookie) uitgecommentarieerd ernaast, voor als het verkeer er ooit om vraagt.
 - [x] `bc-landegem.github.io` bij de CORS-origins; mag eruit zodra de site op het eigen domein staat.
 - [x] Zaal-app: de tussenstand doet één call naar `/api/rankings` in plaats van twee. De `zaal/*`-payloads blijven bewust camelCase — interne vorm, één consument, moet woensdagavond werken, en levert de site niets op.
 - [x] 24 contracttests in `PublicApiTest`, 7 in `ArchiveApiTest`; volledige suite 103 tests groen.
