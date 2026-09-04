@@ -1,0 +1,26 @@
+<button type="button" class="terug" routerLink="/">
+  <svg viewBox="0 0 24 24" class="icoon" aria-hidden="true">
+    <path d="M14.5 5.5 8 12l6.5 6.5" />
+  </svg>
+  Terug naar aanmelden
+</button>
+
+<h2 class="vraag">Wie is er al?</h2>
+
+@if (namen().length === 0) {
+  <p class="leeg">Er heeft zich nog niemand aangeduid.</p>
+} @else {
+  <p class="onder">
+    <span class="teller">{{ api.presentCount() }} aanwezig</span>
+  </p>
+
+  <!--
+    Kolommen en geen raster: de browser verdeelt de namen zelf en vult elke kolom
+    van boven naar onder, zodat de lijst alfabetisch te lezen blijft.
+  -->
+  <div class="namen" [style.column-count]="kolommen()">
+    @for (speler of namen(); track speler.id) {
+      <span>{{ speler.fullName }}</span>
+    }
+  </div>
+}

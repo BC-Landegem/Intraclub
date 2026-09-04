@@ -23,13 +23,18 @@
 </div>
 
 @if (letter() === null) {
-  <h2 class="vraag">Wie is er vanavond?</h2>
-  <p class="onder">
-    Tik de eerste letter van je voornaam.
+  <div class="kop">
+    <h2 class="vraag">Wie is er vanavond?</h2>
     @if (api.presentCount() > 0) {
-      <span class="teller">{{ api.presentCount() }} aanwezig</span>
+      <button type="button" class="teller" routerLink="/aanwezig">
+        {{ api.presentCount() }} aanwezig
+        <svg viewBox="0 0 24 24" class="icoon" aria-hidden="true">
+          <path d="M9.5 5.5 16 12l-6.5 6.5" />
+        </svg>
+      </button>
     }
-  </p>
+  </div>
+  <p class="onder">Tik de eerste letter van je voornaam.</p>
 
   <div class="alfabet">
     @for (initial of letters(); track initial) {

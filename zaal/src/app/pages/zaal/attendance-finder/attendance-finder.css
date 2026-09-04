@@ -16,31 +16,54 @@
 }
 
 .onder {
-  display: flex;
-  align-items: baseline;
-  gap: 0.75rem;
-  flex-wrap: wrap;
   margin: 0.35rem 0 0;
   color: var(--tekst-zacht);
   font-size: 1.05rem;
 }
 
 /*
- * De teller staat naast de vraag en niet als eigen regel: hij is geen mededeling
- * maar een terloopse stand van zaken — hoe vol is de zaal, mag er geloot worden.
+ * De teller is een deur geworden: wie zich afvraagt wie die zes zijn, tikt erop.
+ * Daarom staat hij rechts op de titelregel en niet meer in de leesregel — daar zou
+ * een raakvlak van 44px die regel meetrekken en het scherm op 783px brengen,
+ * twintig pixel meer dan de tablet heeft.
  */
+.kop {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
 .teller {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  flex: none;
+  min-height: 44px;
+  padding: 0 0.9rem;
+  border-color: rgb(245 165 36 / 0.35);
+  background: none;
   color: var(--accent);
+  font-size: 1.05rem;
   font-weight: 700;
   font-variant-numeric: tabular-nums;
 }
 
-/* Alfabet: altijd één schermvulling, nooit een schuifbalk. */
+.teller:hover {
+  border-color: var(--accent);
+}
+
+/*
+ * Alfabet: altijd één schermvulling, nooit een schuifbalk. De 0.65rem is geen
+ * smaak maar de rekening: met de strookplek erboven meet dit scherm 763px op een
+ * tablet van 1024×768, en op de ruimere 1.35rem 774px — een schuifbalk de hele
+ * avond, voor elf pixel lucht.
+ */
 .alfabet {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(96px, 1fr));
   gap: 0.75rem;
-  margin-top: 1.35rem;
+  margin-top: 0.65rem;
 }
 
 /*

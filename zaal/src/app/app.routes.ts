@@ -47,6 +47,12 @@ export const routes: Routes = [
         title: 'Intraclub zaal',
       },
       {
+        path: 'aanwezig',
+        loadComponent: () =>
+          import('./pages/zaal/attendance-board/attendance-board').then((m) => m.AttendanceBoard),
+        title: 'Wie is er al? · Intraclub',
+      },
+      {
         path: 'wedstrijden',
         loadComponent: () => import('./pages/zaal/results/results').then((m) => m.Results),
         title: 'Wedstrijden · Intraclub',

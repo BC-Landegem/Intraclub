@@ -1,4 +1,5 @@
 import { Component, DestroyRef, computed, inject, signal } from '@angular/core';
+import { RouterLink } from '@angular/router';
 import { RoundPlayer } from '../../../core/models';
 import { ZaalApi } from '../../../core/zaal-api';
 import { AttendanceList } from '../attendance-list/attendance-list';
@@ -35,7 +36,7 @@ const STROOK_MS = 5000;
  */
 @Component({
   selector: 'app-attendance-finder',
-  imports: [AttendanceList],
+  imports: [AttendanceList, RouterLink],
   templateUrl: './attendance-finder.html',
   styleUrl: './attendance-finder.css',
 })
