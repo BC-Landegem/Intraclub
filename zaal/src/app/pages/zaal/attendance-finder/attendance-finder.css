@@ -44,13 +44,14 @@
 }
 
 /*
- * Zolang de bevestiging staat, sluit het alfabet dichter aan. Het scherm past op
- * 1024×768 precies, en zonder deze 12px zou elke aanmelding vijf seconden lang een
- * schuifbalk oproepen — een bevestiging die het scherm laat verspringen bevestigt
- * niets.
+ * De plek van de strook blijft ook leeg gereserveerd staan. Zonder dat verspringt
+ * het scherm bij elke aanmelding een strookhoogte, en dat is precies het moment
+ * waarop de volgende in de rij al naar zijn letter aan het reiken is.
  */
-:host:has(.bevestiging) .alfabet {
-  margin-top: 0.65rem;
+.plek {
+  /* Rand, padding en de knop erin: de hoogte die de strook straks nodig heeft. */
+  min-height: calc(2px + 0.7rem + 40px);
+  margin-bottom: 0.75rem;
 }
 
 .letter {
@@ -111,7 +112,6 @@ app-attendance-list {
   display: flex;
   align-items: center;
   gap: 0.85rem;
-  margin-bottom: 0.75rem;
   padding: 0.35rem 0.35rem 0.35rem 0.85rem;
   border: 1px solid var(--goed);
   border-radius: var(--straal);

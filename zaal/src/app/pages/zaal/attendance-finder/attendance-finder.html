@@ -2,19 +2,25 @@
   De strook staat buiten de twee schermen, want ze moet de wissel van namen naar
   letters overleven: ze verschijnt op de tik en is er nog wanneer je een seconde
   later weer voor het alfabet staat.
+
+  Haar plek blijft leeg staan zolang er niets te bevestigen valt: zonder die
+  gereserveerde ruimte duwt elke aanmelding het hele scherm een strookhoogte
+  omlaag, en tikt de volgende in de rij naast de letter die hij zag.
 -->
-@if (bevestiging(); as speler) {
-  <div class="bevestiging">
-    <span class="vink" aria-hidden="true">
-      <svg viewBox="0 0 24 24">
-        <circle cx="12" cy="12" r="10" />
-        <path d="M7.5 12.4l3.2 3.2 6-6.4" />
-      </svg>
-    </span>
-    <span class="wie" role="status">{{ speler.fullName }} is aanwezig</span>
-    <button type="button" class="weghalen" (click)="verwijder(speler)">Haal me er weer af</button>
-  </div>
-}
+<div class="plek">
+  @if (bevestiging(); as speler) {
+    <div class="bevestiging">
+      <span class="vink" aria-hidden="true">
+        <svg viewBox="0 0 24 24">
+          <circle cx="12" cy="12" r="10" />
+          <path d="M7.5 12.4l3.2 3.2 6-6.4" />
+        </svg>
+      </span>
+      <span class="wie" role="status">{{ speler.fullName }} is aanwezig</span>
+      <button type="button" class="weghalen" (click)="verwijder(speler)">Haal me er weer af</button>
+    </div>
+  }
+</div>
 
 @if (letter() === null) {
   <h2 class="vraag">Wie is er vanavond?</h2>
