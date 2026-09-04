@@ -7,6 +7,7 @@ use App\Models\Player;
 use App\Models\PlayerSeasonStatistic;
 use App\Models\Round;
 use App\Models\Season;
+use App\Services\SeasonCalculator;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\Concerns\PlaysToPoints;
 use Tests\TestCase;
@@ -105,6 +106,46 @@ class AutomaticRecalculationTest extends TestCase
         $this->assertFalse($round->is_calculated);
         $this->assertNull($round->average_absent);
         $this->assertSame(0, $round->playerStatistics()->whereNotNull('average')->count());
+    }
+
+    public function test_een_set_invullen_op_een_onvolledige_speeldag_herberekent_niet(): void
+    {
+        $this->createGame([1, 2, 3, 4], complete: true);
+        $game = $this->createGame([5, 6, 7, 8], complete: false);
+
+        $this->mock(SeasonCalculator::class)->shouldReceive('calculate')->never();
+
+        // Set 2 erbij: de match blijft onvolledig, dus de speeldag telt nog altijd
+        // niet mee en de stand kan onmogelijk veranderd zijn.
+        $game->update([
+            'set2_home' => $this->format->win(),
+            'set2_away' => $this->format->lose(),
+        ]);
+    }
+
+    public function test_een_avond_kost_een_enkele_berekening(): void
+    {
+        $calculator = $this->partialMock(
+            SeasonCalculator::class,
+            fn ($mock) => $mock->shouldReceive('calculate')->passthru(),
+        );
+
+        $first = $this->createGame([1, 2, 3, 4], complete: false);
+        $second = $this->createGame([5, 6, 7, 8], complete: false);
+
+        foreach ([$first, $second] as $game) {
+            foreach ([2, 3] as $set) {
+                $game->update([
+                    "set{$set}_home" => $this->format->win(),
+                    "set{$set}_away" => $this->format->lose(),
+                ]);
+            }
+        }
+
+        // Twee matches aanmaken en vier keer een setstand bewaren: pas de laatste
+        // maakt de speeldag volledig, en enkel die hoort te rekenen.
+        $calculator->shouldHaveReceived('calculate')->once();
+        $this->assertTrue($this->round->fresh()->is_calculated);
     }
 
     /** @param array<int, int> $playerIndexes */
