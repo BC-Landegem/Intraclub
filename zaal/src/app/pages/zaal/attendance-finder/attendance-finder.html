@@ -1,3 +1,21 @@
+<!--
+  De strook staat buiten de twee schermen, want ze moet de wissel van namen naar
+  letters overleven: ze verschijnt op de tik en is er nog wanneer je een seconde
+  later weer voor het alfabet staat.
+-->
+@if (bevestiging(); as speler) {
+  <div class="bevestiging">
+    <span class="vink" aria-hidden="true">
+      <svg viewBox="0 0 24 24">
+        <circle cx="12" cy="12" r="10" />
+        <path d="M7.5 12.4l3.2 3.2 6-6.4" />
+      </svg>
+    </span>
+    <span class="wie" role="status">{{ speler.fullName }} is aanwezig</span>
+    <button type="button" class="weghalen" (click)="verwijder(speler)">Haal me er weer af</button>
+  </div>
+}
+
 @if (letter() === null) {
   <h2 class="vraag">Wie is er vanavond?</h2>
   <p class="onder">
@@ -21,7 +39,7 @@
   </button>
 
   <h2 class="vraag">Tik je naam aan</h2>
-  <p class="onder">Nog eens tikken haalt je er weer af.</p>
+  <p class="onder">Wie groen staat, is al aangeduid.</p>
 
-  <app-attendance-list [players]="named()" [groot]="true" (checkedIn)="onCheckedIn()" />
+  <app-attendance-list [players]="named()" [groot]="true" (checkedIn)="onCheckedIn($event)" />
 }

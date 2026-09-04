@@ -27,8 +27,20 @@ export class AttendanceList {
   /** Grotere tegels voor het spelersscherm, waar er maar een handvol staan. */
   readonly groot = input(false);
 
+  /**
+   * Wat er staat als er geen tegels zijn. Het scherm dat de namen aanlevert weet
+   * waaróm de lijst leeg is — een zoekterm, een filter — en deze component niet.
+   */
+  readonly leeg = input('Geen spelers gevonden.');
+
   /** Iemand heeft zichzelf zojuist áán gezet; afvinken meldt niets. */
   readonly checkedIn = output<RoundPlayer>();
+
+  /**
+   * Elke tik, in beide richtingen. Wie op aanwezigheid filtert heeft dit nodig:
+   * daar tilt ook een áfvinking de tegel uit de lijst.
+   */
+  readonly toggled = output<RoundPlayer>();
 
   protected isBusy(): boolean {
     return this.api.isBusy();
@@ -47,10 +59,17 @@ export class AttendanceList {
 
     const wordtAanwezig = !player.present;
 
-    await this.api.setAttendance(player.id, wordtAanwezig);
+    // `setAttendance` zet de toestand meteen om en praat pas daarna met de server,
+    // dus melden we nu al: een bevestiging die op het antwoord wacht komt later dan
+    // het groen dat ze bevestigt.
+    const onderweg = this.api.setAttendance(player.id, wordtAanwezig);
+
+    this.toggled.emit(player);
 
     if (wordtAanwezig) {
       this.checkedIn.emit(player);
     }
+
+    await onderweg;
   }
 }

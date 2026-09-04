@@ -110,17 +110,39 @@ export class ZaalApi {
     return this.run(() => this.http.get<RoundState>('/api/zaal/round'));
   }
 
+  /**
+   * Meldt iemand aan of af zónder de zaal te blokkeren.
+   *
+   * Waarom apart van `run()`: die zet een globale busy-vlag, en elke tegel hangt
+   * aan `isBusy()`. De hele namenlijst viel dus op 45% terwijl de server antwoordde
+   * — het eerste wat je na je eigen tik zag was dat álles wegviel, en pas daarna
+   * dat jij groen werd. Dat is precies wat een aanmelding niet mag doen: de tik
+   * krijgt hier meteen antwoord, de server hoort het daarna.
+   *
+   * Loopt het mis, dan halen we de echte toestand op. Wie zich aangemeld dacht te
+   * hebben ziet zichzelf dan terugvallen, met de foutmelding erbij.
+   */
   async setAttendance(playerId: number, present: boolean): Promise<void> {
-    await this.run(() =>
-      this.http.post<RoundState>(`/api/zaal/rounds/${this.roundId()}/attendance`, {
-        playerId,
-        present,
-      }),
-    );
+    this.applyAttendanceLocally(playerId, present);
+    this.failure.set('');
 
-    if (present && this.failure() === '') {
+    if (present) {
       this.arrival.set(true);
       setTimeout(() => this.arrival.set(false), PULSE_MS);
+    }
+
+    try {
+      this.state.set(
+        await firstValueFrom(
+          this.http.post<RoundState>(`/api/zaal/rounds/${this.roundId()}/attendance`, {
+            playerId,
+            present,
+          }),
+        ),
+      );
+    } catch (error: unknown) {
+      this.failure.set(describeError(error));
+      await this.loadCurrentRound();
     }
   }
 
@@ -221,6 +243,29 @@ export class ZaalApi {
       return {
         ...current,
         games: current.games.map((game) => (game.id === gameId ? withScores(game, scores) : game)),
+      };
+    });
+  }
+
+  /**
+   * Zet de aanwezigheid meteen in de lokale toestand, in dezelfde vorm waarin de
+   * server ze zou terugsturen — de teller inbegrepen, want die staat in de tabbalk
+   * en op de loten-knop.
+   */
+  private applyAttendanceLocally(playerId: number, present: boolean): void {
+    this.state.update((current) => {
+      if (current === null) {
+        return current;
+      }
+
+      const players = current.players.map((player) =>
+        player.id === playerId ? { ...player, present } : player,
+      );
+
+      return {
+        ...current,
+        players,
+        presentCount: players.filter((player) => player.present).length,
       };
     });
   }

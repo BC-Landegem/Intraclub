@@ -10,7 +10,33 @@
   <button type="button" routerLink="nieuwe-speler">+ Nieuwe speler</button>
 </div>
 
-<app-attendance-list [players]="filteredPlayers()" />
+<div class="filters" role="group" aria-label="Toon" [attr.data-gekozen]="filterPlaats()">
+  <button type="button" [attr.aria-pressed]="filter() === 'alle'" (click)="filter.set('alle')">
+    Alle <span class="telling">{{ tellingen().alle }}</span>
+  </button>
+  <button
+    type="button"
+    [attr.aria-pressed]="filter() === 'aanwezig'"
+    (click)="filter.set('aanwezig')"
+  >
+    <span class="stip aan" aria-hidden="true"></span>
+    Aanwezig <span class="telling">{{ tellingen().aanwezig }}</span>
+  </button>
+  <button
+    type="button"
+    [attr.aria-pressed]="filter() === 'afwezig'"
+    (click)="filter.set('afwezig')"
+  >
+    <span class="stip uit" aria-hidden="true"></span>
+    Afwezig <span class="telling">{{ tellingen().afwezig }}</span>
+  </button>
+</div>
+
+<app-attendance-list
+  [players]="shownPlayers()"
+  [leeg]="leegTekst()"
+  (toggled)="onToggled($event)"
+/>
 
 <button
   type="button"
