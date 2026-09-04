@@ -14,7 +14,8 @@ use Illuminate\Http\Request;
  * `meta.round` is de laatst berekende speeldag waarop deze stand staat. Daarmee
  * verdwijnt de aparte route /rounds/latestCalculated: wie de stand opvraagt
  * krijgt er meteen bij na welke speeldag ze geldt. Is er nog geen berekende
- * speeldag, dan is `meta.round` null en staat het klassement op de basispunten.
+ * speeldag, dan is `meta.round` null. De basispunten bepalen dan nog wel de
+ * volgorde, maar gemiddelden worden pas zichtbaar nadat een speler meespeelt.
  *
  * Queryparameters: season, round, limit, members, en op /rankings ook category.
  */

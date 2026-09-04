@@ -10,7 +10,9 @@ interface RankingEntry {
   first_name: string;
   last_name: string;
   full_name: string;
-  average: number;
+  average: number | null;
+  average_text: string | null;
+  is_active: boolean;
   rank: number;
   difference: number;
 }
@@ -23,8 +25,9 @@ interface RankingRound {
 
 /**
  * Vorm van /api/rankings. `meta.round` is de speeldag waarop de stand staat, of
- * null wanneer het seizoen nog geen berekende speeldag heeft — dan staat het
- * klassement op de basispunten.
+ * null wanneer het seizoen nog geen berekende speeldag heeft. Een null average
+ * wordt vervangen door average_text; de echte waarde blijft alleen op de server
+ * beschikbaar om inactieve spelers onderling te sorteren.
  */
 interface RankingResponse {
   data: Record<Category, RankingEntry[]>;
@@ -97,7 +100,9 @@ export class Standings {
 
   /** Lowest and highest average in this category, for scaling the bars. */
   protected readonly range = computed(() => {
-    const averages = this.entries().map((entry) => entry.average);
+    const averages = this.entries()
+      .map((entry) => entry.average)
+      .filter((average): average is number => average !== null);
 
     return averages.length === 0
       ? { low: 0, high: 1 }
@@ -140,6 +145,10 @@ export class Standings {
 
   /** How far along the bar this player sits, as a percentage. */
   protected barWidth(entry: RankingEntry): number {
+    if (entry.average === null) {
+      return 0;
+    }
+
     const { low, high } = this.range();
     const span = high - low;
 

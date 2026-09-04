@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Enums\Gender;
+use App\Models\Game;
 use App\Models\Player;
 use App\Models\Round;
 use App\Models\Season;
@@ -10,8 +11,9 @@ use Illuminate\Support\Collection;
 
 /**
  * Bouwt het klassement (algemeen, dames, veteranen, recreanten) op basis van
- * het voortschrijdend gemiddelde na de laatst berekende speeldag, of op de
- * basispunten wanneer het seizoen nog geen berekende speeldag heeft.
+ * het voortschrijdend gemiddelde na de laatst berekende speeldag. Alleen wie in
+ * een van de recentste geconfigureerde speeldagen speelde krijgt dat gemiddelde
+ * te zien; de anderen volgen onderaan, nog steeds volgens hun echte gemiddelde.
  *
  * 1:1 port van intraclub\managers\RankingManager uit de legacy-API.
  */
@@ -55,12 +57,17 @@ class RankingService
         $ranking = $round === null
             ? $this->rankingForNewSeason($season, $membersOnly)
             : $this->rankingAfterRound($round, $membersOnly);
+        $ranking = $this->withAverageVisibility($ranking, $season, $round);
 
         $previousRanking = collect();
         if ($round !== null && $round->number > 1) {
             $previousRound = $season->rounds()->where('number', $round->number - 1)->first();
             if ($previousRound !== null) {
-                $previousRanking = $this->rankingAfterRound($previousRound, $membersOnly);
+                $previousRanking = $this->withAverageVisibility(
+                    $this->rankingAfterRound($previousRound, $membersOnly),
+                    $season,
+                    $previousRound,
+                );
             }
         }
 
@@ -147,7 +154,45 @@ class RankingService
 
     /**
      * @param  Collection<int, array{player: Player, average: float}>  $ranking
-     * @param  Collection<int, array{player: Player, average: float}>  $previousRanking
+     * @return Collection<int, array{player: Player, average: float, average_visible: bool}>
+     */
+    private function withAverageVisibility(Collection $ranking, Season $season, ?Round $round): Collection
+    {
+        $activePlayerIds = collect();
+
+        if ($round !== null) {
+            $roundIds = $season->rounds()
+                ->where('is_calculated', true)
+                ->where('number', '<=', $round->number)
+                ->orderByDesc('number')
+                ->limit(max(1, (int) config('ranking.active_rounds')))
+                ->pluck('id');
+
+            $activePlayerIds = Game::query()
+                ->whereIn('round_id', $roundIds)
+                ->get(['player1_id', 'player2_id', 'player3_id', 'player4_id'])
+                ->flatMap(fn (Game $game): array => $game->playerIds())
+                ->unique()
+                ->flip();
+        }
+
+        return $ranking
+            ->map(function (array $entry) use ($activePlayerIds): array {
+                $entry['average_visible'] = $activePlayerIds->has($entry['player']->id);
+
+                return $entry;
+            })
+            ->sort(function (array $left, array $right): int {
+                return ($right['average_visible'] <=> $left['average_visible'])
+                    ?: ($right['average'] <=> $left['average'])
+                    ?: ($left['player']->id <=> $right['player']->id);
+            })
+            ->values();
+    }
+
+    /**
+     * @param  Collection<int, array{player: Player, average: float, average_visible: bool}>  $ranking
+     * @param  Collection<int, array{player: Player, average: float, average_visible: bool}>  $previousRanking
      * @return list<array<string, mixed>>
      */
     private function buildCategory(Collection $ranking, Collection $previousRanking, string $category, ?int $limit): array
@@ -177,7 +222,9 @@ class RankingService
                     'first_name' => $entry['player']->first_name,
                     'last_name' => $entry['player']->last_name,
                     'full_name' => $entry['player']->full_name,
-                    'average' => round($entry['average'], 2),
+                    'average' => $entry['average_visible'] ? round($entry['average'], 2) : null,
+                    'average_text' => $entry['average_visible'] ? null : config('ranking.inactive_text'),
+                    'is_active' => $entry['average_visible'],
                     'rank' => $rank,
                     'difference' => $difference,
                 ];
