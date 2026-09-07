@@ -1,13 +1,9 @@
+/*
+ * Alleen de tegels. Het zoeken zit erbuiten — een zoekveld bij de organisator, een
+ * letterraster bij de speler — want dat is het enige wat tussen die twee verschilt.
+ */
 :host {
-  display: grid;
-  gap: 1rem;
-  align-content: start;
-}
-
-.search-row {
-  display: grid;
-  grid-template-columns: 1fr auto;
-  gap: 0.5rem;
+  display: block;
 }
 
 .player-list {
@@ -61,7 +57,19 @@
   pointer-events: none;
 }
 
+/*
+ * Groen zijn is een toestand, open vegen is een gebeurtenis. Ze uit elkaar houden
+ * scheelt: stond de veeg aan `.present` alleen, dan speelde ze ook af telkens de
+ * tegel opnieuw getekend werd — bij het openen van het scherm veegde het halve
+ * raster tegelijk open, en bij elke letter in het zoekveld opnieuw. `.getikt`
+ * zet `AttendanceList` er zelf op, voor de duur van de ceremonie.
+ */
 .player-button.present .sweep {
+  width: 220%;
+  height: 700%;
+}
+
+.player-button.present.getikt .sweep {
   animation: veeg 460ms cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
 
@@ -116,12 +124,24 @@
   stroke: var(--goed);
 }
 
-/* Het vinkje wordt geschreven, niet ingeplakt: het wacht tot de veeg voorbij is. */
 .player-button.present .check .vink {
-  animation: schrijf 320ms cubic-bezier(0.16, 1, 0.3, 1) 180ms forwards;
+  stroke-dashoffset: 0;
+}
+
+/*
+ * Het vinkje wordt geschreven, niet ingeplakt: het wacht tot de veeg voorbij is.
+ * `both` en niet `forwards`, want tijdens die 180ms wachten hoort het vinkje nog
+ * onzichtbaar te zijn — anders staat het er al en schrijft het zichzelf daarna
+ * nog eens over.
+ */
+.player-button.present.getikt .check .vink {
+  animation: schrijf 320ms cubic-bezier(0.16, 1, 0.3, 1) 180ms both;
 }
 
 @keyframes schrijf {
+  from {
+    stroke-dashoffset: 16;
+  }
   to {
     stroke-dashoffset: 0;
   }
@@ -134,13 +154,15 @@
     transition: none;
   }
 
-  .player-button.present .sweep {
+  .player-button.present .sweep,
+  .player-button.present.getikt .sweep {
     animation: none;
     width: 220%;
     height: 700%;
   }
 
-  .player-button.present .check .vink {
+  .player-button.present .check .vink,
+  .player-button.present.getikt .check .vink {
     animation: none;
     stroke-dashoffset: 0;
   }
@@ -164,30 +186,28 @@
   color: var(--tekst-zacht);
 }
 
-.wide {
-  width: 100%;
-  min-height: 64px;
-  font-size: 1.1rem;
+/*
+ * Op het spelersscherm staan er maar een handvol namen onder één letter, en het
+ * komt na een letterraster van 104px. Dan zijn tegels van 64px een val: kleiner
+ * mikpunt op precies het scherm waar rechtopstaande mensen met haast aan staan.
+ */
+:host(.groot) .player-list {
+  gap: 0.6rem;
 }
 
-/* Afmelden hoort bij beheer, niet bij een tablet waar spelers aan staan. */
-.afmelden {
-  justify-self: start;
-  margin-top: 0.5rem;
-  color: var(--tekst-zacht);
+:host(.groot) .player-button {
+  min-height: 84px;
+  padding: 0.75rem 1.25rem;
 }
 
-.afmelden:hover {
-  color: var(--tekst);
+:host(.groot) .player-button .name {
+  font-size: 1.4rem;
+  font-weight: 600;
+  letter-spacing: -0.01em;
 }
 
-.visually-hidden {
-  position: absolute;
-  width: 1px;
-  height: 1px;
-  margin: -1px;
-  padding: 0;
-  overflow: hidden;
-  clip-path: inset(50%);
-  white-space: nowrap;
+:host(.groot) .check,
+:host(.groot) .check svg {
+  width: 34px;
+  height: 34px;
 }

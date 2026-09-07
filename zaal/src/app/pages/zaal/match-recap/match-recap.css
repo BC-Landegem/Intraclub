@@ -231,9 +231,3 @@ button.groot {
   color: var(--tekst);
   border-color: #39414d;
 }
-
-.zelf {
-  margin-left: auto;
-  color: var(--tekst-zacht);
-  font-size: 0.9rem;
-}

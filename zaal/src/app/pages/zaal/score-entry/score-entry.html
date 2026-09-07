@@ -1,12 +1,34 @@
 <header class="kop">
+  <!--
+    Twee ingangen, twee koppen. Wie via zijn naam binnenkwam ziet die vooraan
+    staan; wie van het bord van de avond komt heeft er geen, en dan is dit gewoon
+    wedstrijd zoveel met de vier namen erbij. Ook de uitweg zegt in beide gevallen
+    waar hij heen gaat, want dat verschilt: terug naar de zaal, of terug naar het
+    bord waar je vandaan kwam.
+  -->
   <p class="wie">
-    Jouw wedstrijd — <strong>{{ foursome().me }}</strong>, {{ foursome().others.join(', ') }}
-  </p>
-  <div class="kop-rechts">
-    @if (api.isSaving(game().id)) {
-      <span class="bezig" role="status">bewaren…</span>
+    @if (foursome().me; as ik) {
+      Jouw wedstrijd — <strong>{{ ik }}</strong
+      >, {{ foursome().others.join(', ') }}
+    } @else {
+      Wedstrijd {{ number() }} — {{ foursome().others.join(', ') }}
     }
-    <button type="button" class="uitweg" (click)="leave.emit()">Niet jouw wedstrijd?</button>
+  </p>
+  <!--
+    Hier stond "bewaren…" naast de uitweg. Het stond er terecht — een save duurt
+    echt een seconde of twee, want de server herrekent het hele seizoen — maar het
+    stond op de verkeerde plek: de setregel eronder zei op datzelfde moment
+    "bewaard". Twee labels over dezelfde save, die elkaar tegenspraken. De waarheid
+    hoort op de regel waar ze over gaat, dus daar staat ze nu.
+  -->
+  <div class="kop-rechts">
+    <button type="button" class="uitweg" (click)="leave.emit()">
+      @if (foursome().me) {
+        Niet jouw wedstrijd?
+      } @else {
+        Terug naar de wedstrijden
+      }
+    </button>
   </div>
 </header>
 
@@ -16,7 +38,9 @@
       <section class="set actief">
         <div class="set-regel">
           <span class="set-nr">Set {{ row.number }}</span>
-          <span class="duos"><strong>{{ row.home }}</strong> tegen <strong>{{ row.away }}</strong></span>
+          <span class="duos"
+            ><strong>{{ row.home }}</strong> tegen <strong>{{ row.away }}</strong></span
+          >
           @if (row.start) {
             <span class="startstand">begint op {{ row.start }}</span>
           }
@@ -57,32 +81,54 @@
         }
       </section>
     } @else if (row.score) {
-      <section class="set klaar">
+      <section class="set klaar" [class.onderweg]="isSending(row.index)">
         <div class="set-regel">
           <span class="set-nr">Set {{ row.number }}</span>
-          <span class="duos"><strong>{{ row.home }}</strong> tegen <strong>{{ row.away }}</strong></span>
+          <span class="duos"
+            ><strong>{{ row.home }}</strong> tegen <strong>{{ row.away }}</strong></span
+          >
           <span class="stand">
             <span class="cijfers">{{ row.score.home }} – {{ row.score.away }}</span>
-            <span class="merk">
-              <svg viewBox="0 0 24 24" class="icoon" aria-hidden="true">
-                <path d="M4.5 12.5l5 5 10-11" />
-              </svg>
-              bewaard
-            </span>
+            <!--
+              De cijfers staan er meteen — die komen uit `applyScoresLocally` en
+              wachten niet op de server. Het vinkje wél: dat is een uitspraak over
+              wat er in de databank staat, en zolang de PUT onderweg is weet
+              niemand dat. Daarom eerst "bewaren…", dan pas "bewaard".
+            -->
+            @if (isSending(row.index)) {
+              <output class="merk bezig">bewaren…</output>
+            } @else {
+              <span class="merk">
+                <svg viewBox="0 0 24 24" class="icoon" aria-hidden="true">
+                  <path d="M4.5 12.5l5 5 10-11" />
+                </svg>
+                bewaard
+              </span>
+            }
             <button type="button" class="wijzig" (click)="redo(row.index)">wijzig</button>
           </span>
         </div>
       </section>
     } @else {
-      <section class="set wachtend">
-        <div class="set-regel">
+      <!--
+        Een set die nog niet aan de beurt is, maar wel aan te tikken. De
+        setnummers zijn paringen en geen tijdstippen — set 2 is P1+P3 — dus vier
+        spelers die met een andere paring beginnen spelen chronologisch niet
+        "set 1" eerst. En wie er maar twee speelt moet set 1 en 3 kunnen invullen
+        met een gat ertussen.
+      -->
+      <button type="button" class="set wachtend" (click)="redo(row.index)">
+        <span class="set-regel">
           <span class="set-nr">Set {{ row.number }}</span>
           <span class="duos">{{ row.home }} tegen {{ row.away }}</span>
           @if (row.start) {
             <span class="startstand">begint op {{ row.start }}</span>
           }
-        </div>
-      </section>
+          <svg viewBox="0 0 24 24" class="icoon wijs" aria-hidden="true">
+            <path d="M9.5 5.5 16 12l-6.5 6.5" />
+          </svg>
+        </span>
+      </button>
     }
   }
 </div>

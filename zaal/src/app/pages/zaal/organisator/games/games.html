@@ -1,0 +1,123 @@
+@if (api.drawnOut().length > 0) {
+  <div class="paneel drawn-out-block">
+    <h2>Uitgeloot — spelen deze speeldag niet mee</h2>
+    <p class="subtitle">
+      Voor hen telt deze speeldag niet mee. Komt er nog volk toe, vul dan een match met hen aan —
+      dan spelen ze mee en telt de dag alsnog.
+    </p>
+    <ul class="chips">
+      @for (player of api.drawnOut(); track player.id) {
+        <li class="chip">{{ player.fullName }} ({{ player.bonusPoints }})</li>
+      }
+    </ul>
+    <button type="button" class="primair groot vullen" routerLink="aanvullen">
+      Match aanvullen
+    </button>
+  </div>
+}
+
+@if (api.pendingGames().length > 0) {
+  <div class="paneel">
+    <div class="block-header">
+      <h2>Nog te bevestigen</h2>
+      <div class="voorstel-knoppen">
+        <button type="button" [disabled]="api.isBusy()" (click)="redraw()">Opnieuw loten</button>
+        <button
+          type="button"
+          class="primair"
+          [disabled]="api.isBusy()"
+          (click)="confirmAllProposals()"
+        >
+          Alle bevestigen
+        </button>
+      </div>
+    </div>
+    <p class="subtitle herloot-uitleg">
+      Opnieuw loten mag altijd: wat je al bevestigde blijft staan, alleen wie hier nog wacht wordt
+      herverdeeld.
+    </p>
+
+    @for (proposal of api.pendingGames(); track $index) {
+      <div class="proposal">
+        <ol class="foursome">
+          @for (player of proposal; track player.id) {
+            <li>
+              {{ player.fullName }}
+              <span class="bonus">({{ player.bonusPoints }})</span>
+            </li>
+          }
+        </ol>
+        <button type="button" [disabled]="api.isBusy()" (click)="confirmProposal(proposal)">
+          Bevestig
+        </button>
+      </div>
+    }
+  </div>
+}
+
+<!--
+  De afwerklijst: één regel per wedstrijd, wat nog geen score heeft bovenaan. Dit
+  is waar de organisator ziet wie hij nog moet aanspreken — en sinds kort is die
+  regel ook aantikbaar. Ze was dat niet, omdat invullen bij de speler hoort, bij
+  zijn eigen naam. Maar om 22u30, met drie open wedstrijden en de helft van de
+  spelers al vertrokken, was dat het scherm dat het probleem toont en er niets
+  mee kan. De tik leidt naar hetzelfde wedstrijdscherm als het bord van de avond;
+  wie daar invult tikt eerst een naam.
+-->
+@if (api.games().length > 0) {
+  <div class="paneel">
+    <div class="block-header">
+      <h2>
+        @if (api.gamesWithoutScore().length === 0) {
+          Alle {{ api.games().length }} uitslagen zijn binnen
+        } @else {
+          {{ api.gamesWithoutScore().length }} van de {{ api.games().length }}
+          uitslagen zijn nog niet binnen
+        }
+      </h2>
+      <button type="button" routerLink="toevoegen">+ Match toevoegen</button>
+    </div>
+
+    <ul class="afwerklijst">
+      @for (item of progress(); track item.game.id) {
+        <li [class.open]="!item.game.isComplete">
+          <button type="button" class="regel" [routerLink]="['/wedstrijd', item.game.id]">
+            <span class="regel-nr">Nr. {{ item.number }}</span>
+            <!--
+              De bonuspunten staan erbij omdat de organisator ze omroept bij het
+              afkondigen van de match. Ze stonden al bij de voorstellen en bij wie
+              uitgeloot is; ze wegdenken zodra een match bevestigd is, betekende dat
+              net de lijst waaruit omgeroepen wordt ze niet had.
+            -->
+            <span class="regel-wie">
+              @for (player of item.game.players; track player.id) {
+                {{ api.nameOf(player) }}<span class="bonus">&nbsp;({{ player.bonusPoints }})</span>
+                @if (!$last) {
+                  ,&nbsp;
+                }
+              }
+            </span>
+            @if (item.game.isComplete) {
+              <span class="regel-stand">
+                @for (set of item.game.sets; track set.number) {
+                  {{ set.home.score }}–{{ set.away.score }}
+                  @if (!$last) {
+                    ·
+                  }
+                }
+              </span>
+            } @else {
+              <span class="regel-open">
+                <span class="stip" aria-hidden="true"></span>nog niet binnen
+              </span>
+            }
+          </button>
+        </li>
+      }
+    </ul>
+  </div>
+} @else {
+  <p class="paneel notice">Nog geen matches. Duid eerst aan wie er is, dan kan je loten.</p>
+}
+
+<router-outlet />

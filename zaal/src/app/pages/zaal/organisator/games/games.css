@@ -81,7 +81,7 @@ button.groot {
 }
 
 /*
- * De afwerklijst in Beheer: één regel per wedstrijd, wat nog geen score heeft
+ * De afwerklijst van de organisator: één regel per wedstrijd, wat nog geen score heeft
  * bovenaan. Bij twaalf wedstrijden past dat op één schermvulling — een lijst om
  * te lezen, niet om in te vullen.
  */
@@ -93,22 +93,42 @@ button.groot {
   list-style: none;
 }
 
-.afwerklijst li {
+/*
+ * De regel is een knop naar het wedstrijdscherm, dus de omlijsting hoort bij de
+ * knop en niet bij het lijstitem — anders is het aanraakvlak kleiner dan wat je
+ * ziet.
+ */
+.afwerklijst .regel {
   display: flex;
   align-items: center;
   gap: 0.9rem;
+  width: 100%;
   min-height: 46px;
   padding: 0.35rem 0.9rem;
   border: 1px solid var(--paneel-rand);
   border-radius: 10px;
+  background: transparent;
+  text-align: left;
   flex-wrap: wrap;
   opacity: 0.7;
+  transition:
+    background 140ms ease-out,
+    opacity 140ms ease-out;
 }
 
-.afwerklijst li.open {
+.afwerklijst .regel:hover {
+  background: var(--paneel);
+  opacity: 1;
+}
+
+.afwerklijst li.open .regel {
   border-color: var(--accent);
   background: rgb(245 165 36 / 0.07);
   opacity: 1;
+}
+
+.afwerklijst li.open .regel:hover {
+  background: rgb(245 165 36 / 0.13);
 }
 
 .regel-nr {
@@ -151,4 +171,10 @@ button.groot {
   flex: none;
   border-radius: 50%;
   background: var(--accent);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .afwerklijst .regel {
+    transition: none;
+  }
 }

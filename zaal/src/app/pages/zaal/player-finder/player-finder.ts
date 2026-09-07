@@ -90,9 +90,7 @@ export class PlayerFinder {
       ? []
       : this.candidates()
           .filter((candidate) => initialOf(candidate.player.firstName) === chosen)
-          .sort((one, other) =>
-            one.player.fullName.localeCompare(other.player.fullName, 'nl'),
-          );
+          .sort((one, other) => one.player.fullName.localeCompare(other.player.fullName, 'nl'));
   });
 
   protected choose(candidate: Candidate): void {

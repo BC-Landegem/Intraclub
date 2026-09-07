@@ -1,0 +1,29 @@
+<ul class="player-list">
+  @for (player of players(); track player.id) {
+    <li>
+      <button
+        type="button"
+        class="player-button"
+        [class.present]="player.present"
+        [disabled]="isBusy()"
+        (click)="checkIn($event, player)"
+      >
+        <span class="sweep" aria-hidden="true"></span>
+        <span class="name"
+          >{{ player.fullName }} <span class="bonus">({{ player.bonusPoints }})</span></span
+        >
+        @if (player.drawnOut) {
+          <span class="tag drawn-out">uitgeloot</span>
+        }
+        <span class="check" aria-hidden="true">
+          <svg viewBox="0 0 24 24">
+            <circle cx="12" cy="12" r="10" class="ring" />
+            <path d="M7.5 12.4l3.2 3.2 6-6.4" class="vink" />
+          </svg>
+        </span>
+      </button>
+    </li>
+  } @empty {
+    <li class="empty">{{ leeg() }}</li>
+  }
+</ul>

@@ -111,14 +111,20 @@ class ZaalApiTest extends TestCase
             ->assertJsonPath('players.0.present', false);
     }
 
-    public function test_aanwezigheid_aanpassen(): void
+    /**
+     * Aanmelden geeft geen speeldag terug, als enige schrijfactie van de zaal-app.
+     * Het gebeurt in stoten en de app weet zelf wat een tik verandert; de hele
+     * speeldag teruggeven kostte per tik alle leden, alle wedstrijden en de
+     * handicap per set, voor een antwoord dat niemand las.
+     */
+    public function test_aanwezigheid_aanpassen_antwoordt_leeg(): void
     {
         $this->actingAs($this->user);
 
         $this->postJson("/api/zaal/rounds/{$this->round->id}/attendance", [
             'playerId' => $this->players[1]->id,
             'present' => true,
-        ])->assertOk()->assertJsonPath('presentCount', 1);
+        ])->assertNoContent();
 
         $this->assertTrue(
             PlayerRoundStatistic::where('round_id', $this->round->id)
@@ -140,7 +146,7 @@ class ZaalApiTest extends TestCase
         $this->postJson("/api/zaal/rounds/{$this->round->id}/attendance", [
             'playerId' => $this->players[1]->id,
             'present' => false,
-        ])->assertOk();
+        ])->assertNoContent();
 
         $statistic = PlayerRoundStatistic::where('round_id', $this->round->id)
             ->where('player_id', $this->players[1]->id)

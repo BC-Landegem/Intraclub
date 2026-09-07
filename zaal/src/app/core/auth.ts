@@ -20,7 +20,9 @@ export class Auth {
     // Haal eerst het CSRF-cookie op; Angular stuurt het daarna automatisch mee.
     await firstValueFrom(this.http.get('/sanctum/csrf-cookie', { responseType: 'text' }));
 
-    const user = await firstValueFrom(this.http.post<CurrentUser>('/api/login', { email, password }));
+    const user = await firstValueFrom(
+      this.http.post<CurrentUser>('/api/login', { email, password }),
+    );
     this.currentUser.set(user);
   }
 

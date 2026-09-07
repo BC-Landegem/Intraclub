@@ -33,7 +33,7 @@ export const routes: Routes = [
   {
     path: 'login',
     loadComponent: () => import('./pages/login/login').then((m) => m.Login),
-    title: 'Aanmelden - Intraclub',
+    title: 'Aanmelden · Intraclub',
   },
   {
     path: '',
@@ -47,60 +47,85 @@ export const routes: Routes = [
         title: 'Intraclub zaal',
       },
       {
+        path: 'aanwezig',
+        loadComponent: () =>
+          import('./pages/zaal/attendance-board/attendance-board').then((m) => m.AttendanceBoard),
+        title: 'Wie is er al? · Intraclub',
+      },
+      {
         path: 'wedstrijden',
         loadComponent: () => import('./pages/zaal/results/results').then((m) => m.Results),
-        title: 'Wedstrijden - Intraclub',
+        title: 'Wedstrijden · Intraclub',
       },
       {
         path: 'tussenstand',
         loadComponent: () => import('./pages/standings/standings').then((m) => m.Standings),
-        title: 'Tussenstand - Intraclub',
+        title: 'Tussenstand · Intraclub',
       },
 
       /*
-       * Eén wedstrijd in vier gedaantes. Ze hangen alle vier aan hetzelfde
-       * scherm, dat uit `mode` opmaakt wat het te doen heeft. Wie er staat zit
-       * in het pad, want dat bepaalt wat je mag: zonder speler kijk je enkel.
+       * Eén wedstrijd in drie gedaantes — lezen, invullen, bevestigen — en elke
+       * gedaante bestaat twee keer: met en zonder speler in het pad. Ze hangen
+       * alle zes aan hetzelfde scherm, dat uit `mode` opmaakt wat het te doen
+       * heeft.
+       *
+       * De speler in het pad is geen recht maar een aanspreking: hij bepaalt of
+       * je eigen naam vooraan staat en of hij oplicht in de telling. Invullen
+       * mocht altijd al door elk van de vier, dus wie via het bord van de avond
+       * binnenkomt hoeft zich niet eerst bekend te maken.
        */
       {
         path: 'wedstrijd/:gameId',
         loadComponent: matchScreen,
-        data: { mode: 'peek' },
-        title: 'Wedstrijd - Intraclub',
+        data: { mode: 'recap' },
+        title: 'Wedstrijd · Intraclub',
+      },
+      {
+        path: 'wedstrijd/:gameId/score',
+        loadComponent: matchScreen,
+        data: { mode: 'entry' },
+        title: 'Score invullen · Intraclub',
+      },
+      {
+        path: 'wedstrijd/:gameId/bewaard',
+        loadComponent: matchScreen,
+        data: { mode: 'confirm' },
+        title: 'Bewaard · Intraclub',
       },
       {
         path: 'wedstrijd/:gameId/speler/:playerId',
         loadComponent: matchScreen,
-        data: { mode: 'read' },
-        title: 'Wedstrijd - Intraclub',
+        data: { mode: 'recap' },
+        title: 'Wedstrijd · Intraclub',
       },
       {
         path: 'wedstrijd/:gameId/speler/:playerId/score',
         loadComponent: matchScreen,
         data: { mode: 'entry' },
-        title: 'Score invullen - Intraclub',
+        title: 'Score invullen · Intraclub',
       },
       {
         path: 'wedstrijd/:gameId/speler/:playerId/bewaard',
         loadComponent: matchScreen,
         data: { mode: 'confirm' },
-        title: 'Bewaard - Intraclub',
+        title: 'Bewaard · Intraclub',
       },
 
       /*
-       * Beheer: twee schermen onder één tabbalk, en de dialogen die erbij horen
-       * als kindroute. Zo sluit de terugknop een dialoog in plaats van de app.
+       * De organisator: twee schermen onder één tabbalk, en de dialogen die erbij
+       * horen als kindroute. Zo sluit de terugknop een dialoog in plaats van de app.
        */
       {
-        path: 'beheer',
-        loadComponent: () => import('./pages/zaal/admin/admin').then((m) => m.Admin),
+        path: 'organisator',
+        loadComponent: () =>
+          import('./pages/zaal/organisator/organisator').then((m) => m.Organisator),
         children: [
           { path: '', pathMatch: 'full', redirectTo: 'aanwezig' },
           {
             path: 'aanwezig',
             loadComponent: () =>
-              import('./pages/zaal/admin/attendance/attendance').then((m) => m.Attendance),
-            title: 'Aanwezigheid - Intraclub',
+              import('./pages/zaal/organisator/attendance/attendance').then((m) => m.Attendance),
+            title: 'Aanwezigheid · Intraclub',
             children: [
               {
                 path: 'nieuwe-speler',
@@ -111,8 +136,9 @@ export const routes: Routes = [
           },
           {
             path: 'wedstrijden',
-            loadComponent: () => import('./pages/zaal/admin/games/games').then((m) => m.Games),
-            title: 'Wedstrijden - Intraclub',
+            loadComponent: () =>
+              import('./pages/zaal/organisator/games/games').then((m) => m.Games),
+            title: 'Wedstrijden · Intraclub',
             children: [
               { path: 'aanvullen', loadComponent: composeScreen, data: { filling: true } },
               { path: 'toevoegen', loadComponent: composeScreen },

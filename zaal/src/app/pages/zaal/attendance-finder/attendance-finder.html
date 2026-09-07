@@ -1,0 +1,56 @@
+<!--
+  De strook staat buiten de twee schermen, want ze moet de wissel van namen naar
+  letters overleven: ze verschijnt op de tik en is er nog wanneer je een seconde
+  later weer voor het alfabet staat.
+
+  Haar plek blijft leeg staan zolang er niets te bevestigen valt: zonder die
+  gereserveerde ruimte duwt elke aanmelding het hele scherm een strookhoogte
+  omlaag, en tikt de volgende in de rij naast de letter die hij zag.
+-->
+<div class="plek">
+  @if (bevestiging(); as speler) {
+    <div class="bevestiging">
+      <span class="vink" aria-hidden="true">
+        <svg viewBox="0 0 24 24">
+          <circle cx="12" cy="12" r="10" />
+          <path d="M7.5 12.4l3.2 3.2 6-6.4" />
+        </svg>
+      </span>
+      <span class="wie" role="status">{{ speler.fullName }} is aanwezig</span>
+      <button type="button" class="weghalen" (click)="verwijder(speler)">Haal me er weer af</button>
+    </div>
+  }
+</div>
+
+@if (letter() === null) {
+  <div class="kop">
+    <h2 class="vraag">Wie is er vanavond?</h2>
+    @if (api.presentCount() > 0) {
+      <button type="button" class="teller" routerLink="/aanwezig">
+        {{ api.presentCount() }} aanwezig
+        <svg viewBox="0 0 24 24" class="icoon" aria-hidden="true">
+          <path d="M9.5 5.5 16 12l-6.5 6.5" />
+        </svg>
+      </button>
+    }
+  </div>
+  <p class="onder">Tik de eerste letter van je voornaam.</p>
+
+  <div class="alfabet">
+    @for (initial of letters(); track initial) {
+      <button type="button" class="letter" (click)="letter.set(initial)">{{ initial }}</button>
+    }
+  </div>
+} @else {
+  <button type="button" class="terug" (click)="letter.set(null)">
+    <svg viewBox="0 0 24 24" class="icoon" aria-hidden="true">
+      <path d="M14.5 5.5 8 12l6.5 6.5" />
+    </svg>
+    Andere letter
+  </button>
+
+  <h2 class="vraag">Tik je naam aan</h2>
+  <p class="onder">Wie groen staat, is er al.</p>
+
+  <app-attendance-list [players]="named()" [groot]="true" (checkedIn)="onCheckedIn($event)" />
+}

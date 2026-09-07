@@ -66,7 +66,7 @@ button.groot {
   color: var(--accent);
 }
 
-/* Beheer is voor één persoon, één keer per avond: geen knopgewicht. */
+/* Het scherm van de organisator is voor één persoon, één keer per avond: geen knopgewicht. */
 .bar-acties .stil {
   min-height: 44px;
   padding: 0 0.85rem;
@@ -79,4 +79,35 @@ button.groot {
 .bar-acties .stil:hover {
   border-color: var(--paneel-rand);
   color: var(--tekst);
+}
+
+/*
+ * De terugvalklok in beeld gebracht: een haarlijn die in dertig seconden leegloopt.
+ *
+ * Los van de knoppen, want een voortgangslijn óp een primaire knop leest als
+ * "laden" of "wacht" in plaats van "je mag weg". Elke aanraking zet hem terug —
+ * het is dezelfde klok als `keepAwake()`, niet een tweede.
+ *
+ * Geen uitzondering voor `prefers-reduced-motion`: dit is een voortgangsindicator,
+ * geen versiering. Hem stilzetten laat een volle oranje lijn staan die liegt over
+ * hoeveel tijd er nog is, en hem verbergen neemt het enige signaal weg.
+ */
+.klok {
+  height: 2px;
+  margin: -0.4rem 0 1rem;
+  border-radius: 1px;
+  background: var(--accent);
+  transform-origin: left center;
+  animation-name: aflopen;
+  animation-timing-function: linear;
+  animation-fill-mode: forwards;
+}
+
+@keyframes aflopen {
+  from {
+    transform: scaleX(1);
+  }
+  to {
+    transform: scaleX(0);
+  }
 }

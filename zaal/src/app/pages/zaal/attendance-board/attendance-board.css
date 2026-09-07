@@ -1,0 +1,83 @@
+/*
+ * De vorm van de vinder zonder de knoppen: dezelfde vraag in dezelfde maat,
+ * dezelfde teller in dezelfde kleur, en daaronder tekst in plaats van tegels.
+ */
+:host {
+  display: grid;
+  gap: 0;
+  align-content: start;
+}
+
+/*
+ * De weg terug staat in het scherm en niet alleen in de balk, want de balk zegt
+ * "terug naar de zaal" en dat is niet wat je hier wil weten. Zelfde plek en
+ * zelfde gebaar als "Andere letter" in de namenlijst, maar op knopgewicht: dit is
+ * de enige uitgang die dit scherm zelf aanbiedt.
+ */
+.terug {
+  justify-self: start;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  margin-bottom: 1.1rem;
+  padding: 0 1.25rem 0 1rem;
+  font-size: 1.05rem;
+}
+
+.terug:hover {
+  border-color: #39414d;
+}
+
+.icoon {
+  width: 18px;
+  height: 18px;
+  flex: none;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2.4;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.vraag {
+  margin: 0;
+  font-size: clamp(1.75rem, 4.5vw, 2.4rem);
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+
+.onder {
+  margin: 0.35rem 0 0;
+  font-size: 1.05rem;
+}
+
+.teller {
+  color: var(--accent);
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+/*
+ * 1.2rem is de grootste maat waarop vier kolommen naast elkaar passen met plaats
+ * voor een dubbele achternaam: "Pieter Vanden Broeck" meet 187px in een kolom van
+ * 229px. Vier kolommen van dertien regels passen zo op een tablet van 1024×768;
+ * bij 34 aanwezigen eindigt de lijst op 537px.
+ */
+.namen {
+  margin-top: 1.35rem;
+  column-gap: 1.5rem;
+}
+
+.namen span {
+  display: block;
+  margin-bottom: 0.55rem;
+  font-size: 1.2rem;
+  line-height: 1.5;
+  letter-spacing: -0.01em;
+  break-inside: avoid;
+}
+
+.leeg {
+  margin: 0.35rem 0 0;
+  color: var(--tekst-zacht);
+}

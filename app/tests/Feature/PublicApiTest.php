@@ -720,13 +720,18 @@ class PublicApiTest extends TestCase
         return $player;
     }
 
-    public function test_publieke_api_vereist_geen_login_en_mag_een_minuut_gecachet_worden(): void
+    public function test_publieke_api_vereist_geen_login_en_wordt_niet_gecachet(): void
     {
         $this->assertGuest();
 
-        $this->getJson('/api/rankings')
-            ->assertOk()
-            ->assertHeader('Cache-Control', 'max-age=60, public');
+        $response = $this->getJson('/api/rankings')->assertOk();
+
+        // De cache-header van `PublicCacheHeaders` staat voorlopig uit: een minuut
+        // is te lang voor cijfers die veranderen terwijl er naar gekeken wordt.
+        $this->assertStringNotContainsString(
+            'max-age',
+            (string) $response->headers->get('Cache-Control'),
+        );
 
         $this->getJson('/api/players')->assertOk();
     }

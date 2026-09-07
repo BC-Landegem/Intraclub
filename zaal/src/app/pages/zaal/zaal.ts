@@ -8,6 +8,14 @@ import { ZaalApi } from '../../core/zaal-api';
 const IDLE_MS = 120_000;
 
 /**
+ * Op de bevestiging korter, en zichtbaar. Daar is het werk af en wacht het
+ * volgende groepje, dus twee minuten stilstaan is verspilde tafel. Dertig
+ * seconden is ruim genoeg om de drie setstanden en de telling na te lezen — en
+ * wie twijfelt tikt, en dan begint de klok opnieuw.
+ */
+const CONFIRM_MS = 30_000;
+
+/**
  * Het vaste kader rond elk scherm: de balk met de speeldag, de foutmelding, en
  * de vraag of er vandaag wel een speeldag is.
  *
@@ -34,7 +42,19 @@ export class Zaal {
   private readonly url = signal(this.router.url);
 
   protected readonly isHome = computed(() => this.url() === '/');
-  protected readonly isAdmin = computed(() => this.url().startsWith('/beheer'));
+  protected readonly isOrganiser = computed(() => this.url().startsWith('/organisator'));
+
+  /** De bevestiging na een score: het enige scherm waar de klok te zien is. */
+  protected readonly isConfirm = computed(() => this.url().endsWith('/bewaard'));
+
+  protected readonly idleMs = computed(() => (this.isConfirm() ? CONFIRM_MS : IDLE_MS));
+
+  /**
+   * Verspringt bij elke terugzetting van de klok. De haarlijn hangt eraan met een
+   * `track`, dus een nieuwe waarde vervangt het element en laat de animatie
+   * opnieuw beginnen — een CSS-animatie herstart niet vanzelf.
+   */
+  protected readonly tick = signal(0);
 
   private idleTimer: ReturnType<typeof setTimeout> | undefined;
 
@@ -66,6 +86,11 @@ export class Zaal {
    * De terugval vervángt de stap in de geschiedenis: wie na een half uur weer
    * langskomt, hoort met de terugknop niet in de wedstrijd van iemand anders te
    * belanden.
+   *
+   * Dit is de énige klok in de app. Op de bevestiging loopt hij korter en staat
+   * hij in beeld; overal elders doet hij hetzelfde en zegt hij niets. Een vangnet
+   * dat je aankondigt is geen vangnet meer maar een belofte, en daar gaan mensen
+   * op staan wachten.
    */
   protected keepAwake(): void {
     clearTimeout(this.idleTimer);
@@ -74,9 +99,11 @@ export class Zaal {
       return;
     }
 
+    this.tick.update((value) => value + 1);
+
     this.idleTimer = setTimeout(
       () => void this.router.navigate(['/'], { replaceUrl: true }),
-      IDLE_MS,
+      this.idleMs(),
     );
   }
 }

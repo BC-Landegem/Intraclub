@@ -129,9 +129,36 @@
   color: var(--tekst);
 }
 
-.set.wachtend {
+/*
+ * Een wachtende set is aantikbaar, want de automatische doorloop is een gemak en
+ * geen regel: wie met een andere paring begon, of er maar twee speelde, kiest
+ * hier zelf. `redo` doet de rest — die bestond al voor een ingevulde set.
+ *
+ * Daarom ook niet meer op 0,5 doorzichtigheid: wat je kan aantikken mag er niet
+ * uitzien als iets dat uit staat.
+ */
+button.set.wachtend {
+  display: block;
+  width: 100%;
+  padding: 0.85rem 1.15rem;
   background: transparent;
-  opacity: 0.5;
+  text-align: left;
+  opacity: 0.72;
+  transition:
+    opacity 140ms ease-out,
+    border-color 140ms ease-out;
+}
+
+button.set.wachtend:hover {
+  opacity: 1;
+  border-color: #39414d;
+}
+
+/* Het pijltje zegt dat deze regel ergens heen gaat; de rest van de regel is tekst. */
+.wijs {
+  flex: none;
+  margin-left: 0.7rem;
+  color: var(--tekst-zacht);
 }
 
 .stand {
@@ -274,7 +301,23 @@
 
 @media (prefers-reduced-motion: reduce) {
   .duo,
-  .punt {
+  .punt,
+  button.set.wachtend {
     transition: none;
   }
+}
+
+/*
+ * Zolang de stand onderweg is, is dit geen afgeronde set: geen groene rand en
+ * geen vinkje, want beide zijn een uitspraak over wat er in de databank staat.
+ * De cijfers staan er wel al — die zijn van de speler en wachten nergens op.
+ */
+.set.klaar.onderweg {
+  border-color: var(--paneel-rand);
+  background: var(--paneel);
+}
+
+.merk.bezig {
+  color: var(--tekst-zacht);
+  font-variant-numeric: tabular-nums;
 }
