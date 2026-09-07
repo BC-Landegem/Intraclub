@@ -81,6 +81,8 @@ const { data, meta } = await get(`/rankings/${category}`);
 
 `meta.round` is de speeldag waarop de stand geldt — dat is de "Stand na speeldag 17"-regel. Is hij `null`, dan heeft het seizoen nog geen berekende speeldag en staat het klassement op de basispunten; toon dan geen speeldagregel.
 
+**`average` mag `null` zijn.** Wie in het lopende seizoen een tijd niet meer meespeelde, krijgt geen gemiddelde mee: dat cijfer is weken oud en zegt niets over vandaag. Die rijen staan achteraan in `data`, mét hun echte `rank` — de stand blijft die van de gemiddelden, alleen de leesorde verandert. Zet er "Niet actief" of een streepje, en reken niet op een getal (`average.toFixed(2)` breekt). In de eindstand van een afgesloten seizoen is `average` altijd gevuld.
+
 De aparte call naar `/rounds` om die speeldag te vinden mag weg.
 
 **Tab Speeldagen.** `players_present` staat nu in de payload:

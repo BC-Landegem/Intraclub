@@ -10,7 +10,7 @@ interface RankingEntry {
   first_name: string;
   last_name: string;
   full_name: string;
-  average: number;
+  average: number | null;
   rank: number;
   difference: number;
 }
@@ -23,8 +23,11 @@ interface RankingRound {
 
 /**
  * Vorm van /api/rankings. `meta.round` is de speeldag waarop de stand staat, of
- * null wanneer het seizoen nog geen berekende speeldag heeft — dan staat het
- * klassement op de basispunten.
+ * null wanneer het seizoen nog geen berekende speeldag heeft.
+ *
+ * `average` is null voor wie een tijd niet meer meespeelde. Die rijen komen
+ * achteraan in de lijst, met hun echte `rank`: de server bepaalt de orde, hier
+ * blijft er niets te sorteren.
  */
 interface RankingResponse {
   data: Record<Category, RankingEntry[]>;
@@ -97,7 +100,9 @@ export class Standings {
 
   /** Lowest and highest average in this category, for scaling the bars. */
   protected readonly range = computed(() => {
-    const averages = this.entries().map((entry) => entry.average);
+    const averages = this.entries()
+      .map((entry) => entry.average)
+      .filter((average): average is number => average !== null);
 
     return averages.length === 0
       ? { low: 0, high: 1 }
@@ -139,15 +144,15 @@ export class Standings {
   }
 
   /** How far along the bar this player sits, as a percentage. */
-  protected barWidth(entry: RankingEntry): number {
+  protected barWidth(average: number): number {
     const { low, high } = this.range();
     const span = high - low;
 
-    return span <= 0 ? 100 : 6 + ((entry.average - low) / span) * 94;
+    return span <= 0 ? 100 : 6 + ((average - low) / span) * 94;
   }
 
-  protected formatAverage(average: number): string {
-    return average.toFixed(2).replace('.', ',');
+  protected formatAverage(average: number | null): string {
+    return average === null ? 'Niet actief' : average.toFixed(2).replace('.', ',');
   }
 
   private async load(): Promise<void> {

@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Enums\Gender;
+use App\Models\Game;
 use App\Models\Player;
 use App\Models\Round;
 use App\Models\Season;
@@ -12,6 +13,12 @@ use Illuminate\Support\Collection;
  * Bouwt het klassement (algemeen, dames, veteranen, recreanten) op basis van
  * het voortschrijdend gemiddelde na de laatst berekende speeldag, of op de
  * basispunten wanneer het seizoen nog geen berekende speeldag heeft.
+ *
+ * Wie in de lopende stand een tijd niet meespeelde zakt naar onderaan en toont
+ * geen gemiddelde: dat cijfer is weken oud en zegt niets over vandaag. Zijn
+ * plaats houdt hij wel, want die plaats is de stand — enkel de leesorde
+ * verandert. Zo blijft `rank` hetzelfde getal als in de bevroren historiek en in
+ * de eindstand.
  *
  * 1:1 port van intraclub\managers\RankingManager uit de legacy-API.
  */
@@ -55,6 +62,7 @@ class RankingService
         $ranking = $round === null
             ? $this->rankingForNewSeason($season, $membersOnly)
             : $this->rankingAfterRound($round, $membersOnly);
+        $ranking = $this->withActivity($ranking, $round);
 
         $previousRanking = collect();
         if ($round !== null && $round->number > 1) {
@@ -146,7 +154,43 @@ class RankingService
     }
 
     /**
+     * Markeert wie in een van de laatste `ranking.active_rounds` berekende
+     * speeldagen in een match stond.
+     *
+     * Enkel de lopende stand kent inactieve spelers. De eindstand van een
+     * afgesloten seizoen verandert nooit meer en staat al op de erelijst, dus wie
+     * daar bovenaan eindigde hoort er bovenaan te blijven, ook al miste hij de
+     * laatste speeldagen. En zolang er geen berekende speeldag is valt er niets te
+     * beoordelen: dan is de stand die van de basispunten.
+     *
      * @param  Collection<int, array{player: Player, average: float}>  $ranking
+     * @return Collection<int, array{player: Player, average: float, is_active: bool}>
+     */
+    private function withActivity(Collection $ranking, ?Round $round): Collection
+    {
+        $activeRounds = (int) config('ranking.active_rounds');
+
+        if ($activeRounds < 1 || $round === null || $round->season_id !== Season::current()?->id) {
+            return $ranking->map(fn (array $entry): array => $entry + ['is_active' => true]);
+        }
+
+        $roundIds = Round::query()
+            ->where('season_id', $round->season_id)
+            ->where('is_calculated', true)
+            ->where('number', '<=', $round->number)
+            ->orderByDesc('number')
+            ->limit($activeRounds)
+            ->pluck('id');
+
+        $activePlayerIds = Game::playerIdsInRounds($roundIds)->flip();
+
+        return $ranking->map(fn (array $entry): array => $entry + [
+            'is_active' => $activePlayerIds->has($entry['player']->id),
+        ]);
+    }
+
+    /**
+     * @param  Collection<int, array{player: Player, average: float, is_active: bool}>  $ranking
      * @param  Collection<int, array{player: Player, average: float}>  $previousRanking
      * @return list<array<string, mixed>>
      */
@@ -159,29 +203,36 @@ class RankingService
             ->values()
             ->map(fn (array $entry): int => $entry['player']->id);
 
-        return $current
-            ->take($limit ?? $current->count())
-            ->map(function (array $entry, int $index) use ($previousIds): array {
-                $rank = $index + 1;
+        $rows = $current->map(function (array $entry, int $index) use ($previousIds): array {
+            $rank = $index + 1;
 
-                // Legacy-gedrag: geen vorige ranking ⇒ 0; speler niet gevonden in de
-                // vorige ranking ⇒ array_search geeft false (0) ⇒ verschil = 1 - rank.
-                $difference = 0;
-                if ($previousIds->isNotEmpty()) {
-                    $foundIndex = $previousIds->search($entry['player']->id);
-                    $difference = ((int) $foundIndex + 1) - $rank;
-                }
+            // Legacy-gedrag: geen vorige ranking ⇒ 0; speler niet gevonden in de
+            // vorige ranking ⇒ array_search geeft false (0) ⇒ verschil = 1 - rank.
+            $difference = 0;
+            if ($previousIds->isNotEmpty()) {
+                $foundIndex = $previousIds->search($entry['player']->id);
+                $difference = ((int) $foundIndex + 1) - $rank;
+            }
 
-                return [
-                    'id' => $entry['player']->id,
-                    'first_name' => $entry['player']->first_name,
-                    'last_name' => $entry['player']->last_name,
-                    'full_name' => $entry['player']->full_name,
-                    'average' => round($entry['average'], 2),
-                    'rank' => $rank,
-                    'difference' => $difference,
-                ];
-            })
+            return [
+                'id' => $entry['player']->id,
+                'first_name' => $entry['player']->first_name,
+                'last_name' => $entry['player']->last_name,
+                'full_name' => $entry['player']->full_name,
+                'average' => $entry['is_active'] ? round($entry['average'], 2) : null,
+                'rank' => $rank,
+                'difference' => $difference,
+            ];
+        });
+
+        // Een leeg gemiddelde is het teken dat de speler niet meer meespeelt; die
+        // rijen horen onderaan, in dezelfde onderlinge orde. `limit` telt daarna,
+        // zodat een top tien de tien beste spelers van vandaag geeft.
+        [$active, $inactive] = $rows->partition(fn (array $row): bool => $row['average'] !== null);
+
+        return $active->concat($inactive)
+            ->take($limit ?? $rows->count())
+            ->values()
             ->all();
     }
 

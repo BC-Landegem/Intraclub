@@ -7,6 +7,7 @@ use Illuminate\Database\Eloquent\Attributes\ObservedBy;
 use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Support\Collection;
 
 /**
  * Eén game = 3 sets met roterende teams onder 4 spelers:
@@ -72,6 +73,23 @@ class Game extends Model
     public function playerIds(): array
     {
         return [$this->player1_id, $this->player2_id, $this->player3_id, $this->player4_id];
+    }
+
+    /**
+     * Wie op deze speeldagen in een match stond. Eén definitie van "meegespeeld",
+     * want de loting en het klassement moeten er dezelfde vraag aan stellen.
+     *
+     * @param  iterable<int>  $roundIds
+     * @return Collection<int, int>
+     */
+    public static function playerIdsInRounds(iterable $roundIds): Collection
+    {
+        return self::query()
+            ->whereIn('round_id', $roundIds)
+            ->get(['player1_id', 'player2_id', 'player3_id', 'player4_id'])
+            ->flatMap(fn (self $game): array => $game->playerIds())
+            ->unique()
+            ->values();
     }
 
     /**
