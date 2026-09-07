@@ -66,8 +66,8 @@
     <ol class="lijst">
       @for (entry of visibleEntries(); track entry.id) {
         <li class="rij">
-          @if (entry.is_active) {
-            <span class="meter" [style.width.%]="barWidth(entry)" aria-hidden="true"></span>
+          @if (entry.average !== null) {
+            <span class="meter" [style.width.%]="barWidth(entry.average)" aria-hidden="true"></span>
           }
 
           <span class="plaats">{{ entry.rank }}</span>
@@ -94,8 +94,8 @@
             }
           </span>
 
-          <span class="gemiddelde">
-            {{ entry.average === null ? entry.average_text : formatAverage(entry.average) }}
+          <span class="gemiddelde" [class.inactief]="entry.average === null">
+            {{ formatAverage(entry.average) }}
           </span>
         </li>
       } @empty {

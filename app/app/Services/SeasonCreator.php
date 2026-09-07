@@ -21,7 +21,12 @@ class SeasonCreator
     public function create(string $name, PointsPerSet $pointsPerSet = PointsPerSet::Fifteen): Season
     {
         return DB::transaction(function () use ($name, $pointsPerSet): Season {
-            $ranking = $this->rankingService->get(categories: [RankingService::CATEGORY_GENERAL]);
+            // De eindstand, niet het gepubliceerde klassement: dat zet wie de
+            // laatste speeldagen niet meespeelde onderaan, en dan zouden de
+            // basispunten afwezigheid bestraffen in plaats van het gemiddelde te
+            // volgen. Vóór Season::create(), want dat wordt het lopende seizoen.
+            $previous = Season::current();
+            $standing = $previous === null ? [] : $this->rankingService->finalStanding($previous);
 
             $season = Season::create([
                 'name' => $name,
@@ -29,9 +34,9 @@ class SeasonCreator
             ]);
 
             $basePoints = $pointsPerSet->startingBasePoints();
-            foreach (array_reverse($ranking['categories'][RankingService::CATEGORY_GENERAL]) as $rankedPlayer) {
+            foreach (array_reverse(array_keys($standing)) as $playerId) {
                 $season->playerStatistics()->create([
-                    'player_id' => $rankedPlayer['id'],
+                    'player_id' => $playerId,
                     'base_points' => $basePoints,
                 ]);
                 $basePoints += 0.0001;

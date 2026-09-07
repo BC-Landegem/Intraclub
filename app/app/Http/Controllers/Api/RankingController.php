@@ -14,8 +14,11 @@ use Illuminate\Http\Request;
  * `meta.round` is de laatst berekende speeldag waarop deze stand staat. Daarmee
  * verdwijnt de aparte route /rounds/latestCalculated: wie de stand opvraagt
  * krijgt er meteen bij na welke speeldag ze geldt. Is er nog geen berekende
- * speeldag, dan is `meta.round` null. De basispunten bepalen dan nog wel de
- * volgorde, maar gemiddelden worden pas zichtbaar nadat een speler meespeelt.
+ * speeldag, dan is `meta.round` null en staat het klassement op de basispunten.
+ *
+ * `average` is null voor wie in het lopende seizoen een tijd niet meer meespeelde.
+ * Die rijen staan achteraan, met hun echte `rank`: de stand blijft die van de
+ * gemiddelden, alleen een verouderd cijfer wordt niet meer getoond.
  *
  * Queryparameters: season, round, limit, members, en op /rankings ook category.
  */
@@ -65,7 +68,9 @@ class RankingController extends Controller
 
         $roundId = $request->integer('round') ?: null;
         if ($roundId !== null) {
-            Round::findOrFail($roundId);
+            // Een speeldag uit een ander seizoen zou die stand teruggeven onder de
+            // meta van dít seizoen; dan liegt het antwoord over waar het over gaat.
+            abort_unless(Round::findOrFail($roundId)->season_id === $season?->id, 404);
         }
 
         $limit = $request->integer('limit') ?: null;

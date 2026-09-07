@@ -11,8 +11,6 @@ interface RankingEntry {
   last_name: string;
   full_name: string;
   average: number | null;
-  average_text: string | null;
-  is_active: boolean;
   rank: number;
   difference: number;
 }
@@ -25,9 +23,11 @@ interface RankingRound {
 
 /**
  * Vorm van /api/rankings. `meta.round` is de speeldag waarop de stand staat, of
- * null wanneer het seizoen nog geen berekende speeldag heeft. Een null average
- * wordt vervangen door average_text; de echte waarde blijft alleen op de server
- * beschikbaar om inactieve spelers onderling te sorteren.
+ * null wanneer het seizoen nog geen berekende speeldag heeft.
+ *
+ * `average` is null voor wie een tijd niet meer meespeelde. Die rijen komen
+ * achteraan in de lijst, met hun echte `rank`: de server bepaalt de orde, hier
+ * blijft er niets te sorteren.
  */
 interface RankingResponse {
   data: Record<Category, RankingEntry[]>;
@@ -144,19 +144,15 @@ export class Standings {
   }
 
   /** How far along the bar this player sits, as a percentage. */
-  protected barWidth(entry: RankingEntry): number {
-    if (entry.average === null) {
-      return 0;
-    }
-
+  protected barWidth(average: number): number {
     const { low, high } = this.range();
     const span = high - low;
 
-    return span <= 0 ? 100 : 6 + ((entry.average - low) / span) * 94;
+    return span <= 0 ? 100 : 6 + ((average - low) / span) * 94;
   }
 
-  protected formatAverage(average: number): string {
-    return average.toFixed(2).replace('.', ',');
+  protected formatAverage(average: number | null): string {
+    return average === null ? 'Niet actief' : average.toFixed(2).replace('.', ',');
   }
 
   private async load(): Promise<void> {

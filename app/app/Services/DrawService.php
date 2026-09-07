@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Models\Game;
 use App\Models\Player;
 use App\Models\PlayerRoundStatistic;
 use App\Models\Round;
@@ -85,12 +86,7 @@ class DrawService
      */
     private function playersWithGame(Round $round): array
     {
-        return $round->games()
-            ->get(['player1_id', 'player2_id', 'player3_id', 'player4_id'])
-            ->flatMap(fn ($game): array => $game->playerIds())
-            ->unique()
-            ->values()
-            ->all();
+        return Game::playerIdsInRounds([$round->id])->all();
     }
 
     /**

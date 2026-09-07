@@ -136,6 +136,15 @@
   letter-spacing: -0.02em;
 }
 
+/* Wie niet meer meespeelt heeft geen cijfer, dus hoort er ook geen nadruk te
+   liggen: dit is de afwezigheid van data, niet een lage score. */
+.gemiddelde.inactief {
+  font-size: 1rem;
+  font-weight: 500;
+  letter-spacing: 0;
+  color: var(--tekst-zacht);
+}
+
 .verschil {
   display: inline-flex;
   align-items: center;
