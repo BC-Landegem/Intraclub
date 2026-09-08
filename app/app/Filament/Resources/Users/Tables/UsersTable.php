@@ -4,6 +4,7 @@ namespace App\Filament\Resources\Users\Tables;
 
 use Filament\Actions\DeleteAction;
 use Filament\Actions\EditAction;
+use Filament\Tables\Columns\IconColumn;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
 
@@ -20,6 +21,12 @@ class UsersTable
                 TextColumn::make('email')
                     ->label('E-mailadres')
                     ->searchable(),
+                IconColumn::make('is_admin')
+                    ->label('Beheer')
+                    ->boolean()
+                    ->tooltip(fn ($record): string => $record->is_admin
+                        ? 'Beheerspaneel en zaal-app'
+                        : 'Enkel de zaal-app'),
                 TextColumn::make('created_at')
                     ->label('Aangemaakt')
                     ->dateTime('d-m-Y H:i')

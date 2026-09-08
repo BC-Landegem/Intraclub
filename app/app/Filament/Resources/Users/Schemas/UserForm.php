@@ -3,6 +3,7 @@
 namespace App\Filament\Resources\Users\Schemas;
 
 use Filament\Forms\Components\TextInput;
+use Filament\Forms\Components\Toggle;
 use Filament\Schemas\Schema;
 use Illuminate\Support\Facades\Hash;
 
@@ -29,6 +30,12 @@ class UserForm
                     ->required(fn (string $operation): bool => $operation === 'create')
                     ->helperText('Laat leeg om het huidige wachtwoord te behouden.')
                     ->minLength(8),
+                // Op je eigen rij vast, anders sluit je jezelf onherroepelijk buiten.
+                Toggle::make('is_admin')
+                    ->label('Toegang tot het beheerspaneel')
+                    ->helperText('Uit: deze gebruiker kan enkel in de zaal-app, niet in dit beheerspaneel.')
+                    ->default(true)
+                    ->disabled(fn (?object $record): bool => $record?->id === auth()->id()),
             ]);
     }
 }
