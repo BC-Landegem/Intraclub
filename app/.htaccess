@@ -23,6 +23,17 @@ Options -MultiViews -Indexes
 <IfModule mod_rewrite.c>
     RewriteEngine On
 
+    # Alles naar https. De sessiecookie draagt Secure (SESSION_SECURE_COOKIE=true),
+    # dus over http bewaart de browser hem niet en eindigt elke login op
+    # "CSRF token mismatch". Drie tests omdat nginx hier voor Apache staat: die
+    # termineert TLS, dus %{HTTPS} staat op https-verkeer niet gegarandeerd op on.
+    # Zonder de poortcontrole is dat een redirect-lus. Verzet je later de document
+    # root en verwijder je dit bestand, neem dit blok dan mee naar public/.htaccess.
+    RewriteCond %{HTTPS} !=on
+    RewriteCond %{HTTP:X-Forwarded-Proto} !=https
+    RewriteCond %{SERVER_PORT} !^(443|8081)$
+    RewriteRule ^ https://%{HTTP_HOST}%{REQUEST_URI} [L,R=301]
+
     # Al naar public/ gestuurd: niet opnieuw behandelen, anders belandt elk asset
     # alsnog bij index.php.
     RewriteRule ^public/ - [L]
