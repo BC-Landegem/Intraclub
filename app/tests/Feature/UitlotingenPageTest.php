@@ -55,12 +55,12 @@ class UitlotingenPageTest extends TestCase
         // Lid, drie keer aan de kant, laatst op speeldag 11: beschermd bij 12.
         $this->player('jan', drawnOut: [2, 7, 11], present: range(1, 11));
 
-        // Lid, gat van 4 tussen zijn laatste uitloting en de volgende speeldag: nog
+        // Lid, gat van 5 tussen zijn laatste uitloting en de volgende speeldag: nog
         // net beschermd.
-        $this->player('els', drawnOut: [8], present: range(1, 11));
+        $this->player('els', drawnOut: [7], present: range(1, 11));
 
-        // Lid, gat van 5: niet meer beschermd. Samen met Els de grens.
-        $this->player('bart', drawnOut: [7], present: range(1, 11));
+        // Lid, gat van 6: niet meer beschermd. Samen met Els de grens.
+        $this->player('bart', drawnOut: [6], present: range(1, 11));
 
         // Lid, twee uitlotingen lang geleden.
         $this->player('rik', drawnOut: [2, 3], present: [1, 2, 3, 4]);
@@ -154,16 +154,16 @@ class UitlotingenPageTest extends TestCase
 
     public function test_het_schild_ligt_op_de_grens_van_de_bescherming(): void
     {
-        $this->assertSame(4, DrawService::PROTECTED_ROUNDS);
+        $this->assertSame(5, DrawService::PROTECTED_ROUNDS);
 
         $page = $this->page();
 
-        // Els viel uit op speeldag 8, dus 4 speeldagen vóór de volgende: beschermd.
-        $page->assertTableColumnStateSet('rounds_since', '4', $this->players['els']);
+        // Els viel uit op speeldag 7, dus 5 speeldagen vóór de volgende: beschermd.
+        $page->assertTableColumnStateSet('rounds_since', '5', $this->players['els']);
         $this->assertTrue($this->hasShield($page, $this->players['els']));
 
-        // Bart viel uit op 7, dus 5 speeldagen: niet meer beschermd.
-        $page->assertTableColumnStateSet('rounds_since', '5', $this->players['bart']);
+        // Bart viel uit op 6, dus 6 speeldagen: niet meer beschermd.
+        $page->assertTableColumnStateSet('rounds_since', '6', $this->players['bart']);
         $this->assertFalse($this->hasShield($page, $this->players['bart']));
 
         $this->assertFalse($this->hasShield($page, $this->players['marie']));
