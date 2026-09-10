@@ -82,7 +82,9 @@
       @for (item of progress(); track item.game.id) {
         <li [class.open]="!item.game.isComplete">
           <button type="button" class="regel" [routerLink]="['/wedstrijd', item.game.id]">
-            <span class="regel-nr">Nr. {{ item.number }}</span>
+            <span class="regel-nr">
+              <span class="enkel-voorgelezen">Wedstrijd </span>{{ item.number }}
+            </span>
             <!--
               De bonuspunten staan erbij omdat de organisator ze omroept bij het
               afkondigen van de match. Ze stonden al bij de voorstellen en bij wie

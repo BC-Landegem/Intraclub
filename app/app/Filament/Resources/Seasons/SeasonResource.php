@@ -2,11 +2,14 @@
 
 namespace App\Filament\Resources\Seasons;
 
+use App\Enums\DrawSystem;
 use App\Enums\PointsPerSet;
 use App\Filament\Resources\Seasons\Pages\ManageSeasons;
 use App\Models\Season;
+use App\Services\SeasonEncounters;
 use BackedEnum;
 use Filament\Actions\EditAction;
+use Filament\Forms\Components\Radio;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
 use Filament\Resources\Resource;
@@ -53,6 +56,17 @@ class SeasonResource extends Resource
                     ->helperText(fn (?Season $record): ?string => $record?->rounds()->exists()
                         ? 'Ligt vast: dit seizoen heeft al een speeldag.'
                         : null),
+                // Radio en geen Select: bij twee keuzes staan beide uitleggen meteen in
+                // beeld, en `DrawSystem` levert ze zelf via HasDescription. Dat spaart
+                // een helperText die de gekozen waarde moest opzoeken.
+                //
+                // Bewust niet op slot zoals de schaal hierboven: een lotingswissel
+                // maakt niets ongeldig, dus een paar avonden proberen mag.
+                Radio::make('draw_system')
+                    ->label('Loting')
+                    ->options(DrawSystem::class)
+                    ->default(DrawSystem::StrengthGroups)
+                    ->required(),
             ]);
     }
 
@@ -67,6 +81,31 @@ class SeasonResource extends Resource
                 TextColumn::make('points_per_set')
                     ->label('Sets tot')
                     ->badge(),
+                TextColumn::make('draw_system')
+                    ->label('Loting')
+                    ->badge(),
+                // De cijfers waarmee de lotingsystemen te vergelijken zijn: gemiddeld
+                // aantal verschillende tegenstanders, en de ergste herhaling. Ze staan
+                // per seizoen naast elkaar omdat dat de enige zinvolle vergelijking is:
+                // op zichzelf zegt "26,5" niets, naast "21,6" wel.
+                //
+                // Eén kolom en geen twee, want elk van de twee zou dezelfde telling
+                // opnieuw doen. Zo blijft het één query per rij zonder cache die langer
+                // leeft dan het verzoek.
+                TextColumn::make('spread')
+                    ->label('Spreiding')
+                    ->tooltip('Gemiddeld aantal verschillende tegenstanders per speler, en hoe vaak hetzelfde tweetal elkaar in het slechtste geval tegenkwam.')
+                    ->state(function (Season $record): string {
+                        $spread = app(SeasonEncounters::class)->spread($record->id);
+
+                        return $spread['players'] === 0
+                            ? '—'
+                            : sprintf(
+                                '%s · max %d×',
+                                number_format($spread['averageOpponents'], 1, ',', '.'),
+                                $spread['highestRepeat']
+                            );
+                    }),
                 TextColumn::make('rounds_count')
                     ->label('Speeldagen')
                     ->counts('rounds'),

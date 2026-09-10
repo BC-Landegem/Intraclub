@@ -44,6 +44,14 @@ export class Zaal {
   protected readonly isHome = computed(() => this.url() === '/');
   protected readonly isOrganiser = computed(() => this.url().startsWith('/organisator'));
 
+  /**
+   * Waar geen klok loopt. Op de beginvraag is er niets om naar terug te vallen; op
+   * het scherm van de organisator staat er iemand bij die leest zonder te tikken,
+   * want hij roept de wedstrijden ervan af. Een tablet die daar middenin het
+   * aflezen naar de zaal terugspringt, kost hem zijn plaats in de lijst.
+   */
+  private readonly isParked = computed(() => this.isHome() || this.isOrganiser());
+
   /** De bevestiging na een score: het enige scherm waar de klok te zien is. */
   protected readonly isConfirm = computed(() => this.url().endsWith('/bewaard'));
 
@@ -79,9 +87,8 @@ export class Zaal {
   }
 
   /**
-   * Elke aanraking en elke navigatie schuiven de terugvalklok op. Staat de tablet
-   * al op de beginvraag, dan is er niets om naar terug te vallen en loopt er geen
-   * klok — anders zou het scherm zich om de twee minuten voor niets verversen.
+   * Elke aanraking en elke navigatie schuiven de terugvalklok op, behalve op de
+   * schermen die stil mogen blijven staan.
    *
    * De terugval vervángt de stap in de geschiedenis: wie na een half uur weer
    * langskomt, hoort met de terugknop niet in de wedstrijd van iemand anders te
@@ -95,7 +102,7 @@ export class Zaal {
   protected keepAwake(): void {
     clearTimeout(this.idleTimer);
 
-    if (this.isHome()) {
+    if (this.isParked()) {
       return;
     }
 

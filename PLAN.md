@@ -612,3 +612,262 @@ aanwezig — maar het loopt via de organisator. Of dat volstaat, blijkt op een s
 2. **Rekenverschillen.** De regressietest is de poortwachter — geen cutover zonder 0-diff.
 3. **Shared-hosting-verrassingen** (mod_security, memory limits, geen `proc_open` voor bepaalde packages). Mitigatie: fase 0 test dit vroeg; Laravel draait bewezen op DirectAdmin shared hosting.
 4. **Wachtwoord-reset vereist mail.** Shared hosting heeft meestal SMTP; anders: admins beheren wachtwoorden via Filament-gebruikersbeheer (gekozen scope dekt dit).
+
+### Fase 16 — Twee lotingsystemen, omschakelbaar (10-09)
+
+De klacht uit de zaal: je speelt te vaak tegen dezelfde mensen. Gevraagd werd een tweede
+loting waarbij iedereen tegen iedereen kan spelen en het systeem herhaling vermijdt, met
+een schakelaar tussen oud en nieuw. Wat hier staat is de uitkomst van het doorlopen van
+die beslisboom — inclusief twee momenten waarop de meting de redenering onderuithaalde.
+
+**Wat de huidige loting doet** (`DrawService`, ongewijzigd overgenomen als "Sterktegroepen"):
+
+1. Deelnemers zijn de aanwezige *leden* die deze speeldag nog geen wedstrijd hebben,
+   gesorteerd op hun huidige gemiddelde. Wie al speelt doet niet mee, zodat een tweede
+   loting enkel laatkomers indeelt.
+2. Aan de kant blijft enkel de rest na deling door vier (`count % 4`). Onbeschermden
+   eerst; wie de voorbije `PROTECTED_ROUNDS` (4) speeldagen uitgeloot werd is beschermd,
+   en moet er tóch een beschermde aan de kant, dan wie het langst geleden zat.
+3. Twee overlappende sterktegroepen: de bovenste 60% en de onderste 60%, dus 20% overlap
+   in het midden. Beurtelings wordt uit elke groep een viertal **willekeurig** getrokken.
+4. Wie door die groepsindeling overblijft vormt de laatste viertallen; de laatste 1-3
+   spelers gaan alsnog als uitgeloot naar `is_drawn_out`.
+
+Er zit dus geen enkel geheugen in van *tegen wie* je eerder speelde. Sterkte is de enige
+structurerende kracht, en ze werkt grof: door de overlap kan een sterke speler bij de
+zwakkere helft belanden, en binnen een groep beslist puur toeval.
+
+**De sterktegroepen veroorzaken de herhaling niet.** Dat was de aanname waarmee dit
+begon, en ze is fout. De echte aanwezigheden van drie seizoenen opnieuw geloot onder drie
+regimes:
+
+| 2023-2024 | verschillende tegenstanders | max herhaling | koppels ≥3× |
+|---|---|---|---|
+| huidig (echt gespeeld) | 21,6 | 5× | 6,3 % |
+| zuiver willekeurig, geen groepen | 21,7 | 4× | 3,2 % |
+| greedy op minst-ontmoet | 26,5 | 2× | 0 % |
+
+Willekeurig loten geeft exact hetzelfde aantal verschillende tegenstanders als vandaag.
+De poel per avond is ~50 en je ontmoet er 3, dus de groepen knijpen niets af dat je toch
+al zou tegenkomen — de herhaling is een verzamelaarseffect van willekeurig trekken over
+18 avonden. **De hele winst zit in het geheugen, niet in het schrappen van sterkte.**
+2024-2025 en 2025-2026 geven hetzelfde beeld (20,5 → 25,4 en 22,6 → 27,8).
+
+**Sterkte gaat er tóch uit, maar om een andere reden dan gedacht.** Het bezwaar was dat
+het de handicap zou laten ontsporen. Gemeten klopt dat niet: H gemiddeld 3,18 → 3,36,
+p95 blijft 8, hoogste blijft 11, H≥10 van 1,3 % naar 1,5 %. Achteraf logisch — bonuspunten
+hangen aan geslacht, recreantenstatus en dubbelklassement, terwijl de sterktegroepen op
+het *seizoensgemiddelde* sorteren. Twee losse assen; de groepsindeling stuurde de handicap
+nooit. Wat ze wél doet is spreiding kosten: hetzelfde geheugen haalt mét groepen 22,3 en
+zonder 26,5, want de poel halveren halveert de kandidaten.
+
+**De tie-break stuurt op de hoogste handicap, niet op de som.** Vroeg in het seizoen is
+het geheugen leeg en zijn bijna alle kandidaten gelijkwaardig; die tie-break beslist dan
+bijna alles en werd tot nu aan toeval besteed. Hem gebruiken om de baan gelijker te maken
+is gratis in spreiding — maar alleen in de juiste vorm:
+
+| 2023-2024 | verschillende | H gemiddeld | H≥10 |
+|---|---|---|---|
+| toeval | 26,5 | 3,48 | 2,1 % |
+| tie-break op de **som** van H | 26,7 | 2,80 | 3,1 % |
+| tie-break op de **hoogste** H | 26,5 | 3,26 | 0,2 % |
+
+De som minimaliseren verlaagt het gemiddelde en **verdubbelt de staart**: door de eerste
+viertallen gelijk te maken schuift de scheefheid door naar het laatste viertal, dat de
+restjes krijgt. Dat is precies verkeerd om — fase 13 heeft het gemiddelde al opgelost
+(injectie van 3,02 naar 0,50 punt per set), en wat overblijft is het uiterste, want bij
+H≥10 begint het sterke duo op −5 of lager en dat is de bordstand die de invoer niet kan
+opslaan (openstaand punt van fase 14). Het maximum minimaliseren maakt die staart vijf
+tot tien keer dunner en is daarmee ook beter dan de huidige loting.
+
+**"Iedereen tegen iedereen" heet daarom "Wisselende tegenstanders".** Een speler speelt
+9,9 wedstrijden per seizoen × 3 tegenstanders ≈ 30 ontmoetingen, tegen een ledenbestand
+van ~90. Zelfs een perfecte loting laat hem dus tweederde van de club nooit zien; 27,9 op
+een plafond van ~30 is 93 % van wat er bestaat. Wie de naam letterlijk neemt concludeert
+na een seizoen dat het niet werkt. De naam belooft nu wat er geleverd wordt: niet
+iedereen, wel telkens iemand anders.
+
+**De genomen beslissingen**
+
+| Onderwerp | Beslissing |
+|---|---|
+| Horizon | Lopend seizoen, reset bij seizoensstart. Het ledenbestand roteert (76 → 82 → 91 spelers met een wedstrijd), en over seizoenen heen verzadigt het geheugen: bijna elk koppel heeft dan al eens gespeeld en het criterium discrimineert niet meer |
+| Schakelaar | `seasons.draw_system`, gezet in Filament. **Wijzigbaar tijdens het seizoen** — anders dan `points_per_set`, dat op slot gaat omdat er mee gerekend wordt. Een lotingswissel maakt niets ongeldig, dus een paar avonden proberen kan zonder een heel jaar vast te leggen |
+| Wat telt als ontmoeting | Elke wedstrijd in het seizoen, ook onvolledige, ook iemands tweede game van dezelfde avond |
+| Geheugen | Afgeleid uit `games`, geen kolom — dezelfde redenering waarmee fase 9 `day_score` geen kolom gaf. Daardoor klopt de tweede loting van dezelfde avond gratis: de wedstrijden van het eerste rondje staan er al in |
+| Samenstelling | Greedy: begin bij wie het moeilijkst te plaatsen is en vul aan met telkens de minst-ontmoete kandidaat. Haalt 94-99 % van het theoretisch maximum, dus geen optimalisatie-algoritme |
+| Gedeeld | Deelnemersselectie, uitloting, **het beschermingsvenster**, `persistDrawnOut`, aanvullen en de vrije match. Enkel `composeGames()` verschilt. Het venster loopt dus gewoon door over een wissel midden in het seizoen heen |
+| Standaard | Default "Sterktegroepen"; de drie bestaande seizoenen zíjn zo geloot en de kolom mag daar niet over liegen. 2026-2027 zet het bewust aan, op hetzelfde moment waarop het al de basispunten toekent |
+| Meting | Eén cijfer per seizoen in Filament: gemiddeld aantal verschillende tegenstanders en de hoogste herhaling. Zonder cijfer wordt de evaluatie een discussie over anekdotes, net wanneer de knop weer omgezet kan worden |
+| Zaal-app | Verandert niet. De organisator drukt op "Loten" zoals altijd; de schakelaar en de meting staan in Filament |
+
+**Bewust niet gedaan.** Geen recency-weging (binnen één seizoen is "lang geleden" hoogstens
+vier maanden, en het gemeten maximum zakt sowieso naar 2-3×). Geen tie-break op "wie het
+minst gespeeld heeft": iedereen die aanwezig is speelt precies één wedstrijd, dus dat
+onderscheidt alleen wie vaak afwezig is, en aanwezigheid belonen met betere tegenstanders
+is een ander product. Geen herstelpas over de viertallen achteraf — de greedy haalt al
+0-0,1 % koppels ≥3×. Geen tweede lotingsknop of label in de zaal-app. En de tellers van
+`Pairings` (enkel volledige wedstrijden) en `SeasonCalculator` (enkel de eerste game van
+een avond) blijven zoals ze zijn: drie tellers met drie definities, omdat het drie
+verschillende vragen zijn.
+
+**Verwacht effect** op de drie echte seizoenen: 21,6 → 26,5 · 20,5 → 25,5 · 22,6 → 27,9
+verschillende tegenstanders per speler. De staart van 4-5× dezelfde tegenstander verdwijnt
+(max 2-3×, 0-0,1 % van de koppels ≥3×), en H≥10 zakt van 1,1-2,1 % naar 0,2-0,3 %.
+Met de startkeuze uit de review hieronder wordt dat 27,7 · 27,7 · 29,1 verschillende
+tegenstanders — 94 tot 99 % van wat er bij dit aantal wedstrijden hoogstens te halen valt.
+
+**Nog te doen**
+
+- [x] `App\Enums\DrawSystem` + migratie `seasons.draw_system`, default "Sterktegroepen"
+- [x] `DrawService`: `composeGames()` kiest op `season->draw_system`; alles eromheen gedeeld
+- [x] `App\Services\SeasonEncounters`: de telling die zowel de loting als de meting voedt
+- [x] Filament: `Radio` op het seizoen (niet op slot, uitleg uit `HasDescription`) en één spreidingskolom in de seizoenentabel
+- [x] `App\Console\Commands\ReplayDraw` (`draw:replay`): herloot een gespeeld seizoen op de echte aanwezigheden en print spreiding, herhaling en handicapverdeling
+- [x] Startkeuze `hardestToPlace()`: elk viertal begint bij wie het moeilijkst met vreemden te omringen is
+- [x] `DrawSystemTest` (5), `SeasonResourceDrawSystemTest` (4) en `DrawAndDrawnOutVaryingOpponentsTest` (14, gedeelde regels onder het nieuwe systeem); volledige suite 381 groen
+
+**Gevonden bij het bouwen: de sterktegroepen hebben in de Laravel-app nooit gewerkt.**
+In `participants()` stond `$averages` niet in de `use ()` van de closure. Binnen de
+closure was de variabele dus ongedefinieerd en gaf `$averages[$id] ?? 0.0` voor
+*iedereen* 0.0 — waarna `sortByDesc('average')` op louter gelijke waarden sorteerde en
+de twee "sterktegroepen" willekeurige plakken uit de databankvolgorde werden. De `??`
+onderdrukt de waarschuwing volledig, dus het faalde geruisloos; precies het
+stille-afwijking-patroon van fase 10, nu in één ontbrekend woord.
+
+Dat verklaart ook waarom de meting "huidig" en "willekeurig" niet kon onderscheiden.
+De tabel bovenaan blijft geldig — die is op de *gespeelde* wedstrijden gemeten, en de
+seizoenen 2023-2024 en 2024-2025 liepen nog op het legacy-systeem — maar er hoort een
+vierde rij bij. Sterktegroepen zoals ze bedoeld zijn, op dezelfde aanwezigheden:
+
+| 2023-2024 | verschillende | max herhaling | koppels ≥3× |
+|---|---|---|---|
+| sterktegroepen zoals bedoeld | 20,3 | 5× | 6,2 % |
+| huidig, echt gespeeld | 21,6 | 5× | 6,3 % |
+| zuiver willekeurig | 21,7 | 4× | 3,2 % |
+| wisselende tegenstanders | 26,5 | 2× | 0 % |
+
+Werkende sterktegroepen zijn dus **slechter dan willekeurig** (20,3 tegen 21,7; in de
+andere seizoenen 19,3 tegen 20,9 en 20,5 tegen 22,5). Ze veroorzaken de herhaling niet
+alleen niet, ze verergeren ze door de poel te halveren. De bug is hersteld — een kapot
+systeem valt niet te vergelijken met een nieuw — maar de conclusie van deze fase wordt
+er alleen sterker van.
+
+**Wat de tests werkelijk vastleggen.** Elke test is één keer gebroken om te bewijzen dat
+hij discrimineert, en drie van de vier keer bleek de eerste versie níéts te beweren:
+
+- De sorteertest gaf eerst de vier sterksten als dezelfde *verzameling* als de eerste
+  vier op id, dus de kapotte sortering gaf hetzelfde antwoord. Nu zijn de sterksten
+  bewust de vier laatste op id: met de bug komt `{1,2,3,4}` eruit, de databankvolgorde.
+- De geheugentest mat de wedstrijden van speeldag 1, want `draw()` bewaart niets — het
+  geeft voorstellen terug die de zaal nog bevestigt. Zonder die bevestiging in de test
+  was de assertie waar ongeacht wat de loting deed.
+- De test mat met dezelfde `SeasonEncounters` die hij test, dus een kapot geheugen gaf
+  een lege telling in plaats van een zichtbare herhaling. De test heeft nu een eigen
+  teller: wat een loting voedt mag niet ook haar eigen meetinstrument zijn.
+- "Geen enkel koppel komt elkaar drie keer tegen" bleek in 1 op 6 runs onwaar — het
+  laatste viertal van een speeldag is gedwongen uit wat overblijft. De assertie meet nu
+  tegen het plafond (drie tegenstanders per gespeelde wedstrijd): een werkend geheugen
+  komt daar binnen 10 % van, zonder geheugen blijft het rond 80 % en sterktegroepen
+  rond 75 %. Geen verzonnen drempel, en het is de assertie die valt zodra het geheugen
+  stopt — de vergelijking met sterktegroepen blijft dan groen, want willekeurig loten
+  verslaat ze ook zonder geheugen.
+
+De tie-break-test pint de keuze uit deze fase exact vast: met vier spelers op bonus 0 en
+vier op bonus 5 geeft een 2+2-viertal in één set 0 tegen 10, en elke andere verdeling
+blijft op 5. De test faalt zowel zonder tie-break als met de som-variant.
+
+**Gemeten op de echte laatste speeldag** (54 aanwezigen, 13 wedstrijden, tegen het
+geheugen van seizoen 2025-2026): sterktegroepen leveren 25 van de 78 koppels op die dit
+seizoen al tegen elkaar speelden (32 %), wisselende tegenstanders 4 (5 %). De loting
+kost 9 ms en 9 queries — één query meer dan het oude systeem, voor het geheugen.
+
+**De spreidingscijfers staan in één kolom.** Twee kolommen die elk dezelfde telling
+doen, deden ze twee keer per rij. Een statische cache loste dat op maar leefde langer
+dan één request en lekte tussen tests door. Samenvoegen tot "26,5 · max 2×" haalt de
+tweede telling weg zonder cache, en het cijferpaar hoort toch samen gelezen te worden.
+
+**Review van de twee systemen (10-09).** Na de bouw een tweede lezing, met de meting
+erbij. Vier dingen bleken dood of onbewijsbaar, één verbetering hield stand en één
+voorgestelde verbetering viel af op haar eigen cijfers.
+
+*Eerst het meetinstrument.* De tabellen hierboven waren met wegwerpcode gemeten, dus
+niemand kon ze reproduceren of een volgende wijziging ertegen afwegen. Dat is nu
+`php artisan draw:replay <seizoen> --system=wisselend --runs=5`: het herloot een gespeeld
+seizoen op de echte aanwezigheden in een transactie die altijd terugdraait, en print
+spreiding tegen haar plafond, de hoogste herhaling en de handicapverdeling. Wedstrijden
+gaan met de query builder in de databank en niet via het model, want `GameObserver` zou
+per wedstrijd het hele seizoen herrekenen. Een seizoen herloten kost zo 0,2 s.
+
+*De winst: begin elk viertal bij wie het moeilijkst te plaatsen is.* Het viertal begon
+bij een willekeurige speler, waardoor de laatste baan van de avond de restjes kreeg —
+precies waar de resterende herhalingen zaten. Nu start het bij de speler met de meeste
+ontmoetingen onder wie nog te plaatsen is. Op 2023-2024, het krapste seizoen, over twaalf
+herlotingen:
+
+| 2023-2024 | verschillende | % plafond | hoogste herhaling | koppels ≥3× |
+|---|---|---|---|---|
+| willekeurige start | 27,1 | 92,3 % | 3,1 (uitschieter 4×) | 0,35 % |
+| moeilijkste eerst | 27,8 | 94,5 % | 2,2 | 0,02 % |
+
+Op de andere twee seizoenen blijft de hoogste herhaling op 2 en stijgt de spreiding naar
+97,8 % en 98,5 % van het plafond. De handicap verandert niet, dus dit kost niets elders.
+
+*Afgevallen: rangschikken op de ergste herhaling in plaats van op de som.* Het idee was
+dat `leastMet` op de som telt terwijl de seizoenentabel op het maximum beoordeelt, dus
+dat die twee gelijk moesten. Gemeten is dat verkeerd: de spreiding blijft gelijk, maar de
+handicapstaart verdubbelt (H≥10 van 0,45 % naar 1,21 % op 2023-2024, 0,44 % → 0,74 % en
+0,36 % → 0,52 %). Het maximum is een grover criterium en knipt kandidaten weg vóór de
+handicap-tie-break iets kan zeggen. De herhaling waarvoor je dat zou doen is er na de
+startkeuze al niet meer. De ordening `[max, handicap, som]` is ook geprobeerd: die brengt
+de herhaling van 3× terug. Blijft dus op de som, met de reden in de docblock.
+
+*Dood: het geheugen bijwerken binnen één loting.* `byVaryingOpponents` riep na elk
+samengesteld viertal `remember()` op "zodat de volgende banen van deze avond het al
+kennen". Dat kan niet werken: een speler staat door de unieke index precies één keer in
+de lijst en verlaat die zodra hij een baan heeft, dus een net bijgehouden paar bevat
+alleen spelers die geen kandidaat meer zijn. Nagemeten met een uitzondering op elke
+opzoeking: over twaalf herlotingen van drie seizoenen, ruim 1 800 wedstrijden, werd niet
+één zo bijgehouden paar ooit opgevraagd. Weg, en `SeasonEncounters::remember()` is weer
+privé. Wat wél echt is en blijft: het geheugen komt uit de `games`-rijen, dus de volgende
+speeldag ziet de wedstrijden van vanavond zonder bijwerkstap.
+
+*Dood: de `remaining`-tak.* Beide samenstellers gaven "wie overbleef" terug, en
+`composeGames()` plakte dat bij de uitgelote spelers. Maar `selectSittingOut()` brengt
+het aantal spelers vooraf op een veelvoud van vier, dus dat is altijd leeg. Beide geven nu
+enkel de viertallen terug.
+
+*Onbewijsbaar: de test "de tweede loting van dezelfde avond kent de eerste".* Die slaagde
+onder elk systeem en ook zonder geheugen — wie al speelt is geen kandidaat meer, dus de
+wedstrijden van vanavond kunnen de keuze niet raken, en met vier overblijvers was het
+enige mogelijke viertal ook het verwachte. Vervangen door een test die de nieuwe
+startkeuze vastpint: speler 1 heeft tegen zes van de zeven anderen gespeeld en speler 8
+tegen niemand, dus speler 1 is de unieke moeilijkste en krijgt gedwongen speler 8 op zijn
+baan. Die test is gebroken om te bewijzen dat hij discrimineert: met een willekeurige
+start faalt hij.
+
+*De gedeelde regels worden nu ook echt gedeeld getest.* `DrawAndDrawnOutTest` draaide op
+de standaardwaarde, dus bescherming, herloten en aanvullen waren onder "Wisselende
+tegenstanders" ongetest — terwijl juist de bewering van deze fase is dat die regels niet
+van de samenstelling afhangen. Er is nu een derde uitvoering naast die voor sets tot 21:
+`DrawAndDrawnOutVaryingOpponentsTest`, veertien tests per systeem.
+
+*Filament.* Het keuzeveld is een `Radio` geworden en `DrawSystem` implementeert
+`HasDescription`. Filament toont de uitleg van beide keuzes dan zelf, en de helperText
+die de gekozen waarde moest opzoeken (met een `DrawSystem|string|null` erin, omdat een
+leeg formulier `null` geeft) is weg, samen met de `->live()` die hij nodig had. Bij twee
+keuzes is het ook betere weergave: beide uitleggen staan meteen in beeld. De beschrijving
+van "Sterktegroepen" beloofde "sterke spelers komen tegen sterke"; dat is met 20 % overlap
+en toeval binnen de groep te veel gezegd, dus nu "tegen dezelfde helft van het klassement".
+
+Volledige suite 381 groen. Pint meldt twee bestanden die niet bij deze fase horen en niet
+zijn aangeraakt: `ImportLegacyDatabase.php` en `bootstrap/providers.php`.
+
+**Los hiervan, na te kijken:** speeldag 18 van "2025 - 2026" staat op 2026-09-04 met 13
+wedstrijden en 54 aanwezigen, drieënhalve maand na speeldag 17. Dat ziet eruit als de
+eerste avond van het nieuwe seizoen die op het oude geland is omdat 2026-2027 nog niet
+bestond. Raakt fase 13 (`H/2` geldt vanaf 2026-2027 maar heeft bewust geen seizoenskolom)
+en fase 11 (het aanmaken van een seizoen klapt het vorige dicht). **Seizoen 2026-2027 is
+niet aangemaakt** — dat is een bestuursbeslissing (ze klapt het vorige seizoen publiek
+dicht en kent de basispunten toe), dus daar is niets aan geraakt. De keuze voor
+"Wisselende tegenstanders" hoort op dat moment gezet te worden.

@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Enums\DrawSystem;
 use App\Models\Game;
 use App\Models\Player;
 use App\Models\PlayerRoundStatistic;
@@ -17,7 +18,11 @@ use Tests\TestCase;
 /**
  * Loting en de gevolgen van uitgeloot-zijn.
  *
- * Draait voor sets tot 15 en tot 21: zie {@see DrawAndDrawnOutPlayedTo21Test}.
+ * Dit zijn de regels die de twee lotingsystemen delen, dus ze horen onder beide te
+ * gelden. Draait daarom drie keer: sets tot 15, sets tot 21
+ * ({@see DrawAndDrawnOutPlayedTo21Test}) en met de andere loting
+ * ({@see DrawAndDrawnOutVaryingOpponentsTest}). Wat de systemen juist *anders* doet
+ * staat in {@see DrawSystemTest}.
  */
 class DrawAndDrawnOutTest extends TestCase
 {
@@ -29,6 +34,12 @@ class DrawAndDrawnOutTest extends TestCase
     /** @var array<int, Player> */
     private array $players = [];
 
+    /** Welk lotingsysteem deze uitvoering gebruikt; subklassen zetten het om. */
+    protected static function drawSystem(): DrawSystem
+    {
+        return DrawSystem::StrengthGroups;
+    }
+
     protected function setUp(): void
     {
         parent::setUp();
@@ -38,6 +49,7 @@ class DrawAndDrawnOutTest extends TestCase
         $this->season = Season::create([
             'name' => '2026 - 2027',
             'points_per_set' => $this->format->pointsPerSet,
+            'draw_system' => static::drawSystem(),
         ]);
 
         foreach (range(1, 12) as $index) {

@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Enums\DrawSystem;
 use App\Enums\PointsPerSet;
 use App\Observers\SeasonObserver;
 use Illuminate\Database\Eloquent\Attributes\ObservedBy;
@@ -14,16 +15,19 @@ class Season extends Model
     protected $fillable = [
         'name',
         'points_per_set',
+        'draw_system',
     ];
 
     protected $attributes = [
         'points_per_set' => 21,
+        'draw_system' => DrawSystem::StrengthGroups->value,
     ];
 
     protected function casts(): array
     {
         return [
             'points_per_set' => PointsPerSet::class,
+            'draw_system' => DrawSystem::class,
         ];
     }
 
