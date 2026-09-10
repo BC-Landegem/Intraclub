@@ -93,7 +93,9 @@ class SeasonResource extends Resource
                 // opnieuw doen. Zo blijft het één query per rij zonder cache die langer
                 // leeft dan het verzoek.
                 TextColumn::make('spread')
-                    ->label('Spreiding')
+                    // eerste getal, en "max 4×" leest daaronder als de tegenhanger
+                    // ervan — hoe vaak dezelfde terugkwam.
+                    ->label('Verschillende tegenstanders')
                     ->tooltip('Gemiddeld aantal verschillende tegenstanders per speler, en hoe vaak hetzelfde tweetal elkaar in het slechtste geval tegenkwam.')
                     ->state(function (Season $record): string {
                         $spread = app(SeasonEncounters::class)->spread($record->id);

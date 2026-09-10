@@ -20,7 +20,8 @@
             {{ $summary['rounds'] }} speeldagen
         </span>
         <span>
-            Het schild markeert wie bij speeldag {{ $this->nextRoundNumber() }} niet opnieuw uitgeloot mag worden.
+            De laatste kolom rekent tot speeldag {{ $this->nextRoundNumber() }}, de volgende; het schild markeert
+            wie er dan niet opnieuw uitgeloot mag worden.
         </span>
     </div>
 </x-filament-panels::page>

@@ -97,9 +97,16 @@ class Uitlotingen extends Page implements HasTable
                     ->label('Speeldagen')
                     ->state(fn (Player $record): string => implode(', ', $this->drawnOutRounds($record)) ?: '—'),
                 TextColumn::make('rounds_since')
-                    ->label('Sinds · sd '.$this->nextRoundNumber())
+                    ->label('Speeldagen sinds uitloting')
+                    ->headerTooltip(sprintf(
+                        'Aantal speeldagen tussen de laatste uitloting en speeldag %d, de volgende. Het schild betekent: die speeldag valt hij niet opnieuw uit.',
+                        $this->nextRoundNumber(),
+                    ))
                     ->alignEnd()
                     ->state(fn (Player $record): string => (string) ($this->roundsSinceDrawnOut($record) ?? '—'))
+                    ->tooltip(fn (Player $record): ?string => ($rounds = $this->drawnOutRounds($record)) === []
+                        ? null
+                        : sprintf('Laatst uitgeloot op speeldag %d', max($rounds)))
                     ->icon(fn (Player $record): ?Heroicon => $this->isProtected($record)
                         ? Heroicon::OutlinedShieldCheck
                         : null)
