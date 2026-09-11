@@ -36,6 +36,8 @@ Op Windows: PHP via `winget install PHP.PHP.8.4` (daarna je terminal herstarten 
 nieuwe PATH), MariaDB via de installer van mariadb.org. De commando's hieronder zijn
 identiek op macOS en Linux; alleen het installeren verschilt.
 
+Liever geen PHP/MariaDB op de host: zie [Met Docker](#met-docker).
+
 ## Van nul naar draaiend
 
 ```bash
@@ -67,6 +69,56 @@ seizoenen en speeldagen valt er weinig te testen — zie de volgende sectie.
 Let op: `intraclub:set-password` **wijzigt** het wachtwoord van een bestaande gebruiker
 en kan er geen aanmaken. Voor de eerste gebruiker is `make:filament-user` het commando.
 
+## Met Docker
+
+PHP 8.4, MariaDB en de zaal-app draaien in containers. Vanuit de **repo-root**:
+
+```bash
+docker compose up --build
+```
+
+| Dienst | Adres |
+|---|---|
+| Beheerspaneel | http://localhost:8000/admin |
+| Zaal-app (`ng serve`) | http://localhost:4200/zaal/ |
+| MariaDB | `127.0.0.1:3307`, user `root`, leeg wachtwoord, databank `intraclub` |
+
+De eerste start installeert Composer-packages, kopieert `.env` als die ontbreekt,
+zet `APP_KEY`, draait de migrations en zaait **30 verzonnen leden** in een
+lopend seizoen (tot 15). Dat gebeurt alleen op een lege `players`-tabel: een
+productiedump of een tweede `docker compose up` blijft ongemoeid. Omgevingvariabelen
+in `docker-compose.yml` overschrijven `DB_HOST` e.d., dus een bestaande `app/.env`
+voor native PHP blijft bruikbaar.
+
+Daarna, in een tweede terminal:
+
+```bash
+docker compose exec app php artisan make:filament-user
+```
+
+Handige commando's:
+
+```bash
+docker compose exec app php artisan test --compact   # altijd op sqlite, nooit op de MariaDB hierboven
+docker compose exec app vendor/bin/pint --dirty
+docker compose down            # containers stoppen, databank bewaren
+docker compose down -v         # ook de MariaDB-volume wissen
+```
+
+De databank staat op **3307** en niet op 3306, omdat wie hier ontwikkelt meestal
+een eigen MariaDB op 3306 heeft staan: Docker weigert die poort dan te binden en
+de hele stack start niet. Binnen het containernetwerk heet ze `db:3306`. Is 3306
+bij jou vrij en wil je ze daar, pas dan de host-kant in `docker-compose.yml` aan.
+
+`vendor/` staat in een named volume en niet op de bind-mount — anders kost het
+classmappen van 14.000 bestanden minuten bij elke start. De container en de host
+hebben daardoor elk hun eigen `vendor/`: een `composer require` in de ene ziet de
+andere niet. Draai dat commando dus in de omgeving waarin je werkt, of in beide.
+
+Xdebug staat uit. Zet `XDEBUG_MODE=debug` in de omgeving (of voor één run
+`XDEBUG_MODE=debug docker compose up`) en gebruik in VS Code
+**Listen for Xdebug (Docker)**.
+
 ## Data in je lokale databank
 
 De echte data komt uit een dump van productie. Die dumps staan **niet** in de repo en
@@ -88,8 +140,9 @@ De importcommando's lezen uit de connecties `legacy` en `archive` in
 op `root` met een leeg wachtwoord. Heb je wél een root-wachtwoord, zet dan de
 `LEGACY_DB_*`- en `ARCHIVE_DB_*`-regels die als commentaar in `.env.example` staan.
 
-Er is voorlopig geen demo-seeder met verzonnen data. Wie zonder productiedump wil
-werken, klikt spelers en een seizoen bij elkaar in Filament.
+Zonder productiedump zaait `php artisan db:seed` (en Docker bij de eerste start)
+dertig verzonnen leden in het lopende seizoen. Die seeder doet niets als er al
+spelers staan. Extra spelers of een seizoen bijklikken kan nog altijd in Filament.
 
 ## Dagelijks werken
 

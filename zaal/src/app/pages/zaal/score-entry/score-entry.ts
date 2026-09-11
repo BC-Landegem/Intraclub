@@ -58,7 +58,7 @@ export class ScoreEntry {
 
   /** Alle drie de sets staan er; de wedstrijd is af. */
   readonly done = output<void>();
-  /** Dit is niet mijn wedstrijd — terug naar waar dit scherm vandaan kwam. */
+  /** Terug naar het bord van de avond, als dit scherm daarvandaan geopend is. */
   readonly leave = output<void>();
 
   /** De set die de speler bewust opnieuw ingeeft; anders volgt de app de sets. */
@@ -109,7 +109,7 @@ export class ScoreEntry {
    * aantikbaar, dus wie met een andere paring begon zet zelf een andere set open.
    *
    * Is er nergens nog een gat, dan is er geen actieve set. Een volledige wedstrijd
-   * opent dus dicht: drie afgeronde regels, en pas na een tik op "wijzig" valt er
+   * opent dus dicht: drie afgeronde kaarten. Pas na een tik op een kaart valt er
    * iets te veranderen. Dat is wat dit scherm veilig maakt voor de tweede ingang,
    * die geen naam meer vraagt — een verdwaalde tik verandert niets.
    */

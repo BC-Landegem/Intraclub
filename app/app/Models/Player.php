@@ -3,13 +3,18 @@
 namespace App\Models;
 
 use App\Enums\Gender;
+use Database\Factories\PlayerFactory;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Casts\Attribute;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Player extends Model
 {
+    /** @use HasFactory<PlayerFactory> */
+    use HasFactory;
+
     public const VETERAN_AGE = 45;
 
     protected $fillable = [

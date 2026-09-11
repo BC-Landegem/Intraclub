@@ -26,6 +26,18 @@ export class ZaalApi {
   private readonly inFlight = signal<readonly number[]>([]);
 
   /**
+   * Het rangnummer van de laatste save per game, om oude antwoorden te negeren.
+   *
+   * Twee saves van dezelfde wedstrijd kunnen naast elkaar lopen — een tik op een
+   * volgende set wacht niet op de vorige — en een PUT duurt hier een seconde of
+   * twee, want de server herrekent het seizoen. Komt het eerste antwoord dan als
+   * laatste binnen, dan zou het de nieuwste stand terugdraaien terwijl het scherm
+   * "bewaard" zegt. Alleen het antwoord op de jongste poging mag de toestand nog
+   * zetten; de oudere zijn per definitie achterhaald.
+   */
+  private readonly lastSave = new Map<number, number>();
+
+  /**
    * Voorstellen uit de laatste loting die nog bevestigd moeten worden.
    *
    * Waarom hier en niet in het scherm dat ze toont: de loting begint bij de
@@ -194,18 +206,31 @@ export class ZaalApi {
    */
   async saveScores(gameId: number, scores: GameScores): Promise<void> {
     this.applyScoresLocally(gameId, scores);
+
+    const attempt = (this.lastSave.get(gameId) ?? 0) + 1;
+    this.lastSave.set(gameId, attempt);
     this.inFlight.update((current) => [...current, gameId]);
     this.failure.set('');
 
     try {
-      this.state.set(
-        await firstValueFrom(this.http.put<RoundState>(`/api/zaal/games/${gameId}`, scores)),
+      const state = await firstValueFrom(
+        this.http.put<RoundState>(`/api/zaal/games/${gameId}`, scores),
       );
+
+      if (this.lastSave.get(gameId) === attempt) {
+        this.state.set(state);
+      }
     } catch (error: unknown) {
-      this.failure.set(describeError(error));
-      await this.loadCurrentRound();
+      if (this.lastSave.get(gameId) === attempt) {
+        this.failure.set(describeError(error));
+        await this.loadCurrentRound();
+      }
     } finally {
-      this.inFlight.update((current) => current.filter((id) => id !== gameId));
+      this.inFlight.update((current) => {
+        const at = current.indexOf(gameId);
+
+        return at === -1 ? current : [...current.slice(0, at), ...current.slice(at + 1)];
+      });
     }
   }
 

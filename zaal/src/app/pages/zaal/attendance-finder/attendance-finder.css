@@ -97,17 +97,20 @@
   justify-self: start;
   display: inline-flex;
   align-items: center;
-  gap: 0.45rem;
-  min-height: 48px;
+  gap: 0.55rem;
+  min-height: 68px;
   margin-bottom: 1.1rem;
-  padding: 0 1rem 0 0.75rem;
-  color: var(--tekst-zacht);
-  font-size: 0.95rem;
+  padding: 0 1.5rem 0 1.15rem;
+  font-size: 1.15rem;
 }
 
 .terug:hover {
-  color: var(--tekst);
   border-color: #39414d;
+}
+
+.terug .icoon {
+  width: 24px;
+  height: 24px;
 }
 
 .icoon {

@@ -1,0 +1,98 @@
+# Ontwikkelomgeving: Laravel (PHP 8.4) + MariaDB + de Angular zaal-app.
+# Vanuit de repo-root: `docker compose up --build`
+#
+#   http://localhost:8000/admin     beheerspaneel
+#   http://localhost:4200/zaal/     zaal-app (ng serve)
+#   127.0.0.1:3307                  MariaDB, root zonder wachtwoord
+#
+# Die 3307 is geen schoonheidsfout: wie hier ontwikkelt heeft vaak een eigen
+# MariaDB op 3306 staan, en dan weigert Docker de poort te binden en start de
+# hele stack niet. Binnen het netwerk heet de databank `db:3306`.
+
+name: intraclub
+
+services:
+  db:
+    image: mariadb:11.4
+    environment:
+      MARIADB_ALLOW_EMPTY_ROOT_PASSWORD: "yes"
+      MARIADB_DATABASE: intraclub
+      MARIADB_ROOT_HOST: "%"
+      TZ: Europe/Brussels
+    ports:
+      - "127.0.0.1:3307:3306"
+    volumes:
+      - mariadb_data:/var/lib/mysql
+      - ./docker/db/init.sh:/docker-entrypoint-initdb.d/init.sh:ro
+    healthcheck:
+      test: ["CMD", "healthcheck.sh", "--connect", "--innodb_initialized"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+      start_period: 10s
+
+  app:
+    build:
+      context: ./docker/php
+    working_dir: /var/www/html
+    ports:
+      - "127.0.0.1:8000:8000"
+    # `vendor` in een named volume: die map heeft 14.000 bestanden, en composer
+    # er doorheen laten classmappen over een Windows-bind-mount kost minuten in
+    # plaats van seconden. Het houdt de vendor van de container ook los van die
+    # van de host, die voor een andere PHP-versie geïnstalleerd kan zijn.
+    volumes:
+      - ./app:/var/www/html
+      - app_vendor:/var/www/html/vendor
+      - composer_cache:/root/.composer/cache
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    environment:
+      TZ: Europe/Brussels
+      APP_URL: http://localhost:8000
+      DB_CONNECTION: mariadb
+      DB_HOST: db
+      DB_PORT: 3306
+      DB_DATABASE: intraclub
+      DB_USERNAME: root
+      DB_PASSWORD: ""
+      LEGACY_DB_HOST: db
+      LEGACY_DB_DATABASE: intraclub_legacy
+      LEGACY_DB_USERNAME: root
+      LEGACY_DB_PASSWORD: ""
+      ARCHIVE_DB_HOST: db
+      ARCHIVE_DB_DATABASE: intraclub_oud
+      ARCHIVE_DB_USERNAME: root
+      ARCHIVE_DB_PASSWORD: ""
+      SANCTUM_STATEFUL_DOMAINS: localhost,localhost:8000,localhost:4200,127.0.0.1,127.0.0.1:8000,127.0.0.1:4200
+      XDEBUG_MODE: "${XDEBUG_MODE:-off}"
+    depends_on:
+      db:
+        condition: service_healthy
+
+  zaal:
+    image: node:22-bookworm
+    working_dir: /zaal
+    ports:
+      - "127.0.0.1:4200:4200"
+    volumes:
+      - ./zaal:/zaal
+      - zaal_node_modules:/zaal/node_modules
+    environment:
+      TZ: Europe/Brussels
+      CHOKIDAR_USEPOLLING: "true"
+    command:
+      - sh
+      - -c
+      # `npm ci` en niet `npm install`: die laatste herschrijft de package-lock
+      # op de bind-mount, en dan staat er een wijziging in je repo die niemand
+      # gevraagd heeft.
+      - npm ci && npx ng serve --host 0.0.0.0 --port 4200 --poll 2000 --proxy-config proxy.conf.docker.json
+    depends_on:
+      - app
+
+volumes:
+  mariadb_data:
+  composer_cache:
+  app_vendor:
+  zaal_node_modules:

@@ -14,6 +14,16 @@
             }
         },
         {
+            "name": "Listen for Xdebug (Docker)",
+            "type": "php",
+            "request": "launch",
+            "port": 9003,
+            "hostname": "0.0.0.0",
+            "pathMappings": {
+                "/var/www/html": "${workspaceFolder}/app"
+            }
+        },
+        {
             // Start de dev-server zelf en hangt de debugger er meteen aan.
             // Document root is app/public — niet de repo-root, zoals in de
             // oude opzet voor de PHP 7.4-api.

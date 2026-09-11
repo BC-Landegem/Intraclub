@@ -8,12 +8,17 @@
     }
   </div>
 
+  <!--
+    `replaceUrl` op de weg terug: dit is een kiosktablet, en wat de vorige
+    persoon invulde mag niet één terugtik ver liggen voor de volgende. Het is ook
+    wat `Match.close()` doet, zodat beide uitgangen hetzelfde beloven.
+  -->
   @if (api.round() !== null) {
     <nav class="bar-acties" aria-label="Schermen">
       @if (isHome()) {
-        <button type="button" class="stil" routerLink="/organisator">Organisator</button>
+        <button type="button" class="groot" routerLink="/organisator">Organisator</button>
       } @else {
-        <button type="button" routerLink="/">Terug naar de zaal</button>
+        <button type="button" routerLink="/" [replaceUrl]="true">Terug naar de zaal</button>
       }
     </nav>
   }

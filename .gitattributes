@@ -1,0 +1,3 @@
+# Shellscripts worden in Linux-containers gemount en uitgevoerd: CRLF maakt de
+# shebang onleesbaar (exit 127, "required file not found").
+*.sh text eol=lf

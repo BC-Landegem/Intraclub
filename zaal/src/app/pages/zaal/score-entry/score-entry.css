@@ -20,7 +20,7 @@
 .wie {
   margin: 0;
   color: var(--tekst-zacht);
-  font-size: 0.98rem;
+  font-size: 1.3rem;
 }
 
 .wie strong {
@@ -46,7 +46,7 @@
   border: 0;
   background: none;
   color: var(--tekst-zacht);
-  font-size: 0.9rem;
+  font-size: 1.15rem;
   text-decoration: underline;
   text-underline-offset: 3px;
 }
@@ -71,14 +71,14 @@
   display: flex;
   align-items: center;
   gap: 0.9rem;
-  min-height: 40px;
+  min-height: 56px;
   flex-wrap: wrap;
 }
 
 .set-nr {
   flex: none;
   color: var(--tekst-zacht);
-  font-size: 0.82rem;
+  font-size: 1.25rem;
   font-weight: 700;
   letter-spacing: 0.1em;
   text-transform: uppercase;
@@ -86,7 +86,7 @@
 
 .duos {
   color: var(--tekst-zacht);
-  font-size: 1.05rem;
+  font-size: 1.5rem;
 }
 
 .duos strong {
@@ -104,7 +104,7 @@
   margin-left: auto;
   flex: none;
   color: var(--tekst-zacht);
-  font-size: 0.9rem;
+  font-size: 1.2rem;
   font-variant-numeric: tabular-nums;
 }
 
@@ -137,12 +137,16 @@
  * Daarom ook niet meer op 0,5 doorzichtigheid: wat je kan aantikken mag er niet
  * uitzien als iets dat uit staat.
  */
-button.set.wachtend {
+button.set.wachtend,
+button.set.klaar {
   display: block;
   width: 100%;
   padding: 0.85rem 1.15rem;
-  background: transparent;
   text-align: left;
+}
+
+button.set.wachtend {
+  background: transparent;
   opacity: 0.72;
   transition:
     opacity 140ms ease-out,
@@ -152,6 +156,21 @@ button.set.wachtend {
 button.set.wachtend:hover {
   opacity: 1;
   border-color: #39414d;
+}
+
+button.set.klaar {
+  transition:
+    background 140ms ease-out,
+    border-color 140ms ease-out;
+}
+
+button.set.klaar:hover:not(.onderweg) {
+  border-color: rgb(23 163 74 / 0.7);
+  background: rgb(23 163 74 / 0.16);
+}
+
+button.set.klaar:hover:not(.onderweg) .wijzig {
+  color: var(--tekst);
 }
 
 /* Het pijltje zegt dat deze regel ergens heen gaat; de rest van de regel is tekst. */
@@ -169,7 +188,7 @@ button.set.wachtend:hover {
 }
 
 .cijfers {
-  font-size: 1.45rem;
+  font-size: 2.15rem;
   font-weight: 700;
   letter-spacing: -0.01em;
   font-variant-numeric: tabular-nums;
@@ -180,28 +199,20 @@ button.set.wachtend:hover {
   align-items: center;
   gap: 0.35rem;
   color: #4ade80;
-  font-size: 0.9rem;
+  font-size: 1.15rem;
   white-space: nowrap;
 }
 
 .wijzig {
-  min-height: 0;
-  padding: 0;
-  border: 0;
-  background: none;
   color: var(--tekst-zacht);
-  font-size: 0.9rem;
+  font-size: 1.15rem;
   text-decoration: underline;
   text-underline-offset: 3px;
 }
 
-.wijzig:hover {
-  color: var(--tekst);
-}
-
 .icoon {
-  width: 17px;
-  height: 17px;
+  width: 22px;
+  height: 22px;
   flex: none;
   fill: none;
   stroke: currentColor;
@@ -212,7 +223,7 @@ button.set.wachtend:hover {
 
 .vraag {
   margin: 0.9rem 0 0.55rem;
-  font-size: 1.15rem;
+  font-size: 1.5rem;
   font-weight: 600;
 }
 
@@ -228,10 +239,10 @@ button.set.wachtend:hover {
 }
 
 .duo {
-  min-height: 76px;
+  min-height: 88px;
   padding: 0.6rem 0.9rem;
   background: var(--achtergrond);
-  font-size: 1.2rem;
+  font-size: 1.45rem;
   font-weight: 600;
   letter-spacing: -0.01em;
   text-align: center;
@@ -252,15 +263,15 @@ button.set.wachtend:hover {
  */
 .raster {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(72px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(84px, 1fr));
   gap: 0.6rem;
 }
 
 .punt {
-  min-height: 62px;
+  min-height: 76px;
   padding: 0;
   background: var(--achtergrond);
-  font-size: 1.45rem;
+  font-size: 1.85rem;
   font-weight: 700;
   font-variant-numeric: tabular-nums;
   transition:
@@ -274,12 +285,12 @@ button.set.wachtend:hover {
 }
 
 .raster.verlenging {
-  grid-template-columns: repeat(auto-fit, minmax(104px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
   margin-top: 0.6rem;
 }
 
 .punt.breed {
-  font-size: 1.15rem;
+  font-size: 1.4rem;
 }
 
 .klap-open {
@@ -287,11 +298,11 @@ button.set.wachtend:hover {
   display: inline-flex;
   align-items: center;
   gap: 0.45rem;
-  min-height: 48px;
+  min-height: 68px;
   margin-top: 0.65rem;
-  padding: 0 1rem 0 0.75rem;
+  padding: 0 1.25rem 0 1rem;
   color: var(--tekst-zacht);
-  font-size: 0.95rem;
+  font-size: 1.15rem;
 }
 
 .klap-open:hover {
@@ -302,7 +313,8 @@ button.set.wachtend:hover {
 @media (prefers-reduced-motion: reduce) {
   .duo,
   .punt,
-  button.set.wachtend {
+  button.set.wachtend,
+  button.set.klaar {
     transition: none;
   }
 }
@@ -315,6 +327,17 @@ button.set.wachtend:hover {
 .set.klaar.onderweg {
   border-color: var(--paneel-rand);
   background: var(--paneel);
+}
+
+/*
+ * Onderweg is de kaart even dicht, maar ze mag er niet uitgeschakeld uitzien:
+ * de globale `button:disabled` zet 0,45 doorzichtigheid en een verbodscursor, en
+ * beide liegen hier. De cijfers zijn van de speler en staan er al; er is alleen
+ * twee seconden niets te openen.
+ */
+button.set.klaar:disabled {
+  opacity: 1;
+  cursor: default;
 }
 
 .merk.bezig {
