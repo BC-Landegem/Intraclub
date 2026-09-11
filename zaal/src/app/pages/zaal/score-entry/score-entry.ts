@@ -58,7 +58,7 @@ export class ScoreEntry {
 
   /** Alle drie de sets staan er; de wedstrijd is af. */
   readonly done = output<void>();
-  /** Dit is niet mijn wedstrijd — terug naar waar dit scherm vandaan kwam. */
+  /** Terug naar het bord van de avond, als dit scherm daarvandaan geopend is. */
   readonly leave = output<void>();
 
   /** De set die de speler bewust opnieuw ingeeft; anders volgt de app de sets. */

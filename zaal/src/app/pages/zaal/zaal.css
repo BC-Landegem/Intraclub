@@ -66,21 +66,6 @@ button.groot {
   color: var(--accent);
 }
 
-/* Het scherm van de organisator is voor één persoon, één keer per avond: geen knopgewicht. */
-.bar-acties .stil {
-  min-height: 44px;
-  padding: 0 0.85rem;
-  border-color: transparent;
-  background: none;
-  color: var(--tekst-zacht);
-  font-size: 0.92rem;
-}
-
-.bar-acties .stil:hover {
-  border-color: var(--paneel-rand);
-  color: var(--tekst);
-}
-
 /*
  * De terugvalklok in beeld gebracht: een haarlijn die in dertig seconden leegloopt.
  *

@@ -20,7 +20,7 @@
 .wie {
   margin: 0;
   color: var(--tekst-zacht);
-  font-size: 0.98rem;
+  font-size: 1.3rem;
 }
 
 .wie strong {
@@ -46,7 +46,7 @@
   border: 0;
   background: none;
   color: var(--tekst-zacht);
-  font-size: 0.9rem;
+  font-size: 1.15rem;
   text-decoration: underline;
   text-underline-offset: 3px;
 }
@@ -71,14 +71,14 @@
   display: flex;
   align-items: center;
   gap: 0.9rem;
-  min-height: 40px;
+  min-height: 56px;
   flex-wrap: wrap;
 }
 
 .set-nr {
   flex: none;
   color: var(--tekst-zacht);
-  font-size: 0.82rem;
+  font-size: 1.25rem;
   font-weight: 700;
   letter-spacing: 0.1em;
   text-transform: uppercase;
@@ -86,7 +86,7 @@
 
 .duos {
   color: var(--tekst-zacht);
-  font-size: 1.05rem;
+  font-size: 1.5rem;
 }
 
 .duos strong {
@@ -104,7 +104,7 @@
   margin-left: auto;
   flex: none;
   color: var(--tekst-zacht);
-  font-size: 0.9rem;
+  font-size: 1.2rem;
   font-variant-numeric: tabular-nums;
 }
 
@@ -188,7 +188,7 @@ button.set.klaar:hover:not(.onderweg) .wijzig {
 }
 
 .cijfers {
-  font-size: 1.45rem;
+  font-size: 2.15rem;
   font-weight: 700;
   letter-spacing: -0.01em;
   font-variant-numeric: tabular-nums;
@@ -199,20 +199,20 @@ button.set.klaar:hover:not(.onderweg) .wijzig {
   align-items: center;
   gap: 0.35rem;
   color: #4ade80;
-  font-size: 0.9rem;
+  font-size: 1.15rem;
   white-space: nowrap;
 }
 
 .wijzig {
   color: var(--tekst-zacht);
-  font-size: 0.9rem;
+  font-size: 1.15rem;
   text-decoration: underline;
   text-underline-offset: 3px;
 }
 
 .icoon {
-  width: 17px;
-  height: 17px;
+  width: 22px;
+  height: 22px;
   flex: none;
   fill: none;
   stroke: currentColor;
@@ -223,7 +223,7 @@ button.set.klaar:hover:not(.onderweg) .wijzig {
 
 .vraag {
   margin: 0.9rem 0 0.55rem;
-  font-size: 1.15rem;
+  font-size: 1.5rem;
   font-weight: 600;
 }
 
@@ -239,10 +239,10 @@ button.set.klaar:hover:not(.onderweg) .wijzig {
 }
 
 .duo {
-  min-height: 76px;
+  min-height: 88px;
   padding: 0.6rem 0.9rem;
   background: var(--achtergrond);
-  font-size: 1.2rem;
+  font-size: 1.45rem;
   font-weight: 600;
   letter-spacing: -0.01em;
   text-align: center;
@@ -263,15 +263,15 @@ button.set.klaar:hover:not(.onderweg) .wijzig {
  */
 .raster {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(72px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(84px, 1fr));
   gap: 0.6rem;
 }
 
 .punt {
-  min-height: 62px;
+  min-height: 76px;
   padding: 0;
   background: var(--achtergrond);
-  font-size: 1.45rem;
+  font-size: 1.85rem;
   font-weight: 700;
   font-variant-numeric: tabular-nums;
   transition:
@@ -285,12 +285,12 @@ button.set.klaar:hover:not(.onderweg) .wijzig {
 }
 
 .raster.verlenging {
-  grid-template-columns: repeat(auto-fit, minmax(104px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
   margin-top: 0.6rem;
 }
 
 .punt.breed {
-  font-size: 1.15rem;
+  font-size: 1.4rem;
 }
 
 .klap-open {
@@ -298,11 +298,11 @@ button.set.klaar:hover:not(.onderweg) .wijzig {
   display: inline-flex;
   align-items: center;
   gap: 0.45rem;
-  min-height: 48px;
+  min-height: 68px;
   margin-top: 0.65rem;
-  padding: 0 1rem 0 0.75rem;
+  padding: 0 1.25rem 0 1rem;
   color: var(--tekst-zacht);
-  font-size: 0.95rem;
+  font-size: 1.15rem;
 }
 
 .klap-open:hover {

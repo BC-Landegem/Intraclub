@@ -2,9 +2,7 @@
   <!--
     Twee ingangen, twee koppen. Wie via zijn naam binnenkwam ziet die vooraan
     staan; wie van het bord van de avond komt heeft er geen, en dan is dit gewoon
-    wedstrijd zoveel met de vier namen erbij. Ook de uitweg zegt in beide gevallen
-    waar hij heen gaat, want dat verschilt: terug naar de zaal, of terug naar het
-    bord waar je vandaan kwam.
+    wedstrijd zoveel met de vier namen erbij.
   -->
   <p class="wie">
     @if (foursome().me; as ik) {
@@ -15,21 +13,14 @@
     }
   </p>
   <!--
-    Hier stond "bewaren…" naast de uitweg. Het stond er terecht — een save duurt
-    echt een seconde of twee, want de server herrekent het hele seizoen — maar het
-    stond op de verkeerde plek: de setregel eronder zei op datzelfde moment
-    "bewaard". Twee labels over dezelfde save, die elkaar tegenspraken. De waarheid
-    hoort op de regel waar ze over gaat, dus daar staat ze nu.
+    Wie van het bord komt, gaat daar ook weer heen. Wie via zijn naam binnenkwam
+    gebruikt de terugknop in de balk: de tablet moet leegstaan voor de volgende.
   -->
-  <div class="kop-rechts">
-    <button type="button" class="uitweg" (click)="leave.emit()">
-      @if (foursome().me) {
-        Niet jouw wedstrijd?
-      } @else {
-        Terug naar de wedstrijden
-      }
-    </button>
-  </div>
+  @if (!foursome().me) {
+    <div class="kop-rechts">
+      <button type="button" class="uitweg" (click)="leave.emit()">Terug naar de wedstrijden</button>
+    </div>
+  }
 </header>
 
 <div class="sets">
