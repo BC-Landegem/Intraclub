@@ -38,17 +38,57 @@
         </div>
 
         @if (pendingWinner() === null) {
-          <p class="vraag">Wie won deze set?</p>
+          <p class="vraag">Wie won set {{ row.number }}?</p>
           <div class="kandidaten">
             <button type="button" class="duo" (click)="pickWinner(0)">{{ row.home }}</button>
             <button type="button" class="duo" (click)="pickWinner(1)">{{ row.away }}</button>
           </div>
         } @else {
-          <p class="vraag">En <span>hoeveel haalden</span> {{ losingPair() }}?</p>
+          <!--
+            De keuze van daarnet blijft als zin op het scherm staan. Zonder haar is
+            de winnaar na één tik weg en gaat de vraag eronder over een duo waarvan
+            niet meer te zien is waarom net dát duo gevraagd wordt — terwijl de helft
+            van de uitslag die je aan het ingeven bent net in die keuze zit.
+          -->
+          <p class="gekozen">
+            <svg viewBox="0 0 24 24" class="icoon vink" aria-hidden="true">
+              <path d="M4.5 12.5l5 5 10-11" />
+            </svg>
+            <span
+              ><strong>{{ winningPair() }}</strong> wonnen set {{ row.number }}</span
+            >
+            <button type="button" class="terug" (click)="undoWinner()">
+              <svg viewBox="0 0 24 24" class="icoon" aria-hidden="true">
+                <path d="M14.5 5.5 8 12l6.5 6.5" />
+              </svg>
+              winnaar aanpassen
+            </button>
+          </p>
+
+          <p class="vraag">
+            <span class="zacht">Hoeveel punten haalden </span>
+            <strong>{{ losingPair() }}</strong
+            ><span class="zacht">?</span>
+          </p>
+
+          <!--
+            Elke knop draagt de hele uitslag, winnaar eerst: het kleine cijfer is dat
+            van de winnaar hierboven, het grote is het antwoord op de vraag. Eén
+            cijfer per knop leest sneller, maar dan staat nergens op het scherm
+            waartegen dat cijfer speelt, en dat is precies de twijfel die je aan een
+            tablet in de zaal niet wil. Het grote cijfer blijft de kolom om op te
+            mikken; het kleine is er om te bevestigen, niet om te lezen.
+          -->
           <div class="raster">
             @for (option of direct(); track option.loser) {
-              <button type="button" class="punt" (click)="pickScore(option)">
-                {{ option.loser }}
+              <button
+                type="button"
+                class="punt"
+                [attr.aria-label]="labelFor(option)"
+                (click)="pickScore(option)"
+              >
+                <span class="punt-winnaar">{{ option.winner }}–</span>
+                <span class="punt-verliezer">{{ option.loser }}</span>
               </button>
             }
           </div>
@@ -56,8 +96,14 @@
           @if (showExtensions()) {
             <div class="raster verlenging">
               @for (option of extensions(); track option.winner * 100 + option.loser) {
-                <button type="button" class="punt breed" (click)="pickScore(option)">
-                  {{ option.winner }}–{{ option.loser }}
+                <button
+                  type="button"
+                  class="punt"
+                  [attr.aria-label]="labelFor(option)"
+                  (click)="pickScore(option)"
+                >
+                  <span class="punt-winnaar">{{ option.winner }}–</span>
+                  <span class="punt-verliezer">{{ option.loser }}</span>
                 </button>
               }
             </div>
@@ -66,7 +112,7 @@
               <svg viewBox="0 0 24 24" class="icoon" aria-hidden="true">
                 <path d="M5.5 9.5 12 16l6.5-6.5" />
               </svg>
-              de set ging in verlenging
+              de set ging in verlenging — winnaar voorbij {{ target() }}
             </button>
           }
         }
@@ -91,11 +137,24 @@
       >
         <span class="set-regel">
           <span class="set-nr">Set {{ row.number }}</span>
-          <span class="duos"
-            ><strong>{{ row.home }}</strong> tegen <strong>{{ row.away }}</strong></span
-          >
+          <!--
+            De winnaar is hier de heldere helft: naam én cijfer. De namen staan in
+            dezelfde volgorde als de cijfers, dus links hoort bij links — wie de
+            regel naleest hoeft geen kant meer te kiezen. Dat moet, want in het
+            raster hierboven staat de winnaar altijd vooraan en hier niet
+            noodzakelijk; zonder dat verschil zichtbaar te maken lijkt een correct
+            bewaarde set omgekeerd ingevuld.
+          -->
+          <span class="duos">
+            <span [class.zege]="row.score.home > row.score.away">{{ row.home }}</span> tegen
+            <span [class.zege]="row.score.away > row.score.home">{{ row.away }}</span>
+          </span>
           <span class="stand">
-            <span class="cijfers">{{ row.score.home }} – {{ row.score.away }}</span>
+            <span class="cijfers">
+              <span [class.zege]="row.score.home > row.score.away">{{ row.score.home }}</span>
+              <span class="streep">–</span>
+              <span [class.zege]="row.score.away > row.score.home">{{ row.score.away }}</span>
+            </span>
             <!--
               De cijfers staan er meteen — die komen uit `applyScoresLocally` en
               wachten niet op de server. Het vinkje wél: dat is een uitspraak over
