@@ -1,0 +1,4 @@
+{
+  "/api": { "target": "http://app:8000", "secure": false, "changeOrigin": true },
+  "/sanctum": { "target": "http://app:8000", "secure": false, "changeOrigin": true }
+}
