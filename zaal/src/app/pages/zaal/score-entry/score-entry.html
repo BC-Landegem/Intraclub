@@ -81,8 +81,18 @@
         }
       </section>
     } @else if (row.score) {
-      <section class="set klaar" [class.onderweg]="isSending(row.index)">
-        <div class="set-regel">
+      <!--
+        Dezelfde aantikbare kaart als een wachtende set: de hele regel opent de
+        invoer, niet alleen het woord "wijzig". Dat woord blijft staan als hint,
+        maar het is geen aparte knop meer — een knop in een knop mag niet.
+      -->
+      <button
+        type="button"
+        class="set klaar"
+        [class.onderweg]="isSending(row.index)"
+        (click)="redo(row.index)"
+      >
+        <span class="set-regel">
           <span class="set-nr">Set {{ row.number }}</span>
           <span class="duos"
             ><strong>{{ row.home }}</strong> tegen <strong>{{ row.away }}</strong></span
@@ -96,7 +106,7 @@
               niemand dat. Daarom eerst "bewaren…", dan pas "bewaard".
             -->
             @if (isSending(row.index)) {
-              <output class="merk bezig">bewaren…</output>
+              <span class="merk bezig">bewaren…</span>
             } @else {
               <span class="merk">
                 <svg viewBox="0 0 24 24" class="icoon" aria-hidden="true">
@@ -105,10 +115,10 @@
                 bewaard
               </span>
             }
-            <button type="button" class="wijzig" (click)="redo(row.index)">wijzig</button>
+            <span class="wijzig">wijzig</span>
           </span>
-        </div>
-      </section>
+        </span>
+      </button>
     } @else {
       <!--
         Een set die nog niet aan de beurt is, maar wel aan te tikken. De

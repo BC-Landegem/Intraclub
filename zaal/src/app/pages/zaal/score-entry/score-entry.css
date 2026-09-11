@@ -137,12 +137,16 @@
  * Daarom ook niet meer op 0,5 doorzichtigheid: wat je kan aantikken mag er niet
  * uitzien als iets dat uit staat.
  */
-button.set.wachtend {
+button.set.wachtend,
+button.set.klaar {
   display: block;
   width: 100%;
   padding: 0.85rem 1.15rem;
-  background: transparent;
   text-align: left;
+}
+
+button.set.wachtend {
+  background: transparent;
   opacity: 0.72;
   transition:
     opacity 140ms ease-out,
@@ -152,6 +156,21 @@ button.set.wachtend {
 button.set.wachtend:hover {
   opacity: 1;
   border-color: #39414d;
+}
+
+button.set.klaar {
+  transition:
+    background 140ms ease-out,
+    border-color 140ms ease-out;
+}
+
+button.set.klaar:hover:not(.onderweg) {
+  border-color: rgb(23 163 74 / 0.7);
+  background: rgb(23 163 74 / 0.16);
+}
+
+button.set.klaar:hover:not(.onderweg) .wijzig {
+  color: var(--tekst);
 }
 
 /* Het pijltje zegt dat deze regel ergens heen gaat; de rest van de regel is tekst. */
@@ -185,18 +204,10 @@ button.set.wachtend:hover {
 }
 
 .wijzig {
-  min-height: 0;
-  padding: 0;
-  border: 0;
-  background: none;
   color: var(--tekst-zacht);
   font-size: 0.9rem;
   text-decoration: underline;
   text-underline-offset: 3px;
-}
-
-.wijzig:hover {
-  color: var(--tekst);
 }
 
 .icoon {
@@ -302,7 +313,8 @@ button.set.wachtend:hover {
 @media (prefers-reduced-motion: reduce) {
   .duo,
   .punt,
-  button.set.wachtend {
+  button.set.wachtend,
+  button.set.klaar {
     transition: none;
   }
 }
