@@ -76,11 +76,17 @@
         Dezelfde aantikbare kaart als een wachtende set: de hele regel opent de
         invoer, niet alleen het woord "wijzig". Dat woord blijft staan als hint,
         maar het is geen aparte knop meer — een knop in een knop mag niet.
+
+        Wél dicht zolang de stand onderweg is. Een tik tijdens die twee seconden
+        zet de set open, waardoor het "bewaren…" uit beeld gaat en een tweede PUT
+        naast de eerste komt te lopen — en dan bepaalt het toeval welk antwoord
+        het laatst binnenkomt.
       -->
       <button
         type="button"
         class="set klaar"
         [class.onderweg]="isSending(row.index)"
+        [disabled]="isSending(row.index)"
         (click)="redo(row.index)"
       >
         <span class="set-regel">
@@ -95,9 +101,13 @@
               wachten niet op de server. Het vinkje wél: dat is een uitspraak over
               wat er in de databank staat, en zolang de PUT onderweg is weet
               niemand dat. Daarom eerst "bewaren…", dan pas "bewaard".
+
+              Een output-element en geen span: dat is van zichzelf een live
+              region, dus de overgang wordt ook voorgelezen. Het mag in een knop
+              staan — het is tekst, geen tweede bedienbaar element.
             -->
             @if (isSending(row.index)) {
-              <span class="merk bezig">bewaren…</span>
+              <output class="merk bezig">bewaren…</output>
             } @else {
               <span class="merk">
                 <svg viewBox="0 0 24 24" class="icoon" aria-hidden="true">

@@ -81,7 +81,7 @@ docker compose up --build
 |---|---|
 | Beheerspaneel | http://localhost:8000/admin |
 | Zaal-app (`ng serve`) | http://localhost:4200/zaal/ |
-| MariaDB | `127.0.0.1:3306`, user `root`, leeg wachtwoord, databank `intraclub` |
+| MariaDB | `127.0.0.1:3307`, user `root`, leeg wachtwoord, databank `intraclub` |
 
 De eerste start installeert Composer-packages, kopieert `.env` als die ontbreekt,
 zet `APP_KEY`, draait de migrations en zaait **30 verzonnen leden** in een
@@ -99,14 +99,21 @@ docker compose exec app php artisan make:filament-user
 Handige commando's:
 
 ```bash
-docker compose exec app php artisan test --compact
+docker compose exec app php artisan test --compact   # altijd op sqlite, nooit op de MariaDB hierboven
 docker compose exec app vendor/bin/pint --dirty
 docker compose down            # containers stoppen, databank bewaren
 docker compose down -v         # ook de MariaDB-volume wissen
 ```
 
-Poort 3306 is al bezet door een lokale MariaDB? Pas de host-kant in
-`docker-compose.yml` aan (`127.0.0.1:3307:3306`) — in de container blijft het 3306.
+De databank staat op **3307** en niet op 3306, omdat wie hier ontwikkelt meestal
+een eigen MariaDB op 3306 heeft staan: Docker weigert die poort dan te binden en
+de hele stack start niet. Binnen het containernetwerk heet ze `db:3306`. Is 3306
+bij jou vrij en wil je ze daar, pas dan de host-kant in `docker-compose.yml` aan.
+
+`vendor/` staat in een named volume en niet op de bind-mount — anders kost het
+classmappen van 14.000 bestanden minuten bij elke start. De container en de host
+hebben daardoor elk hun eigen `vendor/`: een `composer require` in de ene ziet de
+andere niet. Draai dat commando dus in de omgeving waarin je werkt, of in beide.
 
 Xdebug staat uit. Zet `XDEBUG_MODE=debug` in de omgeving (of voor één run
 `XDEBUG_MODE=debug docker compose up`) en gebruik in VS Code

@@ -329,6 +329,17 @@ button.set.klaar:hover:not(.onderweg) .wijzig {
   background: var(--paneel);
 }
 
+/*
+ * Onderweg is de kaart even dicht, maar ze mag er niet uitgeschakeld uitzien:
+ * de globale `button:disabled` zet 0,45 doorzichtigheid en een verbodscursor, en
+ * beide liegen hier. De cijfers zijn van de speler en staan er al; er is alleen
+ * twee seconden niets te openen.
+ */
+button.set.klaar:disabled {
+  opacity: 1;
+  cursor: default;
+}
+
 .merk.bezig {
   color: var(--tekst-zacht);
   font-variant-numeric: tabular-nums;
