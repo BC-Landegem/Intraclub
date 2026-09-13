@@ -159,11 +159,39 @@ export class ScoreEntry {
     return row === null || side === null ? '' : side === 0 ? row.away : row.home;
   });
 
+  /** Het duo dat won: de andere helft van de uitslag, en die hoort op het scherm. */
+  protected readonly winningPair = computed(() => {
+    const row = this.activeRow();
+    const side = this.pendingWinner();
+
+    return row === null || side === null ? '' : side === 0 ? row.home : row.away;
+  });
+
   protected readonly direct = computed(() => directWins(this.target(), this.cap()));
   protected readonly extensions = computed(() => extensionWins(this.target(), this.cap()));
 
+  /**
+   * Wat een puntenknop is, uitgeschreven met namen erbij.
+   *
+   * Voorgelezen wordt "15–13" anders twee losse getallen zonder kant, en op dit
+   * scherm is de kant nu net de hele vraag.
+   */
+  protected labelFor(option: SetOption): string {
+    return `${this.winningPair()} ${option.winner}, ${this.losingPair()} ${option.loser}`;
+  }
+
   protected pickWinner(side: 0 | 1): void {
     this.pendingWinner.set(side);
+    this.showExtensions.set(false);
+  }
+
+  /**
+   * Terug naar "wie won deze set?". Zonder deze weg zit een tik op de verkeerde
+   * winnaar vast: de vraag erna gaat over de verliezer, dus de enige uitweg was
+   * een stand bewaren waarvan je wist dat ze fout was.
+   */
+  protected undoWinner(): void {
+    this.pendingWinner.set(null);
     this.showExtensions.set(false);
   }
 

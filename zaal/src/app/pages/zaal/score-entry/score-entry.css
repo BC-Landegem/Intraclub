@@ -187,11 +187,33 @@ button.set.klaar:hover:not(.onderweg) .wijzig {
   margin-left: auto;
 }
 
+/*
+ * De uitslag van een afgeronde set. Winnaar helder, verliezer zacht — dezelfde
+ * verdeling als bij de namen ernaast, zodat de regel in één blik zegt wie won en
+ * niet alleen welke twee cijfers er staan.
+ */
 .cijfers {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 0.3rem;
+  color: var(--tekst-zacht);
   font-size: 2.15rem;
   font-weight: 700;
   letter-spacing: -0.01em;
   font-variant-numeric: tabular-nums;
+}
+
+.cijfers .zege {
+  color: var(--tekst);
+}
+
+.cijfers .streep {
+  font-weight: 400;
+}
+
+.duos .zege {
+  color: var(--tekst);
+  font-weight: 600;
 }
 
 .merk {
@@ -221,15 +243,68 @@ button.set.klaar:hover:not(.onderweg) .wijzig {
   stroke-linejoin: round;
 }
 
+/*
+ * De keuze van daarnet, blijvend op het scherm. Dit is geen melding die wegvalt:
+ * zolang de puntenvraag open staat, staat hier de andere helft van de uitslag.
+ */
+.gekozen {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem 1.25rem;
+  flex-wrap: wrap;
+  margin: 1rem 0 0;
+  color: var(--tekst-zacht);
+  font-size: 1.3rem;
+}
+
+.gekozen strong {
+  color: var(--tekst);
+  font-weight: 700;
+}
+
+.vink {
+  color: #4ade80;
+  margin-right: 0.15rem;
+}
+
+/* Eén zin, geen flexrij: de vraag mag niet in stukken uit elkaar staan. */
 .vraag {
-  margin: 0.9rem 0 0.55rem;
+  margin: 0.55rem 0;
   font-size: 1.5rem;
   font-weight: 600;
 }
 
-.vraag span {
+.vraag .zacht {
   color: var(--tekst-zacht);
   font-weight: 400;
+}
+
+.vraag strong {
+  font-weight: 700;
+}
+
+/*
+ * De weg terug naar "wie won deze set?", vlak naast de zin die hij terugneemt.
+ * Zacht en klein, want wie juist goed getikt heeft mag er niet over struikelen — maar wel met de raakhoogte van
+ * een echte knop, want dit wordt met een vinger op een tablet aangetikt.
+ */
+.terug {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  min-height: 0;
+  padding: 0.55rem 0;
+  border: 0;
+  background: none;
+  color: var(--tekst-zacht);
+  font-size: 1.15rem;
+  font-weight: 400;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.terug:hover {
+  color: var(--tekst);
 }
 
 .kandidaten {
@@ -256,27 +331,53 @@ button.set.klaar:hover:not(.onderweg) .wijzig {
   border-color: var(--accent);
 }
 
+/* De vraag die meteen op de setregel volgt, krijgt daar wat lucht van. */
+.set-regel + .vraag {
+  margin-top: 0.9rem;
+}
+
 /*
  * Het puntenraster. Elke knop is een legale stand: bij sets tot 15 zijn dat de
  * veertien uitslagen waarin de winnaar op 15 eindigt, bij sets tot 21 twintig.
- * Auto-fit houdt de rijen vol op elke breedte.
+ * Auto-fill en niet auto-fit: het lege deel van de laatste rij blijft dan als kolom
+ * bestaan, zodat het verlengingsraster eronder — met zijn handvol knoppen — exact
+ * dezelfde maten krijgt. Even grote knoppen zeggen: even gewone keuzes.
  */
 .raster {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(84px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(104px, 1fr));
   gap: 0.6rem;
 }
 
 .punt {
+  display: flex;
+  align-items: baseline;
+  justify-content: center;
+  gap: 0.2rem;
   min-height: 76px;
   padding: 0;
   background: var(--achtergrond);
-  font-size: 1.85rem;
-  font-weight: 700;
   font-variant-numeric: tabular-nums;
   transition:
     background 140ms ease-out,
     border-color 140ms ease-out;
+}
+
+/*
+ * Twee cijfers, twee gewichten. Het grote is het antwoord op de vraag erboven en
+ * blijft de kolom om met een vinger op te mikken; het kleine is de winnaar, en
+ * staat er om te bevestigen waartegen dat cijfer speelt. Wie leest ziet een
+ * uitslag, wie mikt ziet nog altijd één oplopende reeks.
+ */
+.punt-winnaar {
+  color: var(--tekst-zacht);
+  font-size: 1.15rem;
+  font-weight: 600;
+}
+
+.punt-verliezer {
+  font-size: 1.85rem;
+  font-weight: 700;
 }
 
 .punt:hover {
@@ -284,13 +385,12 @@ button.set.klaar:hover:not(.onderweg) .wijzig {
   border-color: var(--accent);
 }
 
-.raster.verlenging {
-  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
-  margin-top: 0.6rem;
+.punt:hover .punt-winnaar {
+  color: var(--tekst);
 }
 
-.punt.breed {
-  font-size: 1.4rem;
+.raster.verlenging {
+  margin-top: 0.6rem;
 }
 
 .klap-open {
