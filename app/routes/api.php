@@ -10,6 +10,7 @@ use App\Http\Controllers\Api\SeasonController;
 use App\Http\Controllers\Api\ZaalController;
 use App\Http\Controllers\ContactController;
 use App\Http\Controllers\DeployController;
+use App\Http\Controllers\MeldingController;
 use App\Http\Middleware\CurrentSeasonOnly;
 use App\Http\Middleware\PublicCacheHeaders;
 use App\Http\Middleware\RequireMember;
@@ -162,6 +163,18 @@ Route::middleware('web')->group(function (): void {
  * dezelfde reden: een 429 komt hier als rauwe JSON in de adresbalk terecht.
  */
 Route::post('contact', ContactController::class);
+
+/*
+ * Meldformulier voor grensoverschrijdend gedrag. Een eigen route naast /contact,
+ * met de ontvanger hard in config/melding.php: een bestemming die de client
+ * meestuurt is precies de bug die zo'n melding ooit bij het bestuur laat belanden.
+ *
+ * Zelfde redenen als hierboven om hier te staan en om alles als redirect af te
+ * handelen, met dit verschil: wordt een melder afgewezen, dan heeft hij geen
+ * tweede anonieme weg. Daarom gaat dit endpoint op één punt open waar contact
+ * dichtgaat — zie MeldingController.
+ */
+Route::post('melding', MeldingController::class);
 
 /*
  * Deploy-endpoints, aangeroepen door GitHub Actions (.github/workflows/). Ze

@@ -44,6 +44,7 @@ host, dus je ziet het in de Actions-log staan.
 ### 3. Op de server, met FTP
 
 1. `app/.env.production.example` uploaden als `.env` in de app-map (naast `artisan`), aanvullen met databank­gegevens, `DEPLOY_TOKEN` en de SMTP-gegevens van `info@bclandegem.be` (die laatste voor het contactformulier van de site — zie [config/contact.php](app/config/contact.php)).
+   Zet hier ook **`MELDING_TO`**, het adres van het Aanspreekpunt Integriteit (zie [config/melding.php](app/config/melding.php)). Die variabele heeft bewust geen standaardwaarde: blijft ze leeg, dan weigert `/api/melding` zichtbaar in plaats van meldingen stil bij het bestuur af te leveren. Zie ook de personeelswissel hieronder.
 2. `APP_KEY` zetten: genereer lokaal met `php artisan key:generate --show` en plak de waarde.
 3. Document root: DirectAdmin laat die hier **niet** verzetten (geen Custom HTTPD Configurations op gebruikersniveau, en Subdomain Management heeft geen veld ervoor). Daarom staat de docroot op `public_html` en vangt [app/.htaccess](app/.htaccess) dat op: het blokkeert alles buiten `public/` en stuurt de rest naar `public/index.php`. Dat bestand gaat mee met de sync, dus er is geen handwerk. Kan je later tóch de docroot verzetten, verwijder het dan — Laravel's eigen `public/.htaccess` neemt over.
 4. Snapshot voor de reset: lokaal `bash app/cutover.sh` draaien en `app/cutover.sql.gz` uploaden naar `storage/app/private/cutover.sql.gz`. Die map staat in de exclude-lijst van de sync, dus een deploy raakt hem niet.
@@ -131,6 +132,26 @@ waarheid en is een reset dataverlies. Doe dan alle drie:
    wijziging nooit, want `optimize` heeft de configuratie in de cache gezet;
 3. `storage/app/private/cutover.sql.gz` via FTP verwijderen. Dit is de enige rem die
    niet van de configuratiecache afhangt, dus dit is de belangrijkste.
+
+## Als het Aanspreekpunt Integriteit wisselt
+
+Dit is de enige wijziging in dit project waar niets voor waarschuwt. Een vergeten
+`MELDING_TO` levert geen fout op: het meldformulier blijft werken en bezorgt
+meldingen over grensoverschrijdend gedrag aan iemand die de functie niet meer heeft.
+Geen test vangt dat, geen foutcode wijst erop, en de melder krijgt netjes de
+bedankpagina te zien.
+
+Alle vier, in één beweging:
+
+1. `MELDING_TO` in de `.env` op de server;
+2. **de deploy of de taak `optimize` opnieuw draaien** — anders blijft de oude waarde
+   in de configuratiecache staan, net als bij `INTRACLUB_ALLOW_RESET` hierboven;
+3. `INTEGRITY_NAME` in `src/data/contact.ts` van de Website-repo;
+4. de tekst op `/club/aanspreekpunt-integriteit/`.
+
+Controleer daarna met een testmelding dat ze op het nieuwe adres aankomt. Er is geen
+andere manier om het te weten: er vertrekt geen bevestiging en er komt geen logregel
+met de inhoud.
 
 ## Handmatig een taak draaien
 

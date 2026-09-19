@@ -187,12 +187,39 @@ class ContactFormTest extends TestCase
     public function test_turnstile_keurt_goed_en_de_mail_vertrekt(): void
     {
         config(['contact.turnstile_secret' => 'geheim']);
-        Http::fake(['challenges.cloudflare.com/*' => Http::response(['success' => true])]);
+        Http::fake(['challenges.cloudflare.com/*' => Http::response(['success' => true, 'action' => 'contact'])]);
 
         $this->post('/api/contact', $this->payload())
             ->assertRedirect('https://bclandegem.be/club/contact/bedankt/');
 
         $this->assertCount(1, $this->verzonden());
+    }
+
+    public function test_een_token_van_een_ander_formulier_wordt_geweigerd(): void
+    {
+        // Beide formulieren delen één sleutelpaar; de action is het enige dat ze
+        // uit elkaar houdt, en Cloudflare rapporteert hem in het antwoord.
+        config(['contact.turnstile_secret' => 'geheim']);
+        Http::fake(['challenges.cloudflare.com/*' => Http::response(['success' => true, 'action' => 'melding'])]);
+
+        $this->post('/api/contact', $this->payload())
+            ->assertRedirect('https://bclandegem.be/club/contact/?error=captcha');
+
+        $this->assertCount(0, $this->verzonden());
+    }
+
+    public function test_een_storing_bij_cloudflare_telt_ook_als_afkeuring(): void
+    {
+        // Een 5xx is geen oordeel, maar contact kiest hier bewust voor dicht: de
+        // bezoeker kan altijd nog rechtstreeks mailen. Het meldformulier niet.
+        Log::spy();
+        config(['contact.turnstile_secret' => 'geheim']);
+        Http::fake(['challenges.cloudflare.com/*' => Http::response([], 500)]);
+
+        $this->post('/api/contact', $this->payload())
+            ->assertRedirect('https://bclandegem.be/club/contact/?error=captcha');
+
+        $this->assertCount(0, $this->verzonden());
     }
 
     public function test_een_onbereikbare_turnstile_gaat_dicht_en_niet_open(): void
