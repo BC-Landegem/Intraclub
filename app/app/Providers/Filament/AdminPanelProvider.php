@@ -10,6 +10,7 @@ use Filament\Pages\Dashboard;
 use Filament\Panel;
 use Filament\PanelProvider;
 use Filament\Support\Colors\Color;
+use Filament\Support\Facades\FilamentTimezone;
 use Filament\Widgets\AccountWidget;
 use Filament\Widgets\FilamentInfoWidget;
 use Illuminate\Cookie\Middleware\AddQueuedCookiesToResponse;
@@ -55,5 +56,17 @@ class AdminPanelProvider extends PanelProvider
             ->authMiddleware([
                 Authenticate::class,
             ]);
+    }
+
+    /*
+     * De databank staat in UTC (APP_TIMEZONE) en dat blijft zo, maar een
+     * beheerder leest hier klokuren: "pushbericht verstuurd om 22:45" moet het
+     * uur zijn dat op zijn telefoon stond, niet twee uur vroeger. Dit raakt
+     * enkel datum-én-tijdvelden; een kale datum (speeldag, geboortedatum) valt
+     * bij Filament terug op config('app.timezone') en verschuift dus niet.
+     */
+    public function boot(): void
+    {
+        FilamentTimezone::set('Europe/Brussels');
     }
 }

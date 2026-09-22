@@ -46,6 +46,10 @@ host, dus je ziet het in de Actions-log staan.
 1. `app/.env.production.example` uploaden als `.env` in de app-map (naast `artisan`), aanvullen met databank­gegevens, `DEPLOY_TOKEN` en de SMTP-gegevens van `info@bclandegem.be` (die laatste voor het contactformulier van de site — zie [config/contact.php](app/config/contact.php)).
    Zet hier ook **`MELDING_TO`**, het adres van het Aanspreekpunt Integriteit (zie [config/melding.php](app/config/melding.php)). Die variabele heeft bewust geen standaardwaarde: blijft ze leeg, dan weigert `/api/melding` zichtbaar in plaats van meldingen stil bij het bestuur af te leveren. Zie ook de personeelswissel hieronder.
 2. `APP_KEY` zetten: genereer lokaal met `php artisan key:generate --show` en plak de waarde.
+   Hetzelfde voor de pushberichten: `php artisan push:vapid` geeft `VAPID_PUBLIC_KEY` en
+   `VAPID_PRIVATE_KEY`; plak beide, en zet de publieke ook als repository variable
+   `VAPID_PUBLIC_KEY` in de Website-repo (environment `shared-hosting`). Zonder die twee
+   staat push uit, zichtbaar in het paneel onder Pushberichten. Zie ook "Cron" hieronder.
 3. Document root: DirectAdmin laat die hier **niet** verzetten (geen Custom HTTPD Configurations op gebruikersniveau, en Subdomain Management heeft geen veld ervoor). Daarom staat de docroot op `public_html` en vangt [app/.htaccess](app/.htaccess) dat op: het blokkeert alles buiten `public/` en stuurt de rest naar `public/index.php`. Dat bestand gaat mee met de sync, dus er is geen handwerk. Kan je later tóch de docroot verzetten, verwijder het dan — Laravel's eigen `public/.htaccess` neemt over.
 4. Snapshot voor de reset: lokaal `bash app/cutover.sh` draaien en `app/cutover.sql.gz` uploaden naar `storage/app/private/cutover.sql.gz`. Die map staat in de exclude-lijst van de sync, dus een deploy raakt hem niet.
 
@@ -152,6 +156,31 @@ Alle vier, in één beweging:
 Controleer daarna met een testmelding dat ze op het nieuwe adres aankomt. Er is geen
 andere manier om het te weten: er vertrekt geen bevestiging en er komt geen logregel
 met de inhoud.
+
+## Cron
+
+De pushberichten vertrekken via de wachtrij (`QUEUE_CONNECTION=database`), en die wordt
+leeggemaakt door de Laravel-scheduler. Er is geen proces dat blijft draaien, dus die
+scheduler hangt aan een cron. In DirectAdmin → **Cron Jobs**, elke minuut:
+
+```
+* * * * * cd /home/<account>/domains/intra.bclandegem.be/public_html && /usr/local/bin/php artisan schedule:run >> /dev/null 2>&1
+```
+
+Controleer het PHP-pad: `/usr/local/bin/php` moet dezelfde 8.4 zijn als de webserver
+(in DirectAdmin bij PHP-versie, of `php -v` in een cron die naar een bestand schrijft).
+De map is die waar `artisan` staat — met deze docroot-opzet is dat `public_html` zelf.
+
+Wat de scheduler doet staat in `app/routes/console.php`: elke minuut
+`queue:work --stop-when-empty --max-time=50 --timeout=240` (verstuurt wat er ligt en
+stopt), en dagelijks `queue:prune-failed`. Draait de cron niet, dan blijft een bericht in
+`jobs` staan; de pagina Pushberichten in het paneel waarschuwt daarvoor na drie minuten.
+Een job die drie keer mislukt staat in `failed_jobs` en het logboek toont de fout.
+
+Die twee tijden hangen vast aan `retry_after` (300 s) in `app/config/queue.php` en aan de
+vergrendeling van `withoutOverlapping(5)`. De volgorde `max-time < timeout < retry_after
+<= vergrendeling` moet kloppen: staat ze anders, dan krijgt iedereen een bericht twee keer
+of ligt de wachtrij na een afgebroken run stil. De redenering staat bij de code.
 
 ## Handmatig een taak draaien
 

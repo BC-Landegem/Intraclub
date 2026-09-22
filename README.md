@@ -170,11 +170,65 @@ ge-gitignored — CI bouwt ze bij elke deploy opnieuw.
 draai ernaast `php artisan serve`, en zet een breakpoint. Xdebug installeer je via de
 [wizard](https://xdebug.org/wizard), plus de PHP Debug-extensie in VS Code.
 
+## Pushberichten
+
+De clubwebsite biedt Web Push aan (`/club/pushberichten/` op de site); de abonnementen
+en het versturen leven hier. Twee onderwerpen, elk apart aan te vinken op een toestel:
+
+| Onderwerp | Wie verstuurt | Wanneer |
+|---|---|---|
+| `club` | een beheerder, in het paneel onder **Pushberichten** | met de hand: een afgelasting, open speeldag, lessenreeks, ledenfeest |
+| `intraclub` | de app zelf | de eerste keer dat een speeldag in de stand komt (`RoundCalculated` uit `SeasonCalculator`), met een link naar `/intraclub/speeldag/?id=…` op de site |
+
+Waar de stukken staan: `config/push.php` (sleutels, site-URL, onderwerpen met TTL, de
+lijst toegelaten pushdiensten), `Api\PushSubscriptionController` (PUT/DELETE
+`/api/push/subscriptions`, het contract met de site staat in de README van de
+Website-repo onder "Databronnen · Pushberichten"), `Services\Push\WebPushSender`
+(versturen, dode endpoints opruimen), `Services\Push\RoundNotifier` (het automatische
+bericht en zijn remmen), `Jobs\SendPushMessage` (de wachtrij) en de Filament-pagina
+`Pushberichten` met het logboek (`push_messages`) en de herzendknop op een speeldag.
+
+Vier dingen die je moet weten:
+
+- **Zonder VAPID-sleutels staat push uit.** Abonnementen worden aangenomen, maar er
+  vertrekt niets en het paneel zegt dat. Genereer één keer `php artisan push:vapid`, zet
+  de twee regels in `.env`, en geef de publieke sleutel aan de site als repository
+  variable `VAPID_PUBLIC_KEY` (zie daar). Eén paar per omgeving: een testbericht mag
+  nooit bij de echte abonnees belanden. Bewaar het paar — een nieuw paar maakt elk
+  bestaand abonnement waardeloos.
+- **Versturen gaat via de wachtrij, en die draait op een cron.** De host heeft geen
+  blijvende processen; een cron in DirectAdmin roept elke minuut `schedule:run` aan, die
+  `queue:work --stop-when-empty` start (`routes/console.php`). Zie [DEPLOY.md](DEPLOY.md),
+  "Cron". Staat die cron niet, dan blijft alles in `jobs` liggen en waarschuwt de pagina
+  Pushberichten na drie minuten. De vier getallen die daar aan elkaar hangen — `max-time`,
+  `timeout`, `retry_after` en de vergrendeling van `withoutOverlapping` — staan uitgelegd
+  in `routes/console.php`; verzet er geen los van de andere.
+- **Eén automatisch bericht per speeldag**, vastgelegd in `rounds.push_notified_at`.
+  De vlag `is_calculated` kan daar niet voor dienen: elke golf nieuwe matchen op een
+  speelavond zet ze terug. Het bericht kan dus midden in de avond vertrekken, zodra na de
+  eerste golf alle matchen even compleet zijn; de link toont altijd de actuele stand.
+  Speeldagen ouder dan `push.round_max_age_days` (3) krijgen geen bericht — anders stuurt
+  `intraclub:import-legacy` of de reset-workflow er twintig. Er staat bewust géén
+  seizoenscheck naast: `Season::current()` is het hoogste id, dus wie het volgende seizoen
+  al aanmaakt zou daarmee de laatste speeldagen van dit seizoen stilleggen. Opnieuw sturen
+  kan met de knop op de speeldagpagina.
+- **Het endpoint staat open**, want een abonnement is anoniem (endpoint, twee sleutels,
+  onderwerpen, tijdstip; geen IP, geen lid — dat belooft de privacyverklaring op de
+  site). De remmen: `throttle:push` per IP en de allowlist van pushdienst-hosts in
+  `config/push.php` — het endpoint is een URL waar deze server naartoe POST, dus zonder
+  lijst is dit een open relais. Een browser met een onbekende dienst krijgt 422; voeg de
+  host toe via `PUSH_ENDPOINT_HOSTS` en draai `optimize`. Antwoordt een dienst 404 of 410
+  op een bericht, dan gaat de rij eruit; zo verdwijnt ook wie zich via de
+  browserinstellingen afmeldde.
+
+Testen zonder netwerk: `tests/Concerns/FakesPushService.php` speelt de pushdienst na
+met een Guzzle MockHandler, zie `WebPushSenderTest`.
+
 ## Tests en stijl
 
 ```bash
 cd app
-php artisan test --compact          # 88 tests, ~15 s
+php artisan test --compact          # ~440 tests, ~15 s
 php artisan test --filter=ZaalApiTest
 vendor/bin/pint --dirty             # formatteert enkel wat jij gewijzigd hebt
 ```

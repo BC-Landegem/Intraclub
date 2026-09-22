@@ -22,6 +22,10 @@ class RoundInfolist
                 IconEntry::make('is_calculated')
                     ->label('Berekend')
                     ->boolean(),
+                TextEntry::make('push_notified_at')
+                    ->label('Pushbericht verstuurd')
+                    ->dateTime('d-m-Y H:i')
+                    ->placeholder('Nog niet'),
             ]);
     }
 }
