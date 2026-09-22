@@ -14,6 +14,7 @@ class Round extends Model
         'date',
         'average_absent',
         'is_calculated',
+        'push_notified_at',
     ];
 
     protected function casts(): array
@@ -21,6 +22,7 @@ class Round extends Model
         return [
             'date' => 'date',
             'is_calculated' => 'boolean',
+            'push_notified_at' => 'datetime',
         ];
     }
 

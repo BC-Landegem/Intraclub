@@ -3,6 +3,7 @@
 use App\Http\Controllers\Api\Archive\ArchiveSeasonController;
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\PlayerController;
+use App\Http\Controllers\Api\PushSubscriptionController;
 use App\Http\Controllers\Api\RankingController;
 use App\Http\Controllers\Api\RecordController;
 use App\Http\Controllers\Api\RoundController;
@@ -175,6 +176,18 @@ Route::post('contact', ContactController::class);
  * dichtgaat — zie MeldingController.
  */
 Route::post('melding', MeldingController::class);
+
+/*
+ * Pushberichten: de clubwebsite meldt hier het abonnement van een toestel aan
+ * of af (App\Http\Controllers\Api\PushSubscriptionController). Open zonder
+ * login, want een abonnement is anoniem; de throttle is de rem, en anders dan
+ * bij de formulieren mag de 429 hier gewoon JSON zijn. De limiet zelf staat in
+ * AppServiceProvider (config push.max_per_minute).
+ */
+Route::middleware('throttle:push')->group(function (): void {
+    Route::put('push/subscriptions', [PushSubscriptionController::class, 'update']);
+    Route::delete('push/subscriptions', [PushSubscriptionController::class, 'destroy']);
+});
 
 /*
  * Deploy-endpoints, aangeroepen door GitHub Actions (.github/workflows/). Ze

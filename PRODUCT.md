@@ -70,6 +70,11 @@ van dezelfde wedstrijd invullen.
   het beheerspaneel.
 - Een speeldag telt pas mee voor het klassement wanneer **álle** wedstrijden erop compleet
   zijn; halve speeldagen worden teruggezet en verschijnen niet publiek.
+- **Pushberichten** (Web Push, VAPID) vertrekken vanuit deze app naar de abonnees van de
+  clubsite: `club` met de hand vanuit het paneel, `intraclub` automatisch de eerste keer
+  dat een speeldag in de stand komt (één per speeldag, enkel lopend seizoen, hoogstens
+  drie dagen oud). Abonnementen zijn anoniem en niet aan een lid gekoppeld. Versturen
+  loopt via de wachtrij, die op de host aan een cron hangt — zie README "Pushberichten".
 - Doeltoestel: tablet, ontworpen op 1024×768 landschap, moet ook portret werken.
   Minimale raakhoogte 56px (`--raakhoogte`).
 

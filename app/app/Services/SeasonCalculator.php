@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Events\RoundCalculated;
 use App\Models\Game;
 use App\Models\PlayerSeasonStatistic;
 use App\Models\Round;
@@ -29,8 +30,19 @@ use Illuminate\Support\Facades\DB;
  */
 class SeasonCalculator
 {
+    /**
+     * Speeldagen die in de lopende berekening voor het eerst in de stand kwamen.
+     * Het event ervoor vertrekt pas ná de transactie, zodat een luisteraar de
+     * cijfers ziet die hij aankondigt.
+     *
+     * @var list<Round>
+     */
+    private array $newlyCalculated = [];
+
     public function calculate(Season $season): void
     {
+        $this->newlyCalculated = [];
+
         DB::transaction(function () use ($season): void {
             $allRounds = $season->rounds()->with('games')->orderBy('id')->get();
             $rounds = $this->completedRounds($allRounds);
@@ -57,6 +69,11 @@ class SeasonCalculator
 
             $this->writeRanks($rounds, $playerStatistics->pluck('player_id')->all());
         });
+
+        foreach ($this->newlyCalculated as $round) {
+            RoundCalculated::dispatch($round);
+        }
+        $this->newlyCalculated = [];
     }
 
     /**
@@ -164,6 +181,10 @@ class SeasonCalculator
             $averageLosing = $games->isEmpty()
                 ? 0.0
                 : $games->sum(fn (Game $game): float => GameStatistics::fromGame($game, $pointsPerSet)->averageLosing) / $games->count();
+
+            if (! $round->is_calculated) {
+                $this->newlyCalculated[] = $round;
+            }
 
             $round->update(['average_absent' => $averageLosing, 'is_calculated' => true]);
             $averages[$position] = $averageLosing;
