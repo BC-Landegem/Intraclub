@@ -43,8 +43,14 @@ return [
      * over de lijn gaat en wat de site in PUSH_TOPICS kent; komt er een bij, dan
      * aan beide kanten. `ttl` is hoe lang de pushdienst een bericht bewaart voor
      * een toestel dat offline is, in seconden: een afgelasting van vorige week
-     * hoeft niet meer aan te komen. `tag` laat een nieuw bericht het vorige met
-     * dezelfde tag vervangen, zodat er nooit vijf standen naast elkaar hangen.
+     * hoeft niet meer aan te komen.
+     *
+     * `tag` laat een nieuw bericht het vorige met dezelfde tag vervangen. Een
+     * vaste tag betekent "van dit onderwerp hangt er nooit meer dan één": de
+     * stand van vorige week hoeft niet meer naast die van vandaag. `null` is
+     * niet "geen tag" maar "een tag per bericht" (`club-12`, zie
+     * PushMessage::payload) — twee clubberichten blijven zo naast elkaar staan,
+     * maar een retry van hetzelfde bericht komt er niet een tweede keer bij.
      */
     'topics' => [
         'club' => [
@@ -82,7 +88,8 @@ return [
     /*
      * Hoe oud een speeldag hoogstens mag zijn om er automatisch een bericht over
      * te sturen, in dagen. Beschermt tegen een import of een databank-reset die
-     * in één beweging twintig speeldagen "berekent".
+     * in één beweging twintig speeldagen "berekent", en is meteen de enige grens:
+     * een seizoenscheck staat er bewust niet naast, zie RoundNotifier.
      */
     'round_max_age_days' => 3,
 

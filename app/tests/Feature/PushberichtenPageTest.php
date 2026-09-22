@@ -31,7 +31,7 @@ class PushberichtenPageTest extends TestCase
     {
         PushSubscription::factory()->topics(['club', 'intraclub'])->create();
         PushSubscription::factory()->topics(['intraclub'])->create();
-        PushMessage::create(['topic' => 'club', 'title' => 'Ledenfeest', 'body' => 'Zaterdag 20u', 'sent_at' => now(), 'recipients' => 1, 'sent_count' => 1]);
+        PushMessage::create(['topic' => 'club', 'title' => 'Ledenfeest', 'body' => 'Zaterdag 20u', 'sent_at' => now(), 'sent_count' => 1]);
 
         $this->actingAs(User::factory()->create());
 
@@ -94,7 +94,6 @@ class PushberichtenPageTest extends TestCase
         $this->assertSame('Geen badminton op 2 oktober', $message->title);
         $this->assertSame('https://www.bclandegem.be/', $message->url);
         $this->assertSame($admin->id, $message->user_id);
-        $this->assertSame(2, $message->recipients);
         $this->assertSame(2, $message->sent_count);
         $this->assertCount(2, $this->pushedEndpoints());
     }

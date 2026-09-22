@@ -18,7 +18,6 @@ class PushMessage extends Model
         'url',
         'round_id',
         'user_id',
-        'recipients',
         'sent_count',
         'expired_count',
         'failed_count',
@@ -43,7 +42,15 @@ class PushMessage extends Model
         return $this->belongsTo(User::class);
     }
 
-    /** De JSON die de service worker van de site verwacht. */
+    /**
+     * De JSON die de service worker van de site verwacht.
+     *
+     * Elk bericht draagt een tag, ook een clubbericht dat er in config/push.php
+     * geen vaste heeft. Mislukt een job halverwege, dan stuurt de retry naar
+     * iedereen opnieuw; zonder tag hangt hetzelfde bericht dan een tweede keer
+     * naast het eerste. Met `club-12` vervangt het zichzelf, terwijl twee
+     * verschillende clubberichten wel naast elkaar blijven staan.
+     */
     public function payload(): string
     {
         $payload = [
@@ -51,11 +58,8 @@ class PushMessage extends Model
             'body' => $this->body,
             'url' => $this->url,
             'topic' => $this->topic,
+            'tag' => config("push.topics.{$this->topic}.tag") ?? "{$this->topic}-{$this->id}",
         ];
-
-        if ($tag = config("push.topics.{$this->topic}.tag")) {
-            $payload['tag'] = $tag;
-        }
 
         return json_encode(array_filter($payload, fn ($value) => $value !== null), JSON_THROW_ON_ERROR | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
     }

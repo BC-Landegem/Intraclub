@@ -4,6 +4,7 @@ namespace App\Services\Push;
 
 use App\Models\PushMessage;
 use App\Models\PushSubscription;
+use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Facades\Log;
 use Minishlink\WebPush\MessageSentReport;
 use Minishlink\WebPush\Subscription;
@@ -41,8 +42,6 @@ class WebPushSender
         }
 
         $subscriptions = PushSubscription::query()->forTopic($message->topic)->get();
-
-        $message->forceFill(['recipients' => $subscriptions->count()]);
 
         if ($subscriptions->isEmpty()) {
             $message->forceFill(['sent_at' => now()])->save();
@@ -95,9 +94,8 @@ class WebPushSender
                 continue;
             }
 
-            if ($report->isSubscriptionExpired()) {
+            if ($report->isSubscriptionExpired() && $this->forget($byHash, $report->getEndpoint())) {
                 $expired++;
-                $byHash->get(PushSubscription::hashEndpoint($report->getEndpoint()))?->delete();
 
                 continue;
             }
@@ -116,5 +114,27 @@ class WebPushSender
             'failed_count' => $failed,
             'sent_at' => now(),
         ])->save();
+    }
+
+    /**
+     * Gooit het abonnement van een dood endpoint weg, en zegt of dat lukte.
+     *
+     * De sleutel is de hash van het endpoint zoals wij het bewaarden. Meldt de
+     * pushdienst een URL terug die daar niet lettergreep voor lettergreep mee
+     * overeenkomt, dan zou `?->delete()` stil niets doen en toch als opgeruimd
+     * in het logboek komen. Vandaar de tweede poging op de kolom zelf, en een
+     * telling bij de mislukkingen als ook die niets raakt.
+     *
+     * @param  Collection<string, PushSubscription>  $byHash
+     */
+    private function forget(Collection $byHash, string $endpoint): bool
+    {
+        if ($subscription = $byHash->get(PushSubscription::hashEndpoint($endpoint))) {
+            $subscription->delete();
+
+            return true;
+        }
+
+        return PushSubscription::query()->where('endpoint', $endpoint)->delete() > 0;
     }
 }

@@ -172,10 +172,15 @@ Controleer het PHP-pad: `/usr/local/bin/php` moet dezelfde 8.4 zijn als de webse
 De map is die waar `artisan` staat — met deze docroot-opzet is dat `public_html` zelf.
 
 Wat de scheduler doet staat in `app/routes/console.php`: elke minuut
-`queue:work --stop-when-empty --max-time=50` (verstuurt wat er ligt en stopt), en
-dagelijks `queue:prune-failed`. Draait de cron niet, dan blijft een bericht in `jobs`
-staan; de pagina Pushberichten in het paneel waarschuwt daarvoor na drie minuten. Een
-job die drie keer mislukt staat in `failed_jobs` en het logboek toont de fout.
+`queue:work --stop-when-empty --max-time=50 --timeout=240` (verstuurt wat er ligt en
+stopt), en dagelijks `queue:prune-failed`. Draait de cron niet, dan blijft een bericht in
+`jobs` staan; de pagina Pushberichten in het paneel waarschuwt daarvoor na drie minuten.
+Een job die drie keer mislukt staat in `failed_jobs` en het logboek toont de fout.
+
+Die twee tijden hangen vast aan `retry_after` (300 s) in `app/config/queue.php` en aan de
+vergrendeling van `withoutOverlapping(5)`. De volgorde `max-time < timeout < retry_after
+<= vergrendeling` moet kloppen: staat ze anders, dan krijgt iedereen een bericht twee keer
+of ligt de wachtrij na een afgebroken run stil. De redenering staat bij de code.
 
 ## Handmatig een taak draaien
 

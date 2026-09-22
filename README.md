@@ -200,14 +200,18 @@ Vier dingen die je moet weten:
   blijvende processen; een cron in DirectAdmin roept elke minuut `schedule:run` aan, die
   `queue:work --stop-when-empty` start (`routes/console.php`). Zie [DEPLOY.md](DEPLOY.md),
   "Cron". Staat die cron niet, dan blijft alles in `jobs` liggen en waarschuwt de pagina
-  Pushberichten na drie minuten.
+  Pushberichten na drie minuten. De vier getallen die daar aan elkaar hangen — `max-time`,
+  `timeout`, `retry_after` en de vergrendeling van `withoutOverlapping` — staan uitgelegd
+  in `routes/console.php`; verzet er geen los van de andere.
 - **Eén automatisch bericht per speeldag**, vastgelegd in `rounds.push_notified_at`.
   De vlag `is_calculated` kan daar niet voor dienen: elke golf nieuwe matchen op een
   speelavond zet ze terug. Het bericht kan dus midden in de avond vertrekken, zodra na de
   eerste golf alle matchen even compleet zijn; de link toont altijd de actuele stand.
-  Speeldagen ouder dan `push.round_max_age_days` (3) of van een ander dan het lopende
-  seizoen krijgen geen bericht — anders stuurt `intraclub:import-legacy` of de
-  reset-workflow er twintig. Opnieuw sturen kan met de knop op de speeldagpagina.
+  Speeldagen ouder dan `push.round_max_age_days` (3) krijgen geen bericht — anders stuurt
+  `intraclub:import-legacy` of de reset-workflow er twintig. Er staat bewust géén
+  seizoenscheck naast: `Season::current()` is het hoogste id, dus wie het volgende seizoen
+  al aanmaakt zou daarmee de laatste speeldagen van dit seizoen stilleggen. Opnieuw sturen
+  kan met de knop op de speeldagpagina.
 - **Het endpoint staat open**, want een abonnement is anoniem (endpoint, twee sleutels,
   onderwerpen, tijdstip; geen IP, geen lid — dat belooft de privacyverklaring op de
   site). De remmen: `throttle:push` per IP en de allowlist van pushdienst-hosts in

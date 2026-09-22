@@ -10,6 +10,7 @@ use Filament\Actions\Action;
 use Filament\Actions\EditAction;
 use Filament\Notifications\Notification;
 use Filament\Resources\Pages\ViewRecord;
+use Filament\Support\Facades\FilamentTimezone;
 use Filament\Support\Icons\Heroicon;
 
 class ViewRound extends ViewRecord
@@ -38,7 +39,7 @@ class ViewRound extends ViewRecord
                 ->modalHeading(fn (Round $record): string => "Pushbericht over speeldag {$record->number} versturen")
                 ->modalDescription(fn (Round $record): string => ($record->push_notified_at === null
                     ? 'Over deze speeldag vertrok nog geen bericht. '
-                    : 'Over deze speeldag vertrok al een bericht op '.$record->push_notified_at->format('d-m-Y H:i').'. ')
+                    : 'Over deze speeldag vertrok al een bericht op '.$record->push_notified_at->timezone(FilamentTimezone::get())->format('d-m-Y H:i').'. ')
                     .'Iedereen met een abonnement op Intraclub krijgt "Intraclub: speeldag '.$record->number.' berekend" met een link naar de uitslag.')
                 ->modalSubmitActionLabel('Verstuur')
                 ->action(function (Round $record, RoundNotifier $notifier): void {

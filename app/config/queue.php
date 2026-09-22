@@ -40,7 +40,12 @@ return [
             'connection' => env('DB_QUEUE_CONNECTION'),
             'table' => env('DB_QUEUE_TABLE', 'jobs'),
             'queue' => env('DB_QUEUE', 'default'),
-            'retry_after' => (int) env('DB_QUEUE_RETRY_AFTER', 90),
+            // Ruimer dan de standaard 90: één pushbericht is één job die
+            // sequentieel naar alle abonnees stuurt.
+            // Zakt dit onder de --timeout van de worker (routes/console.php),
+            // dan geeft de databank die job aan een tweede worker terwijl de
+            // eerste nog bezig is, en krijgt iedereen het bericht twee keer.
+            'retry_after' => (int) env('DB_QUEUE_RETRY_AFTER', 300),
             'after_commit' => false,
         ],
 

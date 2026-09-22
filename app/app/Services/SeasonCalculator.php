@@ -30,27 +30,26 @@ use Illuminate\Support\Facades\DB;
  */
 class SeasonCalculator
 {
-    /**
-     * Speeldagen die in de lopende berekening voor het eerst in de stand kwamen.
-     * Het event ervoor vertrekt pas ná de transactie, zodat een luisteraar de
-     * cijfers ziet die hij aankondigt.
-     *
-     * @var list<Round>
-     */
-    private array $newlyCalculated = [];
-
     public function calculate(Season $season): void
     {
-        $this->newlyCalculated = [];
+        /**
+         * Speeldagen die in deze berekening voor het eerst in de stand komen.
+         * Een lokale variabele en geen eigenschap: de observer houdt één
+         * instance van deze service vast, dus een berekening die er ooit een
+         * tweede uitlokt zou de lijst van de eerste onder haar voeten wegvegen.
+         *
+         * @var list<Round>
+         */
+        $newlyCalculated = [];
 
-        DB::transaction(function () use ($season): void {
+        DB::transaction(function () use ($season, &$newlyCalculated): void {
             $allRounds = $season->rounds()->with('games')->orderBy('id')->get();
             $rounds = $this->completedRounds($allRounds);
             $pointsPerSet = $season->points_per_set->value;
 
             $this->resetUncountedRounds($allRounds->skip($rounds->count()));
 
-            $averageLosersPerRound = $this->calculateRoundAverages($rounds, $pointsPerSet);
+            $averageLosersPerRound = $this->calculateRoundAverages($rounds, $pointsPerSet, $newlyCalculated);
             $lastRoundPosition = count($averageLosersPerRound);
             $drawnOut = $this->drawnOutPositions($rounds);
 
@@ -70,10 +69,9 @@ class SeasonCalculator
             $this->writeRanks($rounds, $playerStatistics->pluck('player_id')->all());
         });
 
-        foreach ($this->newlyCalculated as $round) {
+        foreach ($newlyCalculated as $round) {
             RoundCalculated::dispatch($round);
         }
-        $this->newlyCalculated = [];
     }
 
     /**
@@ -168,9 +166,10 @@ class SeasonCalculator
      * Bepaal per speeldag het gemiddelde van de verliezende teams en sla het op.
      *
      * @param  Collection<int, Round>  $rounds
+     * @param  list<Round>  $newlyCalculated  vult aan met de speeldagen die hier voor het eerst in de stand komen
      * @return array<int, float> verliezersgemiddelde per speeldagpositie (1-based, volgorde = oplopend round-id)
      */
-    private function calculateRoundAverages(Collection $rounds, int $pointsPerSet): array
+    private function calculateRoundAverages(Collection $rounds, int $pointsPerSet, array &$newlyCalculated): array
     {
         $averages = [];
         $position = 1;
@@ -183,7 +182,7 @@ class SeasonCalculator
                 : $games->sum(fn (Game $game): float => GameStatistics::fromGame($game, $pointsPerSet)->averageLosing) / $games->count();
 
             if (! $round->is_calculated) {
-                $this->newlyCalculated[] = $round;
+                $newlyCalculated[] = $round;
             }
 
             $round->update(['average_absent' => $averageLosing, 'is_calculated' => true]);

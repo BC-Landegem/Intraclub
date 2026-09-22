@@ -127,14 +127,19 @@ class RoundPushNotificationTest extends TestCase
         $this->assertDatabaseCount('push_messages', 1);
     }
 
-    public function test_een_speeldag_van_een_vorig_seizoen_krijgt_geen_bericht(): void
+    /*
+     * Season::current() is het hoogste id. Wie het volgende seizoen aanmaakt
+     * vóór de laatste speeldagen gespeeld zijn, mag daarmee het bericht niet
+     * stil uitzetten; de datumgrens hierboven doet het werk.
+     */
+    public function test_het_volgende_seizoen_aanmaken_legt_de_laatste_speeldagen_niet_stil(): void
     {
         $round = $this->round(date: today());
         Season::create(['name' => '2027 - 2028', 'points_per_set' => $this->format->pointsPerSet]);
 
         $this->createGame($round, [1, 2, 3, 4], complete: true);
 
-        $this->assertDatabaseCount('push_messages', 0);
+        $this->assertDatabaseCount('push_messages', 1);
     }
 
     public function test_zonder_sleutels_vertrekt_er_niets_en_blijft_de_speeldag_ongemarkeerd(): void

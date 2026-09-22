@@ -39,7 +39,6 @@ class WebPushSenderTest extends TestCase
         );
 
         $message->refresh();
-        $this->assertSame(3, $message->recipients);
         $this->assertSame(1, $message->sent_count);
         $this->assertSame(1, $message->expired_count);
         $this->assertSame(1, $message->failed_count);
@@ -79,6 +78,22 @@ class WebPushSenderTest extends TestCase
         $this->assertStringNotContainsString('speeldag', (string) $request->getBody());
     }
 
+    /*
+     * Een clubbericht heeft geen vaste tag in de config, maar wel een eigen per
+     * bericht: mislukt een job halverwege, dan stuurt de retry naar iedereen
+     * opnieuw en mag dat geen tweede melding naast de eerste zetten.
+     */
+    public function test_een_clubbericht_krijgt_een_tag_per_bericht(): void
+    {
+        $this->configurePush();
+
+        $first = PushMessage::create(['topic' => 'club', 'title' => 'Een', 'body' => 'Inhoud']);
+        $second = PushMessage::create(['topic' => 'club', 'title' => 'Twee', 'body' => 'Inhoud']);
+
+        $this->assertSame("club-{$first->id}", json_decode($first->payload(), true)['tag']);
+        $this->assertSame("club-{$second->id}", json_decode($second->payload(), true)['tag']);
+    }
+
     public function test_zonder_abonnees_is_het_bericht_meteen_afgehandeld(): void
     {
         $this->fakePushService([]);
@@ -88,7 +103,6 @@ class WebPushSenderTest extends TestCase
 
         $this->assertSame([], $this->pushedEndpoints());
         $this->assertNotNull($message->fresh()->sent_at);
-        $this->assertSame(0, $message->fresh()->recipients);
     }
 
     public function test_zonder_sleutels_weigert_de_sender(): void

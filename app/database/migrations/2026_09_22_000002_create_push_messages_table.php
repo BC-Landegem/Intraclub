@@ -24,7 +24,6 @@ return new class extends Migration
             $table->foreignId('round_id')->nullable()->constrained()->nullOnDelete();
             // Wie het verstuurde; null voor een automatisch bericht.
             $table->foreignId('user_id')->nullable()->constrained()->nullOnDelete();
-            $table->unsignedInteger('recipients')->default(0);
             $table->unsignedInteger('sent_count')->default(0);
             $table->unsignedInteger('expired_count')->default(0);
             $table->unsignedInteger('failed_count')->default(0);

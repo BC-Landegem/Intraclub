@@ -58,9 +58,20 @@ class PushSubscriptionApiTest extends TestCase
             ->assertOk()
             ->assertExactJson(['topics' => []]);
 
-        // De rij bestaat wel: de service worker meldt zich zo aan bij een
-        // vernieuwd abonnement, en de sleutels moeten dan al kloppen.
-        $this->assertDatabaseCount('push_subscriptions', 1);
+        // En laat niets achter: een rij zonder onderwerpen krijgt nooit een
+        // bericht, dus ook nooit de 404/410 waarmee ze opgeruimd zou worden.
+        $this->assertDatabaseCount('push_subscriptions', 0);
+    }
+
+    public function test_alles_uitvinken_verwijdert_het_abonnement(): void
+    {
+        $this->putJson('/api/push/subscriptions', $this->subscriptionPayload(self::ENDPOINT, ['topics' => ['club']]))->assertOk();
+
+        $this->putJson('/api/push/subscriptions', $this->subscriptionPayload(self::ENDPOINT, ['topics' => []]))
+            ->assertOk()
+            ->assertExactJson(['topics' => []]);
+
+        $this->assertDatabaseCount('push_subscriptions', 0);
     }
 
     public function test_onderwerpen_overschrijven_de_vorige_keuze(): void

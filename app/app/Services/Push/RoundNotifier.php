@@ -5,7 +5,6 @@ namespace App\Services\Push;
 use App\Jobs\SendPushMessage;
 use App\Models\PushMessage;
 use App\Models\Round;
-use App\Models\Season;
 use App\Models\User;
 use Illuminate\Support\Facades\DB;
 
@@ -19,22 +18,24 @@ use Illuminate\Support\Facades\DB;
  * in de avond zijn, als na golf één alle matchen even compleet zijn; dat is
  * aanvaard, de link toont altijd de actuele stand.
  *
- * Wanneer niet: een speeldag van een ander dan het lopende seizoen, of ouder
- * dan `push.round_max_age_days`. Dat vangt de import van de oude databank en
- * de reset-workflow, die twintig speeldagen tegelijk berekenen. En als er geen
- * VAPID-sleutels zijn, want dan kan er toch niets vertrekken; push_notified_at
- * blijft dan leeg, en de datumgrens zorgt dat er later niets oud naverstuurd
- * wordt.
+ * Wanneer niet: een speeldag ouder dan `push.round_max_age_days`. Dat vangt de
+ * import van de oude databank en de reset-workflow, die twintig speeldagen
+ * tegelijk berekenen. En als er geen VAPID-sleutels zijn, want dan kan er toch
+ * niets vertrekken; push_notified_at blijft dan leeg, en de datumgrens zorgt
+ * dat er later niets oud naverstuurd wordt.
+ *
+ * Er staat bewust geen "enkel het lopende seizoen" bij. Season::current() is
+ * het hoogste id, dus wie het volgende seizoen aanmaakt vóór de laatste
+ * speeldagen gespeeld zijn, zou daarmee het bericht stil uitzetten — zonder
+ * fout en zonder logregel. De datumgrens houdt tegen waarvoor die check
+ * bedoeld was: een speeldag van een afgesloten seizoen ligt per definitie
+ * verder dan drie dagen achter ons.
  */
 class RoundNotifier
 {
     public function notifyIfDue(Round $round): ?PushMessage
     {
-        if (! WebPushSender::isConfigured()) {
-            return null;
-        }
-
-        if ($round->push_notified_at !== null || $round->season_id !== Season::current()?->id) {
+        if (! WebPushSender::isConfigured() || $round->push_notified_at !== null) {
             return null;
         }
 

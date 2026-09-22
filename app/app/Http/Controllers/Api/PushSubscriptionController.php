@@ -21,6 +21,7 @@ use Illuminate\Validation\Rule;
  *          + optioneel topics[] en previous_endpoint. Upsert op endpoint.
  *          Zonder topics blijven de bewaarde onderwerpen staan ([] voor een
  *          nieuw endpoint): zo leest de site de stand terug zonder eigen GET.
+ *          Blijft er geen enkel onderwerp over, dan bewaren we geen rij.
  *          Met previous_endpoint (uit pushsubscriptionchange in de service
  *          worker) neemt de nieuwe rij de onderwerpen van de oude over en gaat
  *          de oude eruit. Antwoord 200 { topics }.
@@ -67,6 +68,21 @@ class PushSubscriptionController extends Controller
             $topics = array_values(array_unique(
                 $data['topics'] ?? $subscription?->topics ?? $inherited ?? []
             ));
+
+            /*
+             * Zonder onderwerpen bewaren we niets. Zo'n rij krijgt immers nooit
+             * een bericht, dus komt ze ook nooit langs de 404/410 waarmee dode
+             * endpoints opgeruimd worden: ze zou tot in de eeuwigheid blijven
+             * staan en de teller in het beheerspaneel boven de werkelijkheid
+             * uit laten lopen. Niets verloren ook: alles wat de site later nog
+             * nodig heeft (de sleutels van een vernieuwd abonnement) komt in
+             * diezelfde PUT opnieuw mee.
+             */
+            if ($topics === []) {
+                $subscription?->delete();
+
+                return [];
+            }
 
             PushSubscription::updateOrCreate(
                 ['endpoint_hash' => PushSubscription::hashEndpoint($data['endpoint'])],
