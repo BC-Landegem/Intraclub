@@ -164,12 +164,16 @@ leeggemaakt door de Laravel-scheduler. Er is geen proces dat blijft draaien, dus
 scheduler hangt aan een cron. In DirectAdmin → **Cron Jobs**, elke minuut:
 
 ```
-* * * * * cd /home/<account>/domains/intra.bclandegem.be/public_html && /usr/local/bin/php artisan schedule:run >> /dev/null 2>&1
+* * * * * php /home/bcintra/domains/intra.bclandegem.be/public_html/artisan schedule:run > /dev/null 2>&1
 ```
 
-Controleer het PHP-pad: `/usr/local/bin/php` moet dezelfde 8.4 zijn als de webserver
-(in DirectAdmin bij PHP-versie, of `php -v` in een cron die naar een bestand schrijft).
-De map is die waar `artisan` staat — met deze docroot-opzet is dat `public_html` zelf.
+Dat is de vorm die DirectAdmin zelf als voorbeeld geeft: `php` gevolgd door het volledige
+pad naar het script. Een `cd` is niet nodig — Laravel leidt de app-map af uit de plaats van
+`artisan`, en met deze docroot-opzet staat dat bestand in `public_html` zelf.
+
+Controleer of die `php` dezelfde 8.4 is als de webserver (in DirectAdmin bij PHP-versie,
+of `php -v` in een cron die naar een bestand schrijft). Is ze dat niet, zet er dan het
+volledige pad voor, bv. `/usr/local/bin/php`.
 
 Wat de scheduler doet staat in `app/routes/console.php`: elke minuut
 `queue:work --stop-when-empty --max-time=50 --timeout=240` (verstuurt wat er ligt en

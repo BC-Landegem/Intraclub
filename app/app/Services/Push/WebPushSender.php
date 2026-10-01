@@ -59,7 +59,11 @@ class WebPushSender
             ],
             defaultOptions: [
                 'TTL' => (int) config("push.topics.{$message->topic}.ttl", 86400),
-                'urgency' => 'normal',
+                // FCM maakt van alles onder `high` een bericht met normale
+                // prioriteit, en dat houdt Android vast zolang de gsm in Doze
+                // ligt: het kwam pas binnen bij het ontgrendelen. Elk bericht
+                // wordt een zichtbare melding, dus is `high` hier terecht.
+                'urgency' => 'high',
             ],
             client: $this->client,
             // Zonder logger meldt de bibliotheek zich met trigger_error; met

@@ -72,7 +72,7 @@ class WebPushSenderTest extends TestCase
         $request = $this->pushRequests[0]['request'];
         $this->assertSame('POST', $request->getMethod());
         $this->assertSame((string) (2 * 86400), $request->getHeaderLine('TTL'));
-        $this->assertSame('normal', $request->getHeaderLine('Urgency'));
+        $this->assertSame('high', $request->getHeaderLine('Urgency'));
         $this->assertStringStartsWith('vapid t=', $request->getHeaderLine('Authorization'));
         // Versleuteld: de titel mag niet leesbaar over de lijn gaan.
         $this->assertStringNotContainsString('speeldag', (string) $request->getBody());
