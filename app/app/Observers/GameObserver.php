@@ -29,10 +29,19 @@ class GameObserver
 
     public function __construct(private readonly SeasonCalculator $calculator) {}
 
+    /**
+     * Een bevestigde match maakt de uitlotingen van de loting ervoor definitief:
+     * opnieuw loten herschikt vanaf nu enkel wie nog wacht (DrawService::draw).
+     */
+    public function created(Game $game): void
+    {
+        $game->round->playerStatistics()
+            ->where('is_drawn_out_unconfirmed', true)
+            ->update(['is_drawn_out_unconfirmed' => false]);
+    }
+
     public function saved(Game $game): void
     {
-        $this->clearDrawnOutForParticipants($game);
-
         if ($game->wasRecentlyCreated || $game->wasChanged(self::SCORE_COLUMNS)) {
             $this->recalculate($game->round);
         }
@@ -67,18 +76,5 @@ class GameObserver
         $games = $round->games()->get();
 
         return $games->isNotEmpty() && $games->every(fn (Game $game): bool => $game->is_complete);
-    }
-
-    /**
-     * Wie in een game staat, speelt dus mee en is niet (langer) uitgeloot. Dit dekt
-     * de situatie waarin een laatkomer de onvolledige match aanvult: de eerder
-     * uitgelote spelers spelen dan toch en die speeldag telt weer voor hen mee.
-     */
-    private function clearDrawnOutForParticipants(Game $game): void
-    {
-        $game->round->playerStatistics()
-            ->whereIn('player_id', $game->playerIds())
-            ->where('is_drawn_out', true)
-            ->update(['is_drawn_out' => false]);
     }
 }

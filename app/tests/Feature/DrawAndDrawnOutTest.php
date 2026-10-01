@@ -204,8 +204,8 @@ class DrawAndDrawnOutTest extends TestCase
         }
         $this->completeGame($round, [5, 6, 7, 8]);
 
-        // De vlag is gewist en die speeldag telt weer mee voor 5 en 6.
-        $this->assertSame(0, $round->playerStatistics()->where('is_drawn_out', true)->count());
+        // Ze moesten wachten, dus de vlag blijft. Hun match telt wel gewoon mee.
+        $this->assertSame(2, $round->playerStatistics()->where('is_drawn_out', true)->count());
 
         $statistic = PlayerSeasonStatistic::where('player_id', $this->players[5]->id)->first();
         $this->assertSame(1, $statistic->games_played);
@@ -285,6 +285,41 @@ class DrawAndDrawnOutTest extends TestCase
         foreach ($eerste['drawnOut'] as $playerId) {
             $this->assertContains($playerId, $tweede['games'][0], 'De eerder uitgelote spelers spelen nu mee.');
         }
+
+        $this->completeGame($round, array_map(
+            fn (int $id): int => array_search($id, array_map(fn ($p) => $p->id, $this->players), true),
+            $tweede['games'][0],
+        ));
+
+        $this->assertEqualsCanonicalizing(
+            $eerste['drawnOut'],
+            $round->playerStatistics()->where('is_drawn_out', true)->pluck('player_id')->all(),
+            'Ze speelden toch, maar moesten wachten: de uitloting blijft.',
+        );
+    }
+
+    public function test_wie_vanavond_al_wachtte_blijft_niet_nog_eens_aan_de_kant(): void
+    {
+        // Zeven aanwezigen: één match, drie uitgeloot.
+        $round = $this->roundWithPresentPlayers(1, range(1, 7));
+        $eerste = app(DrawService::class)->draw($round);
+        $this->completeGame($round, array_map(
+            fn (int $id): int => array_search($id, array_map(fn ($p) => $p->id, $this->players), true),
+            $eerste['games'][0],
+        ));
+
+        // Twee laatkomers: vijf wachtenden, dus er moet er weer één aan de kant.
+        foreach ([8, 9] as $index) {
+            PlayerRoundStatistic::updateOrCreate(
+                ['round_id' => $round->id, 'player_id' => $this->players[$index]->id],
+                ['is_present' => true],
+            );
+        }
+
+        $tweede = app(DrawService::class)->draw($round);
+
+        $this->assertCount(1, $tweede['drawnOut']);
+        $this->assertContains($tweede['drawnOut'][0], [$this->players[8]->id, $this->players[9]->id], 'Een laatkomer blijft aan de kant.');
     }
 
     public function test_herloten_laat_bevestigde_matches_staan_en_herschikt_enkel_de_wachtenden(): void

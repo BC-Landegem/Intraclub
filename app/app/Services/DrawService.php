@@ -19,12 +19,14 @@ use Illuminate\Support\Facades\DB;
  * vergelijking tussen de twee systemen op één verschil berust.
  *
  * Gedeelde regels:
- * - Wie uitgeloot werd, is de volgende PROTECTED_ROUNDS speeldagen beschermd en
- *   blijft dus niet opnieuw aan de kant. Dat venster loopt door over een wissel van
- *   lotingsysteem midden in het seizoen heen.
+ * - Wie uitgeloot werd, is de rest van die avond en de volgende PROTECTED_ROUNDS
+ *   speeldagen beschermd en blijft dus niet opnieuw aan de kant. Dat venster loopt
+ *   door over een wissel van lotingsysteem midden in het seizoen heen.
  * - Wie overblijft (1-3 spelers) wordt als uitgeloot bewaard in
  *   player_round_statistics: het overleeft een refresh, weegt mee in volgende
- *   lotingen, en de tussenstand rekent die speeldag voor hem niet mee.
+ *   lotingen, en speelt hij niet meer, dan rekent de tussenstand die speeldag voor
+ *   hem niet mee. De vlag blijft ook als hij later nog invalt: hij moest wachten.
+ *   Enkel opnieuw loten vóór de eerste bevestigde match vervangt hem.
  * - Spelers die al een match hebben, doen niet meer mee aan een nieuwe loting.
  *   Zo deelt een tweede loting (bv. na laatkomers) enkel de rest in.
  * - De loting vult een onvolledig viertal nooit zelf aan met spelers die al
@@ -49,6 +51,12 @@ class DrawService
      */
     public function draw(Round $round): array
     {
+        // Niet bevestigd = een proefworp. Eerst weg, anders beschermen die vlaggen
+        // hun spelers in de nieuwe loting.
+        $round->playerStatistics()
+            ->where('is_drawn_out_unconfirmed', true)
+            ->update(['is_drawn_out' => false, 'is_drawn_out_unconfirmed' => false]);
+
         $result = $this->composeGames($this->participants($round), $round);
 
         $this->persistDrawnOut($round, $result['drawnOut']);
@@ -101,7 +109,7 @@ class DrawService
 
     /**
      * Het nummer van de laatste speeldag waarop elke speler uitgeloot werd, binnen
-     * dit seizoen en vóór de huidige speeldag.
+     * dit seizoen. De huidige telt mee: wie vanavond al wachtte, is beschermd.
      *
      * @return array<int, int>
      */
@@ -110,7 +118,7 @@ class DrawService
         return DB::table('player_round_statistics as statistic')
             ->join('rounds', 'rounds.id', '=', 'statistic.round_id')
             ->where('rounds.season_id', $round->season_id)
-            ->where('rounds.number', '<', $round->number)
+            ->where('rounds.number', '<=', $round->number)
             ->where('statistic.is_drawn_out', true)
             ->groupBy('statistic.player_id')
             ->selectRaw('statistic.player_id, MAX(rounds.number) as laatste')
@@ -435,20 +443,17 @@ class DrawService
     }
 
     /**
-     * Bewaar wie uitgeloot is. Spelers die eerder uitgeloot waren maar nu wél
-     * ingedeeld zijn, verliezen de vlag.
+     * Bewaar wie uitgeloot is, voorlopig tot de eerste bevestigde match
+     * (GameObserver). Wie al definitief uitgeloot was, blijft dat.
      *
      * @param  list<int>  $drawnOutPlayerIds
      */
     private function persistDrawnOut(Round $round, array $drawnOutPlayerIds): void
     {
-        $round->playerStatistics()->where('is_drawn_out', true)->update(['is_drawn_out' => false]);
-
-        if ($drawnOutPlayerIds !== []) {
-            $round->playerStatistics()
-                ->whereIn('player_id', $drawnOutPlayerIds)
-                ->update(['is_drawn_out' => true]);
-        }
+        $round->playerStatistics()
+            ->whereIn('player_id', $drawnOutPlayerIds)
+            ->where('is_drawn_out', false)
+            ->update(['is_drawn_out' => true, 'is_drawn_out_unconfirmed' => true]);
     }
 
     /**

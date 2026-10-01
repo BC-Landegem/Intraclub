@@ -208,8 +208,9 @@ class ZaalController extends Controller
      * Wie kan er invallen om een onvolledig viertal aan te vullen? Invallen is
      * vrijwillig: de app kiest niemand, ze toont enkel wie in aanmerking komt.
      *
-     * - "present": aanwezige leden die niet uitgeloot zijn, met hoeveel matches ze
-     *   deze speeldag al speelden.
+     * - "drawnOut": uitgelote leden die nog op een match wachten.
+     * - "present": de overige aanwezige leden, met hoeveel matches ze deze speeldag
+     *   al speelden.
      * - "others": de overige leden, voor wie net binnenkomt; die wordt bij het
      *   aanmaken van de match meteen aanwezig gezet.
      */
@@ -231,7 +232,8 @@ class ZaalController extends Controller
             ->get()
             ->map(fn (Player $player): array => $this->playerSummary($player) + [
                 'present' => (bool) ($attendance->get($player->id)?->is_present ?? false),
-                'drawnOut' => (bool) ($attendance->get($player->id)?->is_drawn_out ?? false),
+                'drawnOut' => (bool) ($attendance->get($player->id)?->is_drawn_out ?? false)
+                    && ! isset($gamesPerPlayer[$player->id]),
                 'gamesPlayed' => $gamesPerPlayer[$player->id] ?? 0,
             ]);
 
@@ -297,17 +299,21 @@ class ZaalController extends Controller
 
         $attendance = $round->playerStatistics()->get()->keyBy('player_id');
 
+        // In de zaal is uitgeloot "wacht nog op een match". De vlag zelf blijft na
+        // die match staan, voor de website en de bescherming.
+        $playing = Game::playerIdsInRounds([$round->id])->flip();
+
         $players = Player::query()
             ->members()
             ->orderBy('first_name')
             ->orderBy('last_name')
             ->get()
-            ->map(function (Player $player) use ($attendance): array {
+            ->map(function (Player $player) use ($attendance, $playing): array {
                 $statistic = $attendance->get($player->id);
 
                 return $this->playerSummary($player) + [
                     'present' => (bool) ($statistic?->is_present ?? false),
-                    'drawnOut' => (bool) ($statistic?->is_drawn_out ?? false),
+                    'drawnOut' => (bool) ($statistic?->is_drawn_out ?? false) && ! $playing->has($player->id),
                 ];
             })
             ->values();

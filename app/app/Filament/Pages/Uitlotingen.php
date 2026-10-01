@@ -21,11 +21,9 @@ use Illuminate\Support\Facades\DB;
  *
  * Drie keuzes die uit de code zelf niet af te lezen zijn:
  *
- * - Geteld wordt wie EFFECTIEF aan de kant bleef, niet wie de loting uitkoos. De
- *   vlag is niet blijvend: vult een laatkomer de match aan, dan speelt de eerder
- *   uitgelote speler toch mee en wist GameObserver zijn vlag. Dat is de bedoeling
- *   — eerlijkheid gaat over speeltijd — en het spaart een tweede waarheid naast
- *   player_round_statistics uit.
+ * - Geteld wordt wie bij een loting aan de kant bleef, ook als hij later die avond
+ *   nog invalt: hij moest wachten op extra spelers. Opnieuw loten vóór de eerste
+ *   match vervangt die uitloting (DrawService::draw).
  * - "Sinds" en het schild rekenen vanaf de VOLGENDE speeldag, en tellen dus enkel
  *   uitlotingen daarvóór, precies zoals DrawService::participants(). Vanaf de
  *   laatste speeldag rekenen zou iedereen die gisteren uitviel een schild geven

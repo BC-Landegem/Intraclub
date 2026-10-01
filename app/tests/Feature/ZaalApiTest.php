@@ -369,10 +369,10 @@ class ZaalApiTest extends TestCase
                 $this->players[5]->id, $this->players[6]->id,
                 $this->players[1]->id, $this->players[2]->id,
             ],
-        ])->assertOk()->assertJsonCount(2, 'games');
+        ])->assertOk()->assertJsonCount(2, 'games')->assertJsonCount(0, 'drawnOut');
 
-        // De uitgeloot-vlag is weg: zij spelen nu mee.
-        $this->assertSame(0, PlayerRoundStatistic::where('round_id', $this->round->id)
+        // De zaal toont hen niet meer als wachtend, maar de uitloting blijft bewaard.
+        $this->assertSame(2, PlayerRoundStatistic::where('round_id', $this->round->id)
             ->where('is_drawn_out', true)->count());
     }
 

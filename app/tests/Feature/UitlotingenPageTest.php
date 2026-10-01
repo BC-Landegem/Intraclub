@@ -110,10 +110,10 @@ class UitlotingenPageTest extends TestCase
     }
 
     /*
-     * De vlag is niet blijvend: wie na de loting toch in een match komt, speelde die
-     * avond mee. Het scherm hoort hem dan niet als aan-de-kant te tellen.
+     * Wie na de loting toch nog invalt, moest eerst wachten op extra spelers. Het
+     * scherm blijft hem als aan-de-kant tellen.
      */
-    public function test_wie_door_een_laatkomer_toch_speelde_telt_niet_mee(): void
+    public function test_wie_na_de_uitloting_toch_invalt_blijft_meetellen(): void
     {
         $kris = $this->player('kris', drawnOut: [4], present: range(1, 11));
 
@@ -128,8 +128,8 @@ class UitlotingenPageTest extends TestCase
         ]);
 
         $this->page()
-            ->assertTableColumnStateSet('drawn_out_count', 0, $kris)
-            ->assertTableColumnStateSet('drawn_out_rounds', '—', $kris);
+            ->assertTableColumnStateSet('drawn_out_count', 1, $kris)
+            ->assertTableColumnStateSet('drawn_out_rounds', '4', $kris);
     }
 
     public function test_een_ex_lid_met_uitlotingen_houdt_zijn_rij_en_een_niet_lid_zonder_niet(): void
