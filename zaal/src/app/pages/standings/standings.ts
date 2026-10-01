@@ -26,8 +26,8 @@ interface RankingRound {
  * null wanneer het seizoen nog geen berekende speeldag heeft.
  *
  * `average` is null voor wie een tijd niet meer meespeelde. Die rijen komen
- * achteraan in de lijst, met hun echte `rank`: de server bepaalt de orde, hier
- * blijft er niets te sorteren.
+ * achteraan in de lijst. De server bepaalt de orde; `rank` blijft de plaats op
+ * gemiddelde, terwijl de UI nummert volgens die leesorde.
  */
 interface RankingResponse {
   data: Record<Category, RankingEntry[]>;
@@ -96,7 +96,13 @@ export class Standings {
   protected readonly missingScores = computed(() => this.zaal.gamesWithoutScore().length);
   protected readonly openGames = computed(() => this.zaal.games().length);
 
-  protected readonly entries = computed(() => this.ranking()?.data[this.category()] ?? []);
+  /** Nummer de volledige categorie vóór het zoeken, zodat je je plaats behoudt. */
+  protected readonly entries = computed(() =>
+    (this.ranking()?.data[this.category()] ?? []).map((entry, index) => ({
+      ...entry,
+      position: index + 1,
+    })),
+  );
 
   /** Lowest and highest average in this category, for scaling the bars. */
   protected readonly range = computed(() => {
