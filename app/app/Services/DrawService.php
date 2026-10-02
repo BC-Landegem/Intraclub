@@ -22,6 +22,8 @@ use Illuminate\Support\Facades\DB;
  * - Wie uitgeloot werd, is de rest van die avond en de volgende PROTECTED_ROUNDS
  *   speeldagen beschermd en blijft dus niet opnieuw aan de kant. Dat venster loopt
  *   door over een wissel van lotingsysteem midden in het seizoen heen.
+ * - Jeugd (Player::YOUTH_AGE_LIMIT) blijft zo weinig mogelijk aan de kant, maar
+ *   binnen die bescherming: zie `selectSittingOut()`.
  * - Wie overblijft (1-3 spelers) wordt als uitgeloot bewaard in
  *   player_round_statistics: het overleeft een refresh, weegt mee in volgende
  *   lotingen, en speelt hij niet meer, dan rekent de tussenstand die speeldag voor
@@ -66,10 +68,11 @@ class DrawService
 
     /**
      * Aanwezige leden die nog geen match hebben, gesorteerd op sterkte. Per speler
-     * houden we bij hoeveel speeldagen geleden hij uitgeloot werd, en zijn
-     * bonuspunten voor de handicap-tie-break van de tweede samensteller.
+     * houden we bij hoeveel speeldagen geleden hij uitgeloot werd, of hij die dag
+     * jeugd is, en zijn bonuspunten voor de handicap-tie-break van de tweede
+     * samensteller.
      *
-     * @return Collection<int, array{id: int, average: float, bonus: int, roundsSinceDrawnOut: int|null}>
+     * @return Collection<int, array{id: int, average: float, bonus: int, roundsSinceDrawnOut: int|null, isYouth: bool}>
      */
     private function participants(Round $round): Collection
     {
@@ -91,6 +94,7 @@ class DrawService
                     'average' => $averages[$statistic->player_id] ?? 0.0,
                     'bonus' => $statistic->player?->bonus_points ?? 0,
                     'roundsSinceDrawnOut' => $lastNumber === null ? null : $round->number - $lastNumber,
+                    'isYouth' => $statistic->player?->isYouth($round->date) ?? false,
                 ];
             })
             ->sortByDesc('average')
@@ -159,7 +163,7 @@ class DrawService
      * Bepaal wie aan de kant blijft en stel met de rest de viertallen samen. Enkel de
      * samenstelling verschilt per seizoen; de uitloting is voor beide dezelfde.
      *
-     * @param  Collection<int, array{id: int, average: float, bonus: int, roundsSinceDrawnOut: int|null}>  $participants
+     * @param  Collection<int, array{id: int, average: float, bonus: int, roundsSinceDrawnOut: int|null, isYouth: bool}>  $participants
      * @return array{games: list<list<int>>, drawnOut: list<int>}
      */
     private function composeGames(Collection $participants, Round $round): array
@@ -186,7 +190,7 @@ class DrawService
      * Twee overlappende sterktegroepen, beurtelings sterk en zwak, willekeurig binnen
      * de groep — de legacy-loting.
      *
-     * @param  Collection<int, array{id: int, average: float, bonus: int, roundsSinceDrawnOut: int|null}>  $playing
+     * @param  Collection<int, array{id: int, average: float, bonus: int, roundsSinceDrawnOut: int|null, isYouth: bool}>  $playing
      * @return list<list<int>>
      */
     private function byStrengthGroups(Collection $playing): array
@@ -240,7 +244,7 @@ class DrawService
      * viertal, dat de restjes krijgt, en verdubbelt zo net de uitschieters waar de
      * score-invoer op stukloopt.
      *
-     * @param  Collection<int, array{id: int, average: float, bonus: int, roundsSinceDrawnOut: int|null}>  $playing
+     * @param  Collection<int, array{id: int, average: float, bonus: int, roundsSinceDrawnOut: int|null, isYouth: bool}>  $playing
      * @return list<list<int>>
      */
     private function byVaryingOpponents(Collection $playing, Round $round): array
@@ -386,11 +390,16 @@ class DrawService
      * Verdeel de deelnemers in wie speelt en wie aan de kant blijft.
      *
      * Wie de voorbije PROTECTED_ROUNDS speeldagen uitgeloot werd, is beschermd en
-     * komt pas aan de beurt als er te weinig onbeschermde spelers zijn; dan valt de
-     * keuze op wie het langst geleden aan de kant stond. Binnen een gelijke groep
-     * beslist het toeval.
+     * komt pas aan de beurt als er te weinig onbeschermde spelers zijn. Binnen
+     * beschermd of onbeschermd gaat de jeugd als laatste, daarna wie het langst
+     * geleden aan de kant stond. Binnen een gelijke groep beslist het toeval.
      *
-     * @param  Collection<int, array{id: int, average: float, bonus: int, roundsSinceDrawnOut: int|null}>  $participants
+     * Jeugd staat bewust ónder de bescherming: anders blijft een volwassene twee keer
+     * binnen het venster — of twee keer op één avond — aan de kant terwijl een
+     * onbeschermde jongere speelt. Het kost de jeugd niets: op de aanwezigheden van
+     * 2023-2026 zit in beide volgordes geen enkele jongere ooit uit.
+     *
+     * @param  Collection<int, array{id: int, average: float, bonus: int, roundsSinceDrawnOut: int|null, isYouth: bool}>  $participants
      * @return array{0: Collection<int, array<string, mixed>>, 1: Collection<int, array<string, mixed>>}
      */
     private function selectSittingOut(Collection $participants, int $sitOutCount): array
@@ -402,9 +411,10 @@ class DrawService
         $sittingOut = $participants
             ->shuffle()
             ->sortBy([
-                // Onbeschermde spelers eerst; daarna wie het langst geleden aan de
-                // kant stond (nooit uitgeloot telt als "oneindig lang geleden").
+                // Onbeschermde spelers eerst, jeugd als laatste; daarna wie het langst
+                // geleden aan de kant stond (nooit uitgeloot telt als "oneindig lang geleden").
                 fn (array $a, array $b): int => ($this->isProtected($a) ? 1 : 0) <=> ($this->isProtected($b) ? 1 : 0),
+                fn (array $a, array $b): int => $a['isYouth'] <=> $b['isYouth'],
                 fn (array $a, array $b): int => ($b['roundsSinceDrawnOut'] ?? PHP_INT_MAX) <=> ($a['roundsSinceDrawnOut'] ?? PHP_INT_MAX),
             ])
             ->take($sitOutCount)
@@ -429,7 +439,7 @@ class DrawService
     /**
      * Kies vier spelers uit een groep.
      *
-     * @param  list<array{id: int, average: float, bonus: int, roundsSinceDrawnOut: int|null}>  $available
+     * @param  list<array{id: int, average: float, bonus: int, roundsSinceDrawnOut: int|null, isYouth: bool}>  $available
      * @return list<int>
      */
     private function pickFour(array $available): array

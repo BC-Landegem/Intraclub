@@ -152,6 +152,57 @@ class DrawAndDrawnOutTest extends TestCase
         $this->assertSame([$this->players[5]->id], $result['drawnOut']);
     }
 
+    public function test_jeugd_blijft_niet_aan_de_kant_zolang_er_anderen_zijn(): void
+    {
+        $this->makeYouth([1, 2, 3, 4]);
+
+        $result = app(DrawService::class)->draw($this->roundWithPresentPlayers(1, range(1, 6)));
+
+        $this->assertEqualsCanonicalizing([$this->players[5]->id, $this->players[6]->id], $result['drawnOut']);
+    }
+
+    public function test_jeugd_blijft_toch_aan_de_kant_als_er_te_weinig_anderen_zijn(): void
+    {
+        $this->makeYouth([1, 2, 3, 4, 5]);
+
+        $result = app(DrawService::class)->draw($this->roundWithPresentPlayers(1, range(1, 6)));
+
+        $this->assertCount(2, $result['drawnOut']);
+        $this->assertContains($this->players[6]->id, $result['drawnOut']);
+    }
+
+    public function test_bescherming_gaat_voor_jeugd(): void
+    {
+        // Speler 5 zat vorige speeldag aan de kant. Eén van de vier jongeren moet nu
+        // wachten: anders zat hij twee keer binnen het venster.
+        $this->makeYouth([1, 2, 3, 4]);
+        $this->markDrawnOut($this->roundWithPresentPlayers(1, range(1, 6)), [5]);
+
+        $result = app(DrawService::class)->draw($this->roundWithPresentPlayers(2, range(1, 5)));
+
+        $this->assertCount(1, $result['drawnOut']);
+        $this->assertNotSame($this->players[5]->id, $result['drawnOut'][0]);
+    }
+
+    public function test_jeugd_telt_tot_de_twintigste_verjaardag_op_de_datum_van_de_speeldag(): void
+    {
+        // Vandaag is speler 4 allang twintig, maar op speeldag 2 (2 september) is hij
+        // nog negentien. Op speeldag 3 (3 september) wordt hij twintig.
+        $this->travelTo('2030-01-01');
+        $this->makeYouth([1, 2, 3, 6]);
+        $this->players[4]->update(['birth_date' => '2006-09-03']);
+
+        // Zou de loting op vandaag rekenen, dan was het telkens kop of munt tussen 4 en 5.
+        $round = $this->roundWithPresentPlayers(2, range(1, 5));
+        for ($attempt = 0; $attempt < 10; $attempt++) {
+            $this->assertSame([$this->players[5]->id], app(DrawService::class)->draw($round)['drawnOut']);
+        }
+
+        $result = app(DrawService::class)->draw($this->roundWithPresentPlayers(3, [1, 2, 3, 4, 6]));
+
+        $this->assertSame([$this->players[4]->id], $result['drawnOut']);
+    }
+
     public function test_uitgelote_speeldag_telt_niet_mee_in_het_gemiddelde(): void
     {
         $round = $this->roundWithPresentPlayers(1, range(1, 6));
@@ -353,6 +404,14 @@ class DrawAndDrawnOutTest extends TestCase
         $round->playerStatistics()
             ->whereIn('player_id', array_map(fn (int $index): int => $this->players[$index]->id, $playerIndexes))
             ->update(['is_drawn_out' => true]);
+    }
+
+    /** @param list<int> $playerIndexes */
+    private function makeYouth(array $playerIndexes): void
+    {
+        foreach ($playerIndexes as $index) {
+            $this->players[$index]->update(['birth_date' => '2010-01-01']);
+        }
     }
 
     /** @param list<int> $playerIndexes */

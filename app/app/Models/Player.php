@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Enums\Gender;
+use Carbon\CarbonInterface;
 use Database\Factories\PlayerFactory;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Casts\Attribute;
@@ -16,6 +17,9 @@ class Player extends Model
     use HasFactory;
 
     public const VETERAN_AGE = 45;
+
+    /** Wie deze leeftijd nog niet bereikt heeft, is jeugd. */
+    public const YOUTH_AGE_LIMIT = 20;
 
     protected $fillable = [
         'first_name',
@@ -80,6 +84,12 @@ class Player extends Model
     protected function isVeteran(): Attribute
     {
         return Attribute::get(fn (): bool => $this->birth_date->age >= self::VETERAN_AGE);
+    }
+
+    /** Op een gegeven dag, niet vandaag: een loting hoort bij de datum van haar speeldag. */
+    public function isYouth(CarbonInterface $on): bool
+    {
+        return $this->birth_date->diffInYears($on) < self::YOUTH_AGE_LIMIT;
     }
 
     protected function isRecreant(): Attribute
