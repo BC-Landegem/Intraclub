@@ -202,8 +202,5 @@ Route::middleware('throttle:push')->group(function (): void {
  * databank. De beveiliging is het token; zonder geldig token bestaat de route
  * niet (404), wat ook geen orakel geeft om op te brute-forcen.
  */
-Route::prefix('deploy')->group(function (): void {
-    Route::post('reset', [DeployController::class, 'reset']);
-    Route::post('{task}', [DeployController::class, 'run'])
-        ->whereIn('task', ['migrate', 'optimize', 'clear']);
-});
+Route::post('deploy/{task}', [DeployController::class, 'run'])
+    ->whereIn('task', ['migrate', 'optimize', 'clear']);

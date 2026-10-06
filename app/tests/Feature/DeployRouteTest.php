@@ -7,8 +7,7 @@ use Tests\TestCase;
 
 /*
  * De endpoints zelf draaien enkel op productie (MySQL). Wat hier getest wordt is
- * de poortwachter: wie er niet in mag, mag er niet in — en de reset weigert
- * zolang niet álle remmen los staan.
+ * de poortwachter: wie er niet in mag, mag er niet in.
  */
 class DeployRouteTest extends TestCase
 {
@@ -19,7 +18,6 @@ class DeployRouteTest extends TestCase
         config(['deploy.token' => null]);
 
         $this->postJson('/api/deploy/migrate')->assertNotFound();
-        $this->postJson('/api/deploy/reset')->assertNotFound();
     }
 
     public function test_een_verkeerd_token_geeft_404_en_geen_403(): void
@@ -52,25 +50,7 @@ class DeployRouteTest extends TestCase
 
         $this->postJson('/api/deploy/db:wipe', [], ['Authorization' => 'Bearer het-echte-token'])
             ->assertNotFound();
-    }
-
-    public function test_de_reset_weigert_zolang_hij_niet_toegelaten_is(): void
-    {
-        config(['deploy.token' => 'het-echte-token', 'deploy.allow_reset' => false]);
-
         $this->postJson('/api/deploy/reset', [], ['Authorization' => 'Bearer het-echte-token'])
             ->assertNotFound();
-    }
-
-    public function test_de_reset_weigert_als_de_snapshot_ontbreekt(): void
-    {
-        config([
-            'deploy.token' => 'het-echte-token',
-            'deploy.allow_reset' => true,
-            'deploy.snapshot' => 'app/private/bestaat-niet.sql.gz',
-        ]);
-
-        $this->postJson('/api/deploy/reset', [], ['Authorization' => 'Bearer het-echte-token'])
-            ->assertStatus(409);
     }
 }

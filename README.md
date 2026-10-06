@@ -208,10 +208,10 @@ Vier dingen die je moet weten:
   speelavond zet ze terug. Het bericht kan dus midden in de avond vertrekken, zodra na de
   eerste golf alle matchen even compleet zijn; de link toont altijd de actuele stand.
   Speeldagen ouder dan `push.round_max_age_days` (3) krijgen geen bericht — anders stuurt
-  `intraclub:import-legacy` of de reset-workflow er twintig. Er staat bewust géén
-  seizoenscheck naast: `Season::current()` is het hoogste id, dus wie het volgende seizoen
-  al aanmaakt zou daarmee de laatste speeldagen van dit seizoen stilleggen. Opnieuw sturen
-  kan met de knop op de speeldagpagina.
+  `intraclub:import-legacy` er twintig. Er staat bewust géén seizoenscheck naast:
+  `Season::current()` is het hoogste id, dus wie het volgende seizoen al aanmaakt zou
+  daarmee de laatste speeldagen van dit seizoen stilleggen. Opnieuw sturen kan met de
+  knop op de speeldagpagina.
 - **Het endpoint staat open**, want een abonnement is anoniem (endpoint, twee sleutels,
   onderwerpen, tijdstip; geen IP, geen lid — dat belooft de privacyverklaring op de
   site). De remmen: `throttle:push` per IP en de allowlist van pushdienst-hosts in
@@ -244,7 +244,7 @@ Drie dingen om te weten:
 
 ## GitHub-flows
 
-Twee workflows, beide in [.github/workflows](.github/workflows).
+De deploy-workflow staat in [.github/workflows](.github/workflows).
 
 ### Werkwijze: branch → PR → merge
 
@@ -279,12 +279,12 @@ dat token in de server-`.env` geven die routes 404.
 Twee eigenaardigheden die je moet kennen:
 
 - De FTP-tool **verwijdert** bestanden op de server die niet in de bron zitten. Wat de
-  server zelf bezit — de productie-`.env`, de logs, de databank-snapshot — staat daarom
-  in [.github/ftp-exclude.txt](.github/ftp-exclude.txt). Haal daar niets uit.
+  server zelf bezit — de productie-`.env`, de logs — staat daarom in
+  [.github/ftp-exclude.txt](.github/ftp-exclude.txt). Haal daar niets uit.
 - De rooktest draait *na* de upload en *na* de migrations. Een rode deploy betekent dus
   een stukke live site, niet een afgebroken deploy.
 
-Secrets instellen, de eerste (lange) sync en de databank-reset: zie [DEPLOY.md](DEPLOY.md).
+Secrets instellen en de eerste (lange) sync: zie [DEPLOY.md](DEPLOY.md).
 
 ### Als een deploy faalt
 
@@ -295,15 +295,9 @@ git push          # de sync zet de bestanden terug, optimize herbouwt de cache
 
 **Code rolt terug, migrations niet.** Een `revert` zet je PHP-bestanden terug, maar een
 migration die al gedraaid heeft blijft gedraaid — en een migration die een kolom heeft
-gedropt, geeft die daarmee niet terug. Voor schemawijzigingen is de databank-snapshot je
-enige net. Denk daar dus vóór het pushen aan, en start bij een risicovolle wijziging
-eerst handmatig met **dry_run** aan om te zien wat er zou uploaden.
-
-### De reset-workflow
-
-"Databank resetten" zet de productiedatabank terug naar een snapshot, met drie
-onafhankelijke remmen. Na de cutover moet die knop dood: vanaf het moment dat er in de
-zaal ingevoerd wordt, is een reset dataverlies. Procedure in [DEPLOY.md](DEPLOY.md).
+gedropt, geeft die daarmee niet terug. Voor schemawijzigingen is een export van de
+databank (phpMyAdmin) je enige net. Denk daar dus vóór het pushen aan, en start bij een
+risicovolle wijziging eerst handmatig met **dry_run** aan om te zien wat er zou uploaden.
 
 ## AI-tooling in deze repo
 
@@ -320,5 +314,5 @@ de exclude-lijst van de sync.
 ## Verder lezen
 
 - [PLAN.md](PLAN.md) — beslissingen, fasen, datamodel, de datamigratieketen, risico's
-- [DEPLOY.md](DEPLOY.md) — secrets, eerste sync, deploy-taken, databank-reset, cutover
+- [DEPLOY.md](DEPLOY.md) — secrets, eerste sync, deploy-taken, cron
 - [LICENSE](LICENSE) — MIT

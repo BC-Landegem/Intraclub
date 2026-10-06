@@ -71,7 +71,7 @@ jobs:
     needs: test
     if: github.event_name != 'pull_request'
     runs-on: ubuntu-latest
-    # Deploy en reset raken dezelfde server: nooit twee tegelijk, en nooit een
+    # Nooit twee deploys tegelijk op dezelfde server, en nooit een
     # lopende deploy halverwege afbreken. Dit staat op de job en niet op de
     # workflow, zodat een PR-testrun geen echte deploy in de wachtrij zet.
     concurrency:

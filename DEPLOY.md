@@ -1,16 +1,12 @@
-# Deployen en resetten
+# Deployen
 
-Twee workflows in [.github/workflows](.github/workflows):
-
-| Workflow | Trigger | Doet |
-|---|---|---|
-| `Deploy` | push naar `main`, of handmatig | tests → composer/ng build → FTP-sync → `migrate` → `optimize` → rooktest |
-| `Databank resetten` | enkel handmatig, met bevestiging | tabellen kopiëren → wissen → snapshot herladen → `migrate` → `optimize` → rooktest |
+De workflow `Deploy` in [.github/workflows](.github/workflows) draait bij elke push
+naar `main`, of handmatig: tests → composer/ng build → FTP-sync → `migrate` →
+`optimize` → rooktest.
 
 Er is geen SSH op de host, dus wat lokaal een artisan-commando is, gebeurt over
-HTTP: `POST /api/deploy/{migrate|optimize|clear}` en `POST /api/deploy/reset`,
-achter een Bearer-token (`DEPLOY_TOKEN`). Zonder dat token in de `.env` geven die
-routes 404. Zie [DeployController](app/app/Http/Controllers/DeployController.php)
+HTTP: `POST /api/deploy/{migrate|optimize|clear}`, achter een Bearer-token
+(`DEPLOY_TOKEN`). Zonder dat token in de `.env` geven die routes 404. Zie [DeployController](app/app/Http/Controllers/DeployController.php)
 en [config/deploy.php](app/config/deploy.php).
 
 ## Vereiste op de host: PHP ≥ 8.4.1
@@ -51,7 +47,6 @@ host, dus je ziet het in de Actions-log staan.
    `VAPID_PUBLIC_KEY` in de Website-repo (environment `shared-hosting`). Zonder die twee
    staat push uit, zichtbaar in het paneel onder Pushberichten. Zie ook "Cron" hieronder.
 3. Document root: DirectAdmin laat die hier **niet** verzetten (geen Custom HTTPD Configurations op gebruikersniveau, en Subdomain Management heeft geen veld ervoor). Daarom staat de docroot op `public_html` en vangt [app/.htaccess](app/.htaccess) dat op: het blokkeert alles buiten `public/` en stuurt de rest naar `public/index.php`. Dat bestand gaat mee met de sync, dus er is geen handwerk. Kan je later tóch de docroot verzetten, verwijder het dan — Laravel's eigen `public/.htaccess` neemt over.
-4. Snapshot voor de reset: lokaal `bash app/cutover.sh` draaien en `app/cutover.sql.gz` uploaden naar `storage/app/private/cutover.sql.gz`. Die map staat in de exclude-lijst van de sync, dus een deploy raakt hem niet.
 
 ### 4. Eerste deploy
 
@@ -104,39 +99,6 @@ Na een lokale sync kan een volgende workflow-run nog een deel opnieuw uploaden, 
 bestanden die lokaal en in CI niet byte-identiek gebouwd worden. Dat is een fractie van
 de 16.900, niet het geheel.
 
-## De reset
-
-Drie remmen, los van elkaar:
-
-1. je moet in de workflow letterlijk `RESET` typen;
-2. `INTRACLUB_ALLOW_RESET=true` moet in de `.env` staan;
-3. het snapshotbestand moet op de server staan.
-
-Daarbovenop kopieert de server elke tabel naar `bak_<jjmmdduumm ss>_<tabel>` vóór hij
-iets wist, en bewaart de laatste twee reeksen (`INTRACLUB_BACKUP_SETS`).
-
-Wat een reset doet: alle tabellen kopiëren → alle tabellen wissen →
-`cutover.sql.gz` inlezen (structuur + data + `users` + `migrations`) →
-`migrate --force` voor migrations die nieuwer zijn dan de snapshot → `optimize`.
-
-Gevolgen om te weten:
-
-- **Je moet opnieuw inloggen**: `SESSION_DRIVER=database`, dus de sessies gaan mee.
-- **Het admin-wachtwoord is dat uit de snapshot.** Wijzig je het op productie en
-  reset je daarna, dan is de wijziging weg. Zet het echte wachtwoord vóór het
-  exporteren lokaal met `php artisan intraclub:set-password`.
-
-## Bij de cutover — de knop dood maken
-
-PLAN.md is duidelijk: zodra er in de zaal ingevoerd wordt is productie de bron van
-waarheid en is een reset dataverlies. Doe dan alle drie:
-
-1. `INTRACLUB_ALLOW_RESET=false` in de `.env`;
-2. **de deploy opnieuw draaien** (of de taak `optimize`) — anders leest de app die
-   wijziging nooit, want `optimize` heeft de configuratie in de cache gezet;
-3. `storage/app/private/cutover.sql.gz` via FTP verwijderen. Dit is de enige rem die
-   niet van de configuratiecache afhangt, dus dit is de belangrijkste.
-
 ## Als het Aanspreekpunt Integriteit wisselt
 
 Dit is de enige wijziging in dit project waar niets voor waarschuwt. Een vergeten
@@ -149,7 +111,7 @@ Alle vier, in één beweging:
 
 1. `MELDING_TO` in de `.env` op de server;
 2. **de deploy of de taak `optimize` opnieuw draaien** — anders blijft de oude waarde
-   in de configuratiecache staan, net als bij `INTRACLUB_ALLOW_RESET` hierboven;
+   in de configuratiecache staan;
 3. `INTEGRITY_NAME` in `src/data/contact.ts` van de Website-repo;
 4. de tekst op `/club/aanspreekpunt-integriteit/`.
 
@@ -190,7 +152,7 @@ of ligt de wachtrij na een afgebroken run stil. De redenering staat bij de code.
 
 ```bash
 URL=https://intra.bclandegem.be TOKEN=<het token> \
-  bash .github/scripts/deploy-task.sh migrate     # of optimize / clear / reset
+  bash .github/scripts/deploy-task.sh migrate     # of optimize / clear
 ```
 
 ## Wat de sync níet aanraakt

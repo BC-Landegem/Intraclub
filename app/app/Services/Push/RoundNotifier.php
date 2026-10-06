@@ -19,10 +19,10 @@ use Illuminate\Support\Facades\DB;
  * aanvaard, de link toont altijd de actuele stand.
  *
  * Wanneer niet: een speeldag ouder dan `push.round_max_age_days`. Dat vangt de
- * import van de oude databank en de reset-workflow, die twintig speeldagen
- * tegelijk berekenen. En als er geen VAPID-sleutels zijn, want dan kan er toch
- * niets vertrekken; push_notified_at blijft dan leeg, en de datumgrens zorgt
- * dat er later niets oud naverstuurd wordt.
+ * import van de oude databank, die twintig speeldagen tegelijk berekent. En
+ * als er geen VAPID-sleutels zijn, want dan kan er toch niets vertrekken;
+ * push_notified_at blijft dan leeg, en de datumgrens zorgt dat er later niets
+ * oud naverstuurd wordt.
  *
  * Er staat bewust geen "enkel het lopende seizoen" bij. Season::current() is
  * het hoogste id, dus wie het volgende seizoen aanmaakt vóór de laatste

@@ -13,14 +13,13 @@
 **/.env
 **/.env.*
 
-# De snapshot voor de reset-actie en de logs: eigendom van de server.
+# Privébestanden en logs: eigendom van de server.
 storage/app/private/**
 storage/logs/**
 
 # Hoort niet op een productieserver
 tests/**
 phpunit.xml
-cutover.sh
 *.sql
 *.sql.gz
 AGENTS.md

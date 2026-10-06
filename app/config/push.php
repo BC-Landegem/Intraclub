@@ -87,9 +87,9 @@ return [
 
     /*
      * Hoe oud een speeldag hoogstens mag zijn om er automatisch een bericht over
-     * te sturen, in dagen. Beschermt tegen een import of een databank-reset die
-     * in één beweging twintig speeldagen "berekent", en is meteen de enige grens:
-     * een seizoenscheck staat er bewust niet naast, zie RoundNotifier.
+     * te sturen, in dagen. Beschermt tegen een import die in één beweging
+     * twintig speeldagen "berekent", en is meteen de enige grens: een
+     * seizoenscheck staat er bewust niet naast, zie RoundNotifier.
      */
     'round_max_age_days' => 3,
 
