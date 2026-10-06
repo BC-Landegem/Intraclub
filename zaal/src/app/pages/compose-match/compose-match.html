@@ -16,7 +16,8 @@
     @if (fixedPlayers().length > 0) {
       <p class="uitleg">
         Vraag wie er nog een match wil; niemand moet. Wie al speelde, doet deze erbij: ze telt niet
-        mee voor zijn stand.
+        mee voor zijn stand. Is een uitgelote speler al naar huis, tik dan op Vertrokken: die blijft
+        uitgeloot en de plaats komt vrij.
       </p>
     }
 
@@ -25,10 +26,30 @@
       <ul class="gekozen">
         @for (player of fixedPlayers(); track player.id) {
           <li class="speler vast">
-            <span
-              >{{ player.fullName }} <span class="bonus">({{ player.bonusPoints }})</span></span
-            >
-            <span class="tag">wacht</span>
+            @if (leaving() === player.id) {
+              <span>{{ player.fullName }} vertrokken?</span>
+              <span class="acties">
+                <button type="button" class="klein" (click)="leaving.set(null)">Nee</button>
+                <button
+                  type="button"
+                  class="gevaar klein"
+                  [disabled]="busy()"
+                  (click)="markDeparted(player)"
+                >
+                  Ja, vertrokken
+                </button>
+              </span>
+            } @else {
+              <span
+                >{{ player.fullName }} <span class="bonus">({{ player.bonusPoints }})</span></span
+              >
+              <span class="acties">
+                <span class="tag">wacht</span>
+                <button type="button" class="klein" (click)="leaving.set(player.id)">
+                  Vertrokken
+                </button>
+              </span>
+            }
           </li>
         }
         @for (player of chosen(); track player.id) {

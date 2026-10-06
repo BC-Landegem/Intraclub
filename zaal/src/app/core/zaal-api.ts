@@ -177,6 +177,13 @@ export class ZaalApi {
     }
   }
 
+  /** Een uitgelote speler is naar huis: hij blijft uitgeloot, maar wacht niet meer. */
+  markDeparted(playerId: number): Promise<void> {
+    return this.run(() =>
+      this.http.post<RoundState>(`/api/zaal/rounds/${this.roundId()}/departures`, { playerId }),
+    );
+  }
+
   confirmGame(playerIds: number[]): Promise<void> {
     return this.run(() =>
       this.http.post<RoundState>(`/api/zaal/rounds/${this.roundId()}/games`, { playerIds }),

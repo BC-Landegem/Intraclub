@@ -82,6 +82,7 @@ class DrawService
 
         return $round->playerStatistics()
             ->where('is_present', true)
+            ->where('has_left', false)
             ->with('player')
             ->get()
             ->filter(fn (PlayerRoundStatistic $statistic): bool => ($statistic->player?->is_member ?? false)

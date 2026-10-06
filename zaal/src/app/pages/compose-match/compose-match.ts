@@ -38,6 +38,9 @@ export class ComposeMatch implements OnInit {
   protected readonly errorMessage = signal('');
   protected readonly busy = signal(false);
 
+  /** De uitgelote speler die als vertrokken gemeld wordt, zolang dat nog niet bevestigd is. */
+  protected readonly leaving = signal<number | null>(null);
+
   protected readonly slotsLeft = computed(
     () => 4 - this.fixedPlayers().length - this.chosen().length,
   );
@@ -88,6 +91,24 @@ export class ComposeMatch implements OnInit {
 
   protected remove(player: FillCandidate): void {
     this.chosen.update((current) => current.filter((chosen) => chosen.id !== player.id));
+  }
+
+  /** Meteen bewaard, niet pas bij het bevestigen: wie weg is, is ook weg als je annuleert. */
+  protected async markDeparted(player: PlayerSummary): Promise<void> {
+    this.errorMessage.set('');
+    this.busy.set(true);
+    try {
+      await this.api.markDeparted(player.id);
+
+      if (this.api.errorMessage() === '') {
+        this.fixedPlayers.update((current) => current.filter((fixed) => fixed.id !== player.id));
+      } else {
+        this.errorMessage.set(this.api.errorMessage());
+      }
+    } finally {
+      this.leaving.set(null);
+      this.busy.set(false);
+    }
   }
 
   protected async confirm(): Promise<void> {

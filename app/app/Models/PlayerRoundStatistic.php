@@ -12,6 +12,7 @@ class PlayerRoundStatistic extends Model
         'player_id',
         'is_present',
         'is_drawn_out',
+        'has_left',
         'average',
         'rank',
     ];
@@ -21,6 +22,7 @@ class PlayerRoundStatistic extends Model
         return [
             'is_present' => 'boolean',
             'is_drawn_out' => 'boolean',
+            'has_left' => 'boolean',
             'rank' => 'integer',
         ];
     }

@@ -147,6 +147,7 @@ Route::middleware('web')->group(function (): void {
             Route::get('rounds/{round}/fill-candidates', [ZaalController::class, 'fillCandidates']);
             Route::post('rounds/{round}/players', [ZaalController::class, 'storePlayer']);
             Route::post('rounds/{round}/attendance', [ZaalController::class, 'setAttendance']);
+            Route::post('rounds/{round}/departures', [ZaalController::class, 'storeDeparture']);
             Route::post('rounds/{round}/draw', [ZaalController::class, 'draw']);
             Route::post('rounds/{round}/games', [ZaalController::class, 'storeGame']);
             Route::put('games/{game}', [ZaalController::class, 'updateGame']);

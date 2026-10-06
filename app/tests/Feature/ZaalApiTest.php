@@ -8,6 +8,7 @@ use App\Models\PlayerSeasonStatistic;
 use App\Models\Round;
 use App\Models\Season;
 use App\Models\User;
+use App\Services\DayScores;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Hash;
 use Tests\Concerns\PlaysToPoints;
@@ -376,6 +377,82 @@ class ZaalApiTest extends TestCase
             ->where('is_drawn_out', true)->count());
     }
 
+    public function test_een_uitgelote_speler_die_vertrekt_blijft_uitgeloot(): void
+    {
+        $this->actingAs($this->user);
+        $this->fiveAndSixWaitDrawnOut();
+        $vertrekt = $this->players[5]->id;
+
+        $this->postJson("/api/zaal/rounds/{$this->round->id}/departures", ['playerId' => $vertrekt])
+            ->assertOk()
+            ->assertJsonCount(1, 'drawnOut')
+            ->assertJsonPath('drawnOut.0.id', $this->players[6]->id)
+            ->assertJsonPath('presentCount', 5);
+
+        // Voor de zaal is hij weg: geen kandidaat meer, ook niet als laatkomer.
+        $candidates = $this->getJson("/api/zaal/rounds/{$this->round->id}/fill-candidates")->assertOk();
+        $this->assertSame([$this->players[6]->id], array_column($candidates->json('drawnOut'), 'id'));
+        $this->assertNotContains($vertrekt, array_column($candidates->json('present'), 'id'));
+        $this->assertNotContains($vertrekt, array_column($candidates->json('others'), 'id'));
+
+        // Maar hij was er en blijft uitgeloot: zijn speeldag telt niet mee in de stand.
+        $statistic = PlayerRoundStatistic::where('round_id', $this->round->id)
+            ->where('player_id', $vertrekt)
+            ->first();
+        $this->assertTrue($statistic->is_present);
+        $this->assertTrue($statistic->is_drawn_out);
+        $this->assertNull(app(DayScores::class)->forRound($this->round)[$vertrekt]);
+    }
+
+    public function test_een_vertrokken_speler_komt_niet_meer_in_de_loting(): void
+    {
+        $this->actingAs($this->user);
+        $this->markPresent(range(1, 6));
+
+        // Een proefworp: twee wachten, maar er is nog geen match bevestigd.
+        $vertrekt = $this->postJson("/api/zaal/rounds/{$this->round->id}/draw")->json('drawnOut.0.id');
+        $this->postJson("/api/zaal/rounds/{$this->round->id}/departures", ['playerId' => $vertrekt])->assertOk();
+
+        // Opnieuw loten gooit de proefworp weg, maar niet zijn uitloting.
+        $response = $this->postJson("/api/zaal/rounds/{$this->round->id}/draw")->assertOk();
+
+        $this->assertNotContains($vertrekt, array_column($response->json('proposedGames.0'), 'id'));
+        $this->assertNotContains($vertrekt, array_column($response->json('drawnOut'), 'id'));
+        $this->assertTrue(PlayerRoundStatistic::where('round_id', $this->round->id)
+            ->where('player_id', $vertrekt)
+            ->value('is_drawn_out'));
+    }
+
+    public function test_wie_vertrok_en_terugkomt_wacht_weer(): void
+    {
+        $this->actingAs($this->user);
+        $this->fiveAndSixWaitDrawnOut();
+        $this->postJson("/api/zaal/rounds/{$this->round->id}/departures", ['playerId' => $this->players[5]->id]);
+
+        $this->postJson("/api/zaal/rounds/{$this->round->id}/attendance", [
+            'playerId' => $this->players[5]->id,
+            'present' => true,
+        ])->assertNoContent();
+
+        $this->getJson("/api/zaal/rounds/{$this->round->id}")
+            ->assertOk()
+            ->assertJsonCount(2, 'drawnOut')
+            ->assertJsonPath('presentCount', 6);
+    }
+
+    public function test_enkel_een_uitgelote_speler_kan_vertrekken(): void
+    {
+        $this->actingAs($this->user);
+        $this->markPresent([1]);
+
+        $this->postJson("/api/zaal/rounds/{$this->round->id}/departures", ['playerId' => $this->players[1]->id])
+            ->assertStatus(422);
+
+        $this->assertFalse(PlayerRoundStatistic::where('round_id', $this->round->id)
+            ->where('player_id', $this->players[1]->id)
+            ->value('has_left'));
+    }
+
     public function test_een_laatkomer_wordt_aanwezig_gezet_bij_het_aanvullen(): void
     {
         $this->actingAs($this->user);
@@ -493,6 +570,18 @@ class ZaalApiTest extends TestCase
         $this->getJson("/api/zaal/rounds/{$this->round->id}")
             ->assertOk()
             ->assertJsonPath('round.isToday', false);
+    }
+
+    /** Iedereen aanwezig, 1 tot 4 spelen al, 5 en 6 zijn uitgeloot en wachten. */
+    private function fiveAndSixWaitDrawnOut(): void
+    {
+        $this->markPresent(range(1, 6));
+        $this->postJson("/api/zaal/rounds/{$this->round->id}/games", [
+            'playerIds' => collect(range(1, 4))->map(fn (int $i): int => $this->players[$i]->id)->all(),
+        ]);
+        PlayerRoundStatistic::where('round_id', $this->round->id)
+            ->whereIn('player_id', [$this->players[5]->id, $this->players[6]->id])
+            ->update(['is_drawn_out' => true]);
     }
 
     /** @param list<int> $playerIndexes */

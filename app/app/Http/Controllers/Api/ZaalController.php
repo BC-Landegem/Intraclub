@@ -88,7 +88,8 @@ class ZaalController extends Controller
     }
 
     /**
-     * Zet een speler aanwezig of afwezig.
+     * Zet een speler aanwezig of afwezig. Afwezig is een correctie ("hij was er
+     * niet") en wist dus ook de uitloting; wie vertrekt, gaat via storeDeparture.
      */
     public function setAttendance(Request $request, Round $round): Response
     {
@@ -99,10 +100,34 @@ class ZaalController extends Controller
 
         PlayerRoundStatistic::updateOrCreate(
             ['round_id' => $round->id, 'player_id' => $data['playerId']],
-            ['is_present' => $data['present']] + ($data['present'] ? [] : ['is_drawn_out' => false]),
+            ['is_present' => $data['present'], 'has_left' => false]
+                + ($data['present'] ? [] : ['is_drawn_out' => false]),
         );
 
         return response()->noContent();
+    }
+
+    /**
+     * Een uitgelote speler die naar huis gaat. Hij blijft uitgeloot, dus stand en
+     * bescherming veranderen niet, en blijft aanwezig voor de geschiedenis. Hij
+     * wacht alleen niet meer op een match en komt niet meer in loting of aanvulling.
+     */
+    public function storeDeparture(Request $request, Round $round): JsonResponse
+    {
+        $data = $request->validate([
+            'playerId' => ['required', 'integer', Rule::exists('players', 'id')],
+        ]);
+
+        // Een nieuwe loting kan hem niet meer meenemen, dus is zijn uitloting meteen
+        // definitief en niet langer een proefworp die DrawService::draw weggooit.
+        $updated = $round->playerStatistics()
+            ->where('player_id', $data['playerId'])
+            ->where('is_drawn_out', true)
+            ->update(['has_left' => true, 'is_drawn_out_unconfirmed' => false]);
+
+        abort_if($updated === 0, 422, 'Enkel een uitgelote speler kan hier vertrekken.');
+
+        return response()->json($this->roundPayload($round));
     }
 
     /** Loot de speeldag; bewaart meteen wie uitgeloot is. */
@@ -138,7 +163,7 @@ class ZaalController extends Controller
             foreach ($data['playerIds'] as $playerId) {
                 PlayerRoundStatistic::updateOrCreate(
                     ['round_id' => $round->id, 'player_id' => $playerId],
-                    ['is_present' => true],
+                    ['is_present' => true, 'has_left' => false],
                 );
             }
 
@@ -213,6 +238,9 @@ class ZaalController extends Controller
      *   al speelden.
      * - "others": de overige leden, voor wie net binnenkomt; die wordt bij het
      *   aanmaken van de match meteen aanwezig gezet.
+     *
+     * Wie vertrokken is, staat in geen enkele lijst. Komt hij terug, dan zet de
+     * aanwezigheidslijst hem weer aanwezig.
      */
     public function fillCandidates(Round $round): JsonResponse
     {
@@ -230,6 +258,7 @@ class ZaalController extends Controller
             ->orderBy('first_name')
             ->orderBy('last_name')
             ->get()
+            ->reject(fn (Player $player): bool => $attendance->get($player->id)?->has_left ?? false)
             ->map(fn (Player $player): array => $this->playerSummary($player) + [
                 'present' => (bool) ($attendance->get($player->id)?->is_present ?? false),
                 'drawnOut' => (bool) ($attendance->get($player->id)?->is_drawn_out ?? false)
@@ -300,7 +329,8 @@ class ZaalController extends Controller
         $attendance = $round->playerStatistics()->get()->keyBy('player_id');
 
         // In de zaal is uitgeloot "wacht nog op een match". De vlag zelf blijft na
-        // die match staan, voor de website en de bescherming.
+        // die match staan, voor de website en de bescherming. Wie vertrok, is voor
+        // de zaal weg; aanwezig blijft hij enkel in de geschiedenis.
         $playing = Game::playerIdsInRounds([$round->id])->flip();
 
         $players = Player::query()
@@ -310,10 +340,11 @@ class ZaalController extends Controller
             ->get()
             ->map(function (Player $player) use ($attendance, $playing): array {
                 $statistic = $attendance->get($player->id);
+                $left = $statistic?->has_left ?? false;
 
                 return $this->playerSummary($player) + [
-                    'present' => (bool) ($statistic?->is_present ?? false),
-                    'drawnOut' => (bool) ($statistic?->is_drawn_out ?? false) && ! $playing->has($player->id),
+                    'present' => ($statistic?->is_present ?? false) && ! $left,
+                    'drawnOut' => ($statistic?->is_drawn_out ?? false) && ! $left && ! $playing->has($player->id),
                 ];
             })
             ->values();

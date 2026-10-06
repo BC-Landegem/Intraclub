@@ -88,11 +88,12 @@ h3 {
 
 .speler {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   justify-content: space-between;
-  gap: 1rem;
+  gap: 0.5rem 1rem;
   min-height: var(--raakhoogte);
-  padding: 0 1rem;
+  padding: 0.4rem 1rem;
   border: 1px solid var(--paneel-rand);
   border-radius: var(--straal);
   font-size: 1.1rem;
@@ -106,6 +107,13 @@ h3 {
 .speler.leeg {
   color: var(--tekst-zacht);
   border-style: dashed;
+}
+
+.acties {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-left: auto;
 }
 
 .tag {
@@ -181,6 +189,11 @@ button.groot {
 
   .teller {
     grid-column: 1 / -1;
+  }
+
+  /* De gouden rand zegt al wie vaststaat; zo past de knop Vertrokken naast de naam. */
+  .tag {
+    display: none;
   }
 
   button.groot {
