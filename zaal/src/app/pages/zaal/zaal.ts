@@ -31,6 +31,8 @@ const CONFIRM_MS = 30_000;
   host: {
     '(pointerdown)': 'keepAwake()',
     '(keydown)': 'keepAwake()',
+    '(document:visibilitychange)': 'refresh()',
+    '(window:online)': 'refresh()',
   },
 })
 export class Zaal {
@@ -84,6 +86,17 @@ export class Zaal {
 
   protected async openRound(roundId: number): Promise<void> {
     await this.api.openRound(roundId);
+  }
+
+  /**
+   * Terug in beeld of terug online: de speeldag kan intussen veranderd zijn, zie
+   * `ZaalApi.refresh`. Online telt mee omdat de wifi na het ontwaken vaak pas ná
+   * de eerste poging terug is.
+   */
+  protected refresh(): void {
+    if (document.visibilityState === 'visible') {
+      void this.api.refresh();
+    }
   }
 
   /**

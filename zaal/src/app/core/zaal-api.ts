@@ -126,6 +126,44 @@ export class ZaalApi {
   }
 
   /**
+   * Haalt de speeldag stil opnieuw op: geen busy-vlag, geen foutmelding.
+   *
+   * Waarom: de toestand wordt één keer geladen. Een tablet die van de ene speeldag
+   * tot de volgende openstaat, schreef zo nog naar de vorige — met `isToday`
+   * bevroren op het moment van laden, dus zonder waarschuwing. Stond hier de
+   * speeldag van vandaag, dan vragen we opnieuw welke dat is; een bewust geopende
+   * oudere blijft open. Lukt het niet, dan blijft alles staan tot de volgende keer.
+   */
+  async refresh(): Promise<void> {
+    const seen = this.state();
+    const round = seen?.round ?? null;
+
+    let fresh: RoundState;
+    try {
+      fresh = await firstValueFrom(
+        round === null || round.isToday
+          ? this.http.get<RoundState>('/api/zaal/round')
+          : this.http.get<RoundState>(`/api/zaal/rounds/${round.id}`),
+      );
+    } catch {
+      return;
+    }
+
+    const sameRound = fresh.round?.id === round?.id;
+
+    // Tikte iemand terwijl dit onderweg was, dan is de lokale toestand de nieuwere.
+    if (sameRound && this.state() !== seen) {
+      return;
+    }
+    // Voorstellen van een andere speeldag horen hier niet meer bevestigd te worden.
+    if (!sameRound) {
+      this.pending.set([]);
+    }
+
+    this.state.set(fresh);
+  }
+
+  /**
    * Meldt iemand aan of af zónder de zaal te blokkeren.
    *
    * Waarom apart van `run()`: die zet een globale busy-vlag, en elke tegel hangt

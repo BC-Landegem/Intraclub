@@ -1,4 +1,4 @@
-import { Component, computed, inject, input } from '@angular/core';
+import { Component, computed, effect, inject, input } from '@angular/core';
 import { Router } from '@angular/router';
 import { PlayerSummary } from '../../../core/models';
 import { ZaalApi } from '../../../core/zaal-api';
@@ -37,10 +37,23 @@ export class Match {
   readonly playerId = input<string>();
   readonly mode = input.required<Mode>();
 
-  /** De wedstrijd zoals de server hem nú kent, of null als hij niet meer bestaat. */
+  /** De wedstrijd zoals de server hem nú kent, of null als hij niet op deze speeldag staat. */
   protected readonly game = computed(
     () => this.api.games().find((game) => game.id === Number(this.gameId())) ?? null,
   );
+
+  constructor() {
+    /*
+     * Zonder wedstrijd is hier niets te doen, dus terug naar de beginvraag. Zo
+     * loopt het af wanneer de browser een tablet herlaadt op een wedstrijd van
+     * vorige keer, of wanneer de speeldag onder dit scherm wisselt.
+     */
+    effect(() => {
+      if (this.game() === null) {
+        void this.router.navigate(['/'], { replaceUrl: true });
+      }
+    });
+  }
 
   /** De speler die hier staat, of null wanneer er enkel gekeken wordt. */
   protected readonly me = computed<PlayerSummary | null>(() => {
