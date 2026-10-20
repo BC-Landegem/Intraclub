@@ -11,6 +11,7 @@ use App\Models\Round;
 use App\Models\Season;
 use App\Models\User;
 use App\Services\DrawService;
+use Filament\Tables\Columns\TextColumn;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Livewire\Features\SupportTesting\Testable;
 use Livewire\Livewire;
@@ -169,6 +170,21 @@ class UitlotingenPageTest extends TestCase
         $this->assertFalse($this->hasShield($page, $this->players['marie']));
     }
 
+    public function test_de_tooltip_noemt_tot_welke_speeldag_het_schild_loopt(): void
+    {
+        $page = $this->page();
+
+        $this->assertSame(
+            'Laatst uitgeloot op speeldag 7, beschermd t.e.m. speeldag 12',
+            $this->column($page, $this->players['els'])->getTooltip(),
+        );
+        $this->assertSame(
+            'Laatst uitgeloot op speeldag 6',
+            $this->column($page, $this->players['bart'])->getTooltip(),
+        );
+        $this->assertNull($this->column($page, $this->players['marie'])->getTooltip());
+    }
+
     public function test_een_ander_seizoen_toont_zijn_eigen_uitlotingen(): void
     {
         $other = Season::create([
@@ -203,12 +219,19 @@ class UitlotingenPageTest extends TestCase
 
     private function hasShield(mixed $page, Player $player): bool
     {
+        $column = $this->column($page, $player);
+
+        return $column->getIcon($column->getState()) !== null;
+    }
+
+    private function column(mixed $page, Player $player): TextColumn
+    {
         $column = $page->instance()->getTable()->getColumn('rounds_since')
             ->record($page->instance()->getTableRecord((string) $player->getKey()));
 
         $column->clearCachedState();
 
-        return $column->getIcon($column->getState()) !== null;
+        return $column;
     }
 
     /**

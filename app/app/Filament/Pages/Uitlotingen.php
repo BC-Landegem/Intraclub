@@ -102,9 +102,7 @@ class Uitlotingen extends Page implements HasTable
                     ))
                     ->alignEnd()
                     ->state(fn (Player $record): string => (string) ($this->roundsSinceDrawnOut($record) ?? '—'))
-                    ->tooltip(fn (Player $record): ?string => ($rounds = $this->drawnOutRounds($record)) === []
-                        ? null
-                        : sprintf('Laatst uitgeloot op speeldag %d', max($rounds)))
+                    ->tooltip(fn (Player $record): ?string => $this->lastDrawnOutTooltip($record))
                     ->icon(fn (Player $record): ?Heroicon => $this->isProtected($record)
                         ? Heroicon::OutlinedShieldCheck
                         : null)
@@ -182,6 +180,20 @@ class Uitlotingen extends Page implements HasTable
         $since = $this->roundsSinceDrawnOut($player);
 
         return $since !== null && $since <= DrawService::PROTECTED_ROUNDS;
+    }
+
+    private function lastDrawnOutTooltip(Player $player): ?string
+    {
+        $rounds = $this->drawnOutRounds($player);
+        if ($rounds === []) {
+            return null;
+        }
+
+        $last = max($rounds);
+
+        return $this->isProtected($player)
+            ? sprintf('Laatst uitgeloot op speeldag %d, beschermd t.e.m. speeldag %d', $last, $last + DrawService::PROTECTED_ROUNDS)
+            : sprintf('Laatst uitgeloot op speeldag %d', $last);
     }
 
     /**
